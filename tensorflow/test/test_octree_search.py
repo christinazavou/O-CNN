@@ -8,6 +8,12 @@ from libs import *
 
 class OctreeSearchTest(tf.test.TestCase):
 
+  def setUp(self):
+    self.verificationErrors = []
+
+  def tearDown(self):
+    self.assertEqual([], self.verificationErrors)
+
   def init_data(self):
     octree = octree_batch(octree_samples(['octree_1', 'octree_1']))
     data = np.array([[16.3, 16.5,  1.0, 16.2, 16.2, 16.0],
@@ -22,7 +28,10 @@ class OctreeSearchTest(tf.test.TestCase):
     idx = octree_search(data, octree, depth=5)
 
     with self.cached_session() as sess:
-      self.assertAllEqual(idx, idx_gt)
+      try:
+        self.assertAllEqual(idx, idx_gt)
+      except AssertionError as e:
+        self.verificationErrors.append(str(e))
 
   def test_forward2(self):
     octree, data, idx_gt = self.init_data()
@@ -31,7 +40,10 @@ class OctreeSearchTest(tf.test.TestCase):
     data = octree_encode_key(data)
     idx = octree_search_key(data, octree, depth=5, is_xyz=True)
     with self.cached_session() as sess:
-      self.assertAllEqual(idx, idx_gt)
+      try:
+        self.assertAllEqual(idx, idx_gt)
+      except AssertionError as e:
+        self.verificationErrors.append(str(e))
 
   def test_forward3(self):
     octree, data, idx_gt = self.init_data()
@@ -41,7 +53,10 @@ class OctreeSearchTest(tf.test.TestCase):
     key = octree_xyz2key(data)
     idx = octree_search_key(key, octree, depth=5, is_xyz=False)
     with self.cached_session() as sess:
-      self.assertAllEqual(idx, idx_gt)
+      try:
+        self.assertAllEqual(idx, idx_gt)
+      except AssertionError as e:
+        self.verificationErrors.append(str(e))
 
 
 if __name__ == "__main__":

@@ -7,6 +7,13 @@ from libs import *
 
 
 class OctreeGatherTest(tf.test.TestCase):
+
+  def setUp(self):
+    self.verificationErrors = []
+
+  def tearDown(self):
+    self.assertEqual([], self.verificationErrors)
+
   def test_forward_backward(self):
     channel, height = 4, 5
     data = tf.random.uniform([1, channel, height, 1], dtype=tf.float32)
@@ -19,8 +26,12 @@ class OctreeGatherTest(tf.test.TestCase):
 
     with self.cached_session() as sess:
       d, o1, o2, g1, g2 = sess.run([data, out1, out2, grad1, grad2])
-      self.assertAllEqual(o1, o1)
-      self.assertAllEqual(g1[0], g2[0])
+
+      try:
+        self.assertAllEqual(o1, o1)
+        self.assertAllEqual(g1[0], g2[0])
+      except AssertionError as e:
+        self.verificationErrors.append(str(e))
 
 
 if __name__ == "__main__":

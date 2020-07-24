@@ -9,6 +9,12 @@ from libs import *
 
 class OctreeConvTest(tf.test.TestCase):
 
+  def setUp(self):
+    self.verificationErrors = []
+
+  def tearDown(self):
+    self.assertEqual([], self.verificationErrors)
+
   def forward_and_backward(self, kernel_size, stride, idx=0):
     depth  = 4
     channel= 3
@@ -39,9 +45,12 @@ class OctreeConvTest(tf.test.TestCase):
       sess.run(tf.global_variables_initializer())
       # print('stride: ', stride, ', kernel_size: ', kernel_size)
 
-      self.assertAllEqual(conv_fast, conv_mem)
-      self.assertAllClose(grad_fast, grad_mem)
-      self.assertAllClose(kernel_fast, kernel_mem)
+      try:
+        self.assertAllEqual(conv_fast, conv_mem)
+        self.assertAllClose(grad_fast, grad_mem)
+        self.assertAllClose(kernel_fast, kernel_mem)
+      except AssertionError as e:
+        self.verificationErrors.append(str(e))
 
   def test_forward_and_backward(self):
     idx = 0

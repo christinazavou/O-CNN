@@ -150,3 +150,27 @@ with tf.variable_scope("ocnn", reuse=False)
     - test_octree_grow, test_points_property, test_transform_points
     
 - giati data shape [1, 3 (channels), 152, 1] ?? giati using only height ? 
+
+
+(indeed in test_octree_conv, test_octree_search and in test_octree_gather the self.assert... woould just fail if fail otherwise it doesnt say it's success so i added functionality of 
+```
+  def setUp(self):
+    self.verificationErrors = []
+
+  def tearDown(self):
+    self.assertEqual([], self.verificationErrors)
+
+      try:
+        self.assertAllEqual(conv_fast, conv_mem)
+        self.assertAllClose(grad_fast, grad_mem)
+        self.assertAllClose(kernel_fast, kernel_mem)
+      except AssertionError as e:
+        self.verificationErrors.append(str(e))
+
+```
+to make sure is success
+)
+
+test_octree_deconv will raise exception ..
+
+
