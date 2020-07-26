@@ -42,15 +42,34 @@ class OctreeConvTest(tf.test.TestCase):
 
     # test
     with self.cached_session() as sess:
-      sess.run(tf.global_variables_initializer())
-      # print('stride: ', stride, ', kernel_size: ', kernel_size)
 
-      try:
-        self.assertAllEqual(conv_fast, conv_mem)
-        self.assertAllClose(grad_fast, grad_mem)
-        self.assertAllClose(kernel_fast, kernel_mem)
-      except AssertionError as e:
-        self.verificationErrors.append(str(e))
+      # ob = octree.eval()
+      # print("ob ", ob.shape)
+      #
+      # ob_f = octree_property(octree, property_name="feature", dtype=tf.float32, depth=5, channel=3).eval()
+      # print("ob_f 5", ob_f.shape)
+      #
+      # ob_f = octree_property(octree, property_name="feature", dtype=tf.float32, depth=4, channel=3).eval()
+      # print("ob_f 4", ob_f.shape)
+      #
+      # ob_f = octree_property(octree, property_name="feature", dtype=tf.float32, depth=3, channel=3).eval()
+      # print("ob_f 3", ob_f.shape)
+      #
+      # ob_f = octree_property(octree, property_name="feature", dtype=tf.float32, depth=2, channel=3).eval()
+      # print("ob_f 2", ob_f.shape)
+
+      kernel_5 = tf.constant(np.random.uniform(-1.0, 1.0, [1, channel, 100, 1]).astype('float32'))
+      conv_5 = octree_conv_fast(data, octree, depth, num_outputs, kernel_size, stride)
+
+      # sess.run(tf.global_variables_initializer())
+      # # print('stride: ', stride, ', kernel_size: ', kernel_size)
+      #
+      # try:
+      #   self.assertAllEqual(conv_fast, conv_mem)
+      #   self.assertAllClose(grad_fast, grad_mem)
+      #   self.assertAllClose(kernel_fast, kernel_mem)
+      # except AssertionError as e:
+      #   self.verificationErrors.append(str(e))
 
   def test_forward_and_backward(self):
     idx = 0

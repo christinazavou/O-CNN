@@ -108,7 +108,31 @@ class Octree2ColTest(tf.test.TestCase):
 tf.data.TFRecordDataset('path').take(-1)
 # with -1 we take all samples of dataset
 ```
+
+- Most dataset input pipelines should end with a call to prefetch. This allows later elements to be prepared while the current element is being processed. This often improves latency and throughput, at the cost of using additional memory to store prefetched elements.
+    ```python
+    tf.DataSet()...prefetch()    
+    ``` 
  
+### tests
+
+in test_octree_conv, test_octree_search and in test_octree_gather the self.assert... woould just fail if fail otherwise it doesnt say it's success so i added in the class 
+```
+  def setUp(self):
+    self.verificationErrors = []
+
+  def tearDown(self):
+    self.assertEqual([], self.verificationErrors)
+```
+and replaced every self.assert.. with:
+```
+  try:
+    self.assert...
+  except AssertionError as e:
+    self.verificationErrors.append(str(e))
+```
+to make sure is success
+
  
 ### run_cls.py:
 
@@ -142,35 +166,14 @@ with tf.variable_scope("ocnn", reuse=False)
         - input (1,3,8,1), kernel [3,3,3], stride 2, output (3,27,1)
         - input (1,3,8,1), kernel [2,2,2], stride 2, output (3,8,1)
 
-- some tests are skipped (probably they dont have any assertions):
-    - , test_octree_conv, test_octree_deconv, test_octree_gather, test_octree_search
-- some tests are ok:
-    - test_octree_2col, test_octree_align, test_octree_linear, test_octree_nearest, test_octree_property
-- some tests fail: (probably files are not there)
-    - test_octree_grow, test_points_property, test_transform_points
-    
 - giati data shape [1, 3 (channels), 152, 1] ?? giati using only height ? 
 
 
-(indeed in test_octree_conv, test_octree_search and in test_octree_gather the self.assert... woould just fail if fail otherwise it doesnt say it's success so i added functionality of 
-```
-  def setUp(self):
-    self.verificationErrors = []
-
-  def tearDown(self):
-    self.assertEqual([], self.verificationErrors)
-
-      try:
-        self.assertAllEqual(conv_fast, conv_mem)
-        self.assertAllClose(grad_fast, grad_mem)
-        self.assertAllClose(kernel_fast, kernel_mem)
-      except AssertionError as e:
-        self.verificationErrors.append(str(e))
-
-```
-to make sure is success
-)
-
-test_octree_deconv will raise exception ..
+ - test_octree_deconv will raise exception ..
 
 
+- what is octree_search doing ? 
+- what is octree_property(property_name='index') and octree_property(property_name='xyz') doing?
+
+
+- octree_batch(octree_samples(['octree_1', 'octree_2'])) this probably concatenates the two different octrees into one super-octree as explained in paper
