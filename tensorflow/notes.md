@@ -184,3 +184,5 @@ with tf.variable_scope("ocnn", reuse=False)
 
 
 - octree_batch(octree_samples(['octree_1', 'octree_2'])) this probably concatenates the two different octrees into one super-octree as explained in paper
+
+- what is the 'split_label' ?
