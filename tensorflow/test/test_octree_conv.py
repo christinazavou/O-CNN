@@ -46,8 +46,14 @@ class OctreeConvTest(tf.test.TestCase):
       # ob = octree.eval()
       # print("ob ", ob.shape)
       #
-      # ob_f = octree_property(octree, property_name="feature", dtype=tf.float32, depth=5, channel=3).eval()
-      # print("ob_f 5", ob_f.shape)
+      ob_f = octree_property(octree, property_name="feature", dtype=tf.float32, depth=5, channel=3).eval()
+      print("ob_f 5", ob_f.shape)
+
+      ob_f = tf.reshape(ob_f, [1, 3, -1, 1])
+      print("ob_f 5 reshape in 3 channels", ob_f.shape)
+
+      ob_f_c = octree_conv_bn_relu(ob_f, octree, 5, 512, training)
+
       #
       # ob_f = octree_property(octree, property_name="feature", dtype=tf.float32, depth=4, channel=3).eval()
       # print("ob_f 4", ob_f.shape)

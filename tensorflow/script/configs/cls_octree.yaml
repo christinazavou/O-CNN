@@ -4,8 +4,8 @@ SOLVER:
   run: train
   max_iter: 160000
   test_iter: 925
-  test_every_iter: 100
-  step_size: (400,)
+  test_every_iter: 2000
+  step_size: (40000,)
 
 DATA:
   train:
@@ -13,7 +13,7 @@ DATA:
     distort: True
     depth: 5
     location: dataset/ModelNet40/m40_5_2_12_train_octree.tfrecords
-    batch_size: 4
+    batch_size: 8
     x_alias: data
   test:
     dtype: octree
@@ -21,7 +21,7 @@ DATA:
     depth: 5
     location: dataset/ModelNet40/m40_5_2_12_test_octree.tfrecords
     shuffle: 0
-    batch_size: 4
+    batch_size: 8
     x_alias: data
 
 MODEL:

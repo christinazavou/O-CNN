@@ -1,4 +1,11 @@
 Useful functions:
+
+- use tqdm library!!
+    ![](tqdm.png)
+    ```
+    for i in tqdm(range(start_iter, max_iter + 1), ncols=80): ...
+    ```
+
 ```python
 import tensorflow as tf
 tf.train.piecewise_constant(...)
