@@ -51,6 +51,12 @@ def make_flags():
 
 class DatasetTest(tf.test.TestCase):
 
+    def setUp(self):
+        self.verificationErrors = []
+
+    def tearDown(self):
+        self.assertEqual([], self.verificationErrors)
+
     # def test_data(self):
     #     flags = make_flags()
     #     octree, label = DatasetFactory(flags.DATA.train)()
@@ -59,57 +65,69 @@ class DatasetTest(tf.test.TestCase):
     #         octree_1 = octree.eval()
     #         print(octree_1, len(octree_1))
     #     self.assertTrue(octree is not None)
-    def test_all(self):
-        with self.cached_session(use_gpu=True) as sess:
-            self.test_point_dataset(sess)
-            self.test_point_cloud_dataset(sess)
 
-    def test_point_dataset(self, sess):
-        flags = make_flags().DATA.train
-        points = PointDataset(ParseExample(**flags),
-                              TransformPoints(**flags, bounding_sphere=bounding_sphere),
-                              Points2Octree(**flags))
+    def test_point_dataset(self):
+        with tf.Session() as sess:
+            flags = make_flags().DATA.train
+            points = PointDataset(ParseExample(**flags),
+                                  TransformPoints(**flags, bounding_sphere=bounding_sphere),
+                                  Points2Octree(**flags))
 
-        merged_octrees_batch1 = sess.run(
-            points(tf_record_filenames=flags.location,
-                   batch_size=flags.batch_size,
-                   shuffle_size=flags.shuffle,
-                   return_iterator=flags.return_iterator,
-                   take=flags.n_samples,
-                   return_pts=flags.return_pts))
-        self.assertTrue(np.issubdtype(merged_octrees_batch1[0].dtype, np.integer))
-        self.assertTrue(np.issubdtype(merged_octrees_batch1[1].dtype, np.integer))
-        self.assertEqual(merged_octrees_batch1[1].shape, (flags.batch_size,))
+            merged_octrees_batch1 = sess.run(
+                points(tf_record_filenames=flags.location,
+                       batch_size=flags.batch_size,
+                       shuffle_size=flags.shuffle,
+                       return_iterator=flags.return_iterator,
+                       take=flags.n_samples,
+                       return_pts=flags.return_pts))
 
-        merged_octrees_batch2 = sess.run(
-            points(tf_record_filenames=flags.location,
-                   batch_size=flags.batch_size,
-                   shuffle_size=flags.shuffle,
-                   return_iterator=flags.return_iterator,
-                   take=flags.n_samples,
-                   return_pts=flags.return_pts))
-        self.assertTrue(np.issubdtype(merged_octrees_batch2[0].dtype, np.integer))
-        self.assertTrue(np.issubdtype(merged_octrees_batch2[1].dtype, np.integer))
-        self.assertEqual(merged_octrees_batch2[1].shape, (flags.batch_size,))
+            try:
+                self.assertTrue(np.issubdtype(merged_octrees_batch1[0].dtype, np.integer))
+                self.assertTrue(np.issubdtype(merged_octrees_batch1[1].dtype, np.integer))
+                self.assertEqual(merged_octrees_batch1[1].shape, (flags.batch_size,))
+            except AssertionError as e:
+                self.verificationErrors.append(str(e))
 
-        self.assertTrue(merged_octrees_batch2[0].shape != merged_octrees_batch1[0].shape)
-        print("check 1")
+            merged_octrees_batch2 = sess.run(
+                points(tf_record_filenames=flags.location,
+                       batch_size=flags.batch_size,
+                       shuffle_size=flags.shuffle,
+                       return_iterator=flags.return_iterator,
+                       take=flags.n_samples,
+                       return_pts=flags.return_pts))
 
-    def test_point_cloud_dataset(self, sess):
-        points = PointCloudDataset(ParseExample())
+            try:
+                self.assertTrue(np.issubdtype(merged_octrees_batch2[0].dtype, np.integer))
+                self.assertTrue(np.issubdtype(merged_octrees_batch2[1].dtype, np.integer))
+                self.assertEqual(merged_octrees_batch2[1].shape, (flags.batch_size,))
 
-        next_point = sess.run(
-            points(
-                tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/dataset/ocnn_completion/completion_test_points.tfrecords',
-                batch_size=10,
-                shuffle_size=1000,
-                return_iterator=False,
-                take=-1))
-        self.assertEqual(next_point[0].shape, (10,))  # batch point clouds
-        self.assertEqual(next_point[0].dtype, object)  # point cloud represented as string
-        self.assertEqual(next_point[1].shape, (10,))  # batch point cloud labels
-        self.assertEqual(next_point[1].dtype, int)  # point cloud label represented as int
-        print("check 2")
+                self.assertTrue(merged_octrees_batch2[0].shape != merged_octrees_batch1[0].shape)
+
+            except AssertionError as e:
+                self.verificationErrors.append(str(e))
+        print("test_point_dataset checked")
+
+    def test_point_cloud_dataset(self):
+        with tf.Session() as sess:
+            points = PointCloudDataset(ParseExample())
+
+            next_point = sess.run(
+                points(
+                    tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/dataset/ocnn_completion/completion_test_points.tfrecords',
+                    batch_size=10,
+                    shuffle_size=1000,
+                    return_iterator=False,
+                    take=-1))
+
+            try:
+                self.assertEqual(next_point[0].shape, (10,))  # batch point clouds
+                self.assertEqual(next_point[0].dtype, object)  # point cloud represented as string
+                self.assertEqual(next_point[1].shape, (10,))  # batch point cloud labels
+                self.assertEqual(next_point[1].dtype, int)  # point cloud label represented as int
+            except AssertionError as e:
+                self.verificationErrors.append(str(e))
+
+        print("test_point_cloud_dataset checked")
 
     # def test_point_dataset(self):
     #     flags = make_flags().DATA.train
