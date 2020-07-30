@@ -1,6 +1,6 @@
 SOLVER:
   gpu: 0,
-  logdir: logs/ae/resnet_b16
+  logdir: logs/ae/resnet_b16_
   run: train
   max_iter: 320000
   test_iter: 336

@@ -12,10 +12,10 @@ class TfRunnerTest(tf.test.TestCase):
         sess = tf.Session()
         sess.run(tf.initialize_all_variables())
 
-        result = get_variables_by_name(include_substrings=["Layer"],
-                                       exclude_substrings=["bias", "Embedding"],
-                                       train_only=True,
-                                       verbose=True)
+        result = GraphAccess.get_variables_by_name(include_substrings=["Layer"],
+                                                   exclude_substrings=["bias", "Embedding"],
+                                                   train_only=True,
+                                                   verbose=True)
         self.assertEqual(len(result), 2)
         self.assertTrue(result[0].name == 'Layer1/weights:0' or result[1].name == 'Layer1/weights:0')
         self.assertTrue(result[0].name == 'OutLayer/weights:0' or result[1].name == 'OutLayer/weights:0')

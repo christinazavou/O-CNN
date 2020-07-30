@@ -2,6 +2,7 @@ from yacs.config import CfgNode as CN
 
 from src.learning_rate import *
 from src.tf_model_runner import *
+from src.tf_utils import GraphAccess, Loss
 from test.helper import *
 
 
@@ -14,18 +15,14 @@ def make_flags():
     flags.step_size = (1000,)  # Learning rate step size.
     flags.batch_size = 128
     flags.display = 10
+    flags.weight_decay = 0.0005
     return flags
 
 
-# def make_loss(target_data, predicted_data, weights):
-#     cost = tf.reduce_sum(tf.square(target_data - predicted_data))
-#
-#     l2regularization = tf.reduce_sum(tf.square(weights[0]))
-#     for w in weights[1:]:
-#         l2regularization += tf.reduce_sum(tf.square(w))
-#
-#     loss = cost + l2regularization * 0.00005
-#     return loss, cost
+def make_accuracy(targets, predictions):
+    correct_prediction = tf.equal(tf.argmax(targets, 1), tf.argmax(predictions, 1))
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    return accuracy
 
 
 class TfRunnerTest(tf.test.TestCase):
@@ -40,9 +37,10 @@ class TfRunnerTest(tf.test.TestCase):
         logits = make_graph(input_data, 10)
         predictions = tf.nn.softmax(logits)
 
-        cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=target_data))
-        correct_prediction = tf.equal(tf.argmax(target_data, 1), tf.argmax(predictions, 1))
-        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        trainables = GraphAccess.get_variables_by_name('layer', train_only=True, verbose=True)
+        cost, l2reg, loss = Loss.softmax_cross_entropy(target_data, logits, trainables,
+                                                       flags.weight_decay)
+        accuracy = make_accuracy(target_data, predictions)
 
         train_op, lr = build_solver(cost, LRFactory(**flags))
 
