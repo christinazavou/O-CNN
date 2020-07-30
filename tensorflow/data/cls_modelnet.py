@@ -19,7 +19,8 @@ parser.add_argument('--simplify_points', type=str, required=False,
 
 
 abs_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-root_folder = os.path.join(abs_path, 'script/dataset/ModelNet40')
+# root_folder = os.path.join(abs_path, 'script/dataset/ModelNet40')
+root_folder = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40'
 
 
 args = parser.parse_args()

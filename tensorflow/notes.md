@@ -188,3 +188,56 @@ with tf.variable_scope("ocnn", reuse=False)
 - what is the 'split_label' ?
 
 - is there a run mode where both train graph and test graph are created?
+
+
+** probably they use two graphs, one with train and one with test because:
+1. in train they want to support multi gpu thus reuse=True is useful
+2. using TFRecordDataset its easy to make one dataset reading training data and one reading input data and then just pass them as inputs .. instead of feeding training data and then switching dataset to read test...
+
+
+note: to check processes that run python: ps aux | grep python
+also use: psensor to check temperatures
+
+
+"The correct way to feed data into your models is to use an input pipeline to ensure that the GPU has never to wait for new stuff to come in. i.e. not use feed_dict"
+
+so use:
+```python
+iter = dataset.make_initializable_iterator()
+features, labels = iter.get_next()
+net = tf.layers.dense(features, 8, activation=tf.tanh)
+```
+
+**https://github.com/tensorflow/tensorflow/issues/19933
+so:
+1st method:
+```python
+dataset = tf.data.TFRecordDataset(data_file)
+dataset = dataset.prefetch(buffer_size=batch_size*10)
+dataset = dataset.map(parse_tfrecord, num_parallel_calls=5)
+dataset = dataset.repeat(num_epochs)
+dataset = dataset.batch(batch_size)
+
+features, labels = dataset.make_one_shot_iterator().get_next()    
+logits = tf.feature_column.linear_model(features=features, feature_columns=columns, cols_to_vars=cols_to_vars)
+train_op = ...
+
+with tf.Session() as sess:
+    sess.run(train_op)
+```
+2nd method:
+```python
+example = tf.placeholder(dtype=tf.string, shape=[None])
+features = tf.parse_example(example, features=tf.feature_column.make_parse_example_spec(columns+[tf.feature_column.numeric_column('label', dtype=tf.float32, default_value=0)]))
+labels = features.pop('label')
+train_op = ...
+
+dataset = tf.data.TFRecordDataset(data_file).repeat().batch(batch_size)
+next_batch = dataset.make_one_shot_iterator().get_next()
+
+with tf.Session() as sess:
+    data_batch = sess.run(next_batch)
+    sess.run(train_op, feed_dict={example: data_batch})
+```
+
+basically in the 1st method inputs are not placeholders .. they are directly tensors with data..

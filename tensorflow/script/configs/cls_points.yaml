@@ -2,11 +2,11 @@
 
 SOLVER:
   gpu: 0,
-  logdir: logs/m40/0608_resnet_points
+  logdir: logs/m40/resnet_points_b32
   run: train
   max_iter: 160000
   test_iter: 77
-  test_every_iter: 2000
+  test_every_iter: 1000
   step_size: (40000,)
   ckpt_num: 20
 

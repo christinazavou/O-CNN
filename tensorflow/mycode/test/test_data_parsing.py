@@ -109,10 +109,18 @@ class DatasetTest(tf.test.TestCase):
 
     def test_point_cloud_dataset(self):
         with tf.Session() as sess:
-            points = PointCloudDataset(ParseExample())
+            next_point = PointCloudDataset(ParseExample())
 
-            next_point = sess.run(
-                points(
+            point_cloud_1 = sess.run(
+                next_point(
+                    tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/dataset/ocnn_completion/completion_test_points.tfrecords',
+                    batch_size=10,
+                    shuffle_size=1000,
+                    return_iterator=False,
+                    take=-1))
+
+            point_cloud_2 = sess.run(
+                next_point(
                     tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/dataset/ocnn_completion/completion_test_points.tfrecords',
                     batch_size=10,
                     shuffle_size=1000,
@@ -120,10 +128,14 @@ class DatasetTest(tf.test.TestCase):
                     take=-1))
 
             try:
-                self.assertEqual(next_point[0].shape, (10,))  # batch point clouds
-                self.assertEqual(next_point[0].dtype, object)  # point cloud represented as string
-                self.assertEqual(next_point[1].shape, (10,))  # batch point cloud labels
-                self.assertEqual(next_point[1].dtype, int)  # point cloud label represented as int
+                self.assertEqual(point_cloud_1[0].shape, (10,))  # batch point clouds
+                self.assertEqual(point_cloud_1[0].dtype, object)  # point cloud represented as string
+                self.assertEqual(point_cloud_1[1].shape, (10,))  # batch point cloud labels
+                self.assertEqual(point_cloud_1[1].dtype, int)  # point cloud label represented as int
+
+                # NOTE: becuase next_point is calling the next element of the generated TFRecordDataset everytime we call it we get the next element ;) !
+                self.assertFalse(all(point_cloud_1[0] == point_cloud_2[0]))
+                self.assertFalse(all(point_cloud_1[1] == point_cloud_2[1]))
             except AssertionError as e:
                 self.verificationErrors.append(str(e))
 
