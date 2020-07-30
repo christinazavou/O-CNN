@@ -10,3 +10,5 @@ caffe-official
 caffe/experiments/dataset
 tensorflow/script/dataset
 tensorflow/script/logs
+tensorflow/mycode/.idea
+tensorflow/mycode/.pytest_cache

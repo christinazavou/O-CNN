@@ -10,7 +10,8 @@ parser.add_argument('--octree', type=str, required=False,
 args = parser.parse_args()
 
 abs_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-root_folder = os.path.join(abs_path, 'script/dataset/ocnn_completion')
+# root_folder = os.path.join(abs_path, 'script/dataset/ocnn_completion')
+root_folder = "/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion"
 
 points2ply, ply2points, octree2pts = 'points2ply', 'ply2points', 'octree2points'
 converter = os.path.join(abs_path, 'util/convert_tfrecords.py')
@@ -125,7 +126,7 @@ def generate_points_tfrecords():
 
 
 def generate_dataset():
-  download_point_clouds()
+  # download_point_clouds()
   convert_ply_to_points()
   generate_points_tfrecords()
 
