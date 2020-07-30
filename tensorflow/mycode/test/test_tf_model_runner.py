@@ -1,8 +1,8 @@
 from yacs.config import CfgNode as CN
 
-from learning_rate import *
-from test_helper import *
-from tf_model_runner import *
+from src.learning_rate import *
+from src.tf_model_runner import *
+from test.helper import *
 
 
 def make_flags():

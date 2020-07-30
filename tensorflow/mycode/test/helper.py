@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from tf_layer_utils import *
+from src.tf_layer_utils import *
 
 
 def make_data():

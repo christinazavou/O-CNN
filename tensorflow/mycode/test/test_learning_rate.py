@@ -1,6 +1,6 @@
 import numpy as np
 
-from learning_rate import *
+from src.learning_rate import *
 
 
 def make_flags():

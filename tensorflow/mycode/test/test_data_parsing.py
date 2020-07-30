@@ -2,8 +2,8 @@ import sys
 
 import numpy as np
 
-sys.path.append("..")
-from data_parsing import *
+sys.path.append("../..")
+from src.data_parsing import *
 
 
 def make_flags():

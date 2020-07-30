@@ -2,7 +2,7 @@ import sys
 
 import tensorflow as tf
 
-sys.path.append("..")
+sys.path.append("../..")
 from libs import bounding_sphere, points2octree, transform_points, octree_batch
 
 

@@ -1,5 +1,5 @@
-from test_helper import *
-from tf_utils import *
+from src.tf_utils import *
+from test.helper import *
 
 
 class TfRunnerTest(tf.test.TestCase):
