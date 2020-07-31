@@ -11,7 +11,7 @@ from unittest.mock import patch
 class DatasetTest(tf.test.TestCase):
 
     def test_data(self):
-        testargs = ['test_dataset.py', "--config", "/home/christina/Documents/ANNFASS_code/O-CNN/tensorflow/script/configs/cls_octree.yaml"]
+        testargs = ['test_dataset.py', "--config", "/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/configs/cls_octree.yaml"]
         with patch.object(sys, 'argv', testargs):
             FLAGS = parse_args()
         octree, label = DatasetFactory(FLAGS.DATA.train)()
