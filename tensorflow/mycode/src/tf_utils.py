@@ -65,6 +65,8 @@ class SessionDAO:
 
     def __init__(self, folder, keep_max=10):
         self.ckpt_path = os.path.join(folder, 'model')
+        if not os.path.exists(self.ckpt_path):
+            os.makedirs(self.ckpt_path)
         self.keep_max = keep_max
         self.tf_saver = tf.train.Saver(max_to_keep=keep_max)
 
@@ -73,4 +75,9 @@ class SessionDAO:
         self.tf_saver.save(session, ckpt_name, write_meta_graph=write_meta_graph)
 
     def load(self, session, ckpt):
+        # example ckpt is /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/logs/m40/ocnn_octree5_b32/model/iter_054000.ckpt
         self.tf_saver.restore(session, ckpt)
+
+    # def load(self, ckpt):
+    #     reader = tf.contrib.framework.load_checkpoint(ckpt)
+    #     all_vars = tf.contrib.framework.list_variables(ckpt)
