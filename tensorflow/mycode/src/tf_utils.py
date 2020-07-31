@@ -81,3 +81,33 @@ class SessionDAO:
     # def load(self, ckpt):
     #     reader = tf.contrib.framework.load_checkpoint(ckpt)
     #     all_vars = tf.contrib.framework.list_variables(ckpt)
+
+
+class SummaryDAO:
+
+    def __init__(self, log_dir, graph):
+        self.log_dir = log_dir
+        self.tf_summary_writer = tf.summary.FileWriter(self.log_dir, graph)
+
+    def add(self, summary, iter):
+        self.tf_summary_writer.add_summary(summary, iter)
+
+    def print(self, event_filename, tag):
+        for e in tf.train.summary_iterator(os.path.join(self.log_dir, event_filename)):
+            has_value = False
+            msg = '{}'.format(e.step)
+            for v in e.summary_op.value:
+                if tag in v.tag:
+                    msg = msg + ', {}'.format(v.simple_value)
+                    has_value = True
+            if has_value:
+                print(msg)
+
+    @staticmethod
+    def summary_op(scope, tensors):
+        # tensors is a dict of name:tensor
+        with tf.name_scope(scope):
+            summaries = []
+            for tensor_name, tensor in tensors.items():
+                summaries.append(tf.summary.scalar(tensor_name, tensor))
+            return tf.summary.merge(summaries)

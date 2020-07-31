@@ -2,7 +2,7 @@ from yacs.config import CfgNode as CN
 
 from src.learning_rate import *
 from src.tf_model_runner import *
-from src.tf_utils import GraphAccess, Loss
+from src.tf_utils import GraphAccess, Loss, SummaryDAO
 from test.helper import *
 
 
@@ -46,6 +46,9 @@ class TfRunnerTest(tf.test.TestCase):
 
         sess = tf.Session()
         sess.run(tf.initialize_all_variables())
+        summary_dao = SummaryDAO('tmp', sess.graph)
+        train_summary_op = summary_dao.summary_op('train_summaries', {'cost': cost, 'l2reg': l2reg, 'loss': loss})
+        test_summary_op = summary_dao.summary_op('test_summaries', {'cost': cost, 'l2reg': l2reg, 'loss': loss})
 
         for i in range(flags.max_iter):
 
@@ -55,12 +58,16 @@ class TfRunnerTest(tf.test.TestCase):
             train_cost = sess.run(cost, feed_dict={input_data: images, target_data: labels})
             print('train_cost', train_cost)
 
-            sess.run(train_op, feed_dict={input_data: images, target_data: labels})
+            _, train_summaries = sess.run([train_op, train_summary_op],
+                                          feed_dict={input_data: images, target_data: labels})
+            summary_dao.add(train_summaries, i)
 
             if np.mod(i, flags.display) == 0:
-                test_cost, test_acc = sess.run([cost, accuracy], feed_dict={input_data: x_test, target_data: y_test})
+                test_cost, test_acc, test_summaries = sess.run([cost, accuracy, test_summary_op],
+                                                               feed_dict={input_data: x_test, target_data: y_test})
                 print('iter number ', i, "test cost =", "{:.3f}".format(test_cost),
                       "test accuracy: {:.3f}".format(test_acc))
+                summary_dao.add(test_summaries, i)
 
         # _, all_weights_value1, lr_value1 = sess.run([train_op, all_weights, lr],
         #                                             feed_dict={input_data: x_train,

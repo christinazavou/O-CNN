@@ -5,7 +5,7 @@ from src.tf_utils import *
 from test.helper import *
 
 
-class TfRunnerTest(tf.test.TestCase):
+class TfUtilsTest(tf.test.TestCase):
 
     def setUp(self):
         self.verificationErrors = []
@@ -51,7 +51,7 @@ class TfRunnerTest(tf.test.TestCase):
             assert min_value_var1 == 1
 
             session_dao.load(sess, os.path.join(self.test_dir, 'model/iter_000200.ckpt'))
-            
+
             min_value_var1 = sess.run(var1).min()
             assert min_value_var1 == 0
 
@@ -72,6 +72,14 @@ def test_solver():
 def test_total_params():
     total_params = GraphAccess.get_total_params(tf.trainable_variables(), verbose=True)
     assert total_params == 704162
+
+
+class TfUtilsSummaryDAOTest(tf.test.TestCase):
+
+    def test_all(self):
+        summary_dao = SummaryDAO('tmp', None)
+        summary_dao.print('events.out.tfevents.1596207515.christina-GE62-7RD', 'cost')
+        print("done")
 
 
 if __name__ == "__main__":

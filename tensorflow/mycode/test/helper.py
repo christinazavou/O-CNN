@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 
 from src.tf_layer_utils import *
@@ -7,10 +6,10 @@ from src.tf_layer_utils import *
 def make_data():
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
-    image_index = 7777
-    plt.imshow(x_train[image_index], cmap='Greys')
-    plt.title("label {}".format(y_train[image_index]))
-    plt.show()
+    # image_index = 7777
+    # plt.imshow(x_train[image_index], cmap='Greys')
+    # plt.title("label {}".format(y_train[image_index]))
+    # plt.show()
 
     x_train = x_train.reshape(x_train.shape[0], 28, 28, 1).astype('float32')
     x_test = x_test.reshape(x_test.shape[0], 28, 28, 1).astype('float32')

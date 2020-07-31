@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,
-  logdir: logs/m40/ocnn_octree5_b32
-  run: test
+  logdir: logs/m40/ocnn_octree5_b32_del
+  run: train
   max_iter: 160000
   test_iter: 925
   test_every_iter: 2000
