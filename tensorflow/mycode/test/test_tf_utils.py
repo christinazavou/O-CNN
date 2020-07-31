@@ -28,10 +28,32 @@ class TfRunnerTest(tf.test.TestCase):
             print("test_total_params checked")
 
             session_dao = SessionDAO(self.test_dir, keep_max=2)
+
+            var1 = GraphAccess.get_variables_by_name(['Layer1/weights'])[0]
+            min_value_var1 = sess.run(var1).min()
+            assert min_value_var1 != 0
             session_dao.save(sess, 100)
+
+            sess.run(var1.assign(np.zeros(var1.get_shape())))
+            min_value_var1 = sess.run(var1).min()
+            assert min_value_var1 == 0
+
+            session_dao.save(sess, 200)
+
             assert os.path.exists(os.path.join(self.test_dir, 'model/checkpoint'))
             assert os.path.exists(os.path.join(self.test_dir, 'model/iter_000100.ckpt.data-00000-of-00001'))
             assert os.path.exists(os.path.join(self.test_dir, 'model/iter_000100.ckpt.index'))
+            assert os.path.exists(os.path.join(self.test_dir, 'model/iter_000200.ckpt.data-00000-of-00001'))
+            assert os.path.exists(os.path.join(self.test_dir, 'model/iter_000200.ckpt.index'))
+
+            sess.run(var1.assign(np.ones(var1.get_shape())))
+            min_value_var1 = sess.run(var1).min()
+            assert min_value_var1 == 1
+
+            session_dao.load(sess, os.path.join(self.test_dir, 'model/iter_000200.ckpt'))
+            
+            min_value_var1 = sess.run(var1).min()
+            assert min_value_var1 == 0
 
         except AssertionError as e:
             self.verificationErrors.append(str(e))
