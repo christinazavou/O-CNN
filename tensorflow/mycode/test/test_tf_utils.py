@@ -82,7 +82,7 @@ class TfUtilsSummaryDAOTest(tf.test.TestCase):
         captured_output = io.StringIO()
         sys.stdout = captured_output
 
-        summary_dao = SummaryDAO('tmp', None)
+        summary_dao = SummaryDAO('resources', None)
         summary_dao.print('events.out.tfevents.1596207515.christina-GE62-7RD', 'cost')
 
         sys.stdout = sys.__stdout__

@@ -1,4 +1,6 @@
+import os
 import sys
+from random import shuffle as _shuffle
 
 import tensorflow as tf
 
@@ -198,3 +200,88 @@ class DatasetFactory:
                             return_iterator=self.flags.return_iterator,
                             take=self.flags.n_samples,
                             return_pts=self.flags.return_pts)
+
+
+class TFRecordsUtils:
+    @staticmethod
+    def int64_feature(value):
+        return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
+
+    @staticmethod
+    def bytes_feature(value):
+        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+
+
+class OctreesTFRecordsConverter:
+
+    @staticmethod
+    def load_octree(file):
+        with open(file, 'rb') as f:
+            octree_bytes = f.read()
+        return octree_bytes
+
+    @staticmethod
+    def write_records(octrees_dir, list_file, records_name, file_type='data', shuffle=False):
+        [data, label, index] = OctreesTFRecordsConverter.get_data_label_pair(list_file, shuffle)
+
+        writer = tf.python_io.TFRecordWriter(records_name)
+        for i in range(len(data)):
+            if not i % 1000:
+                print('data loaded: {}/{}'.format(i, len(data)))
+
+            octree_file = OctreesTFRecordsConverter.load_octree(os.path.join(octrees_dir, data[i]))
+            feature = {file_type: TFRecordsUtils.bytes_feature(octree_file),
+                       'label': TFRecordsUtils.int64_feature(label[i]),
+                       'index': TFRecordsUtils.int64_feature(index[i]),
+                       'filename': TFRecordsUtils.bytes_feature(('%06d_%s' % (i, data[i])).encode('utf8'))}
+            example = tf.train.Example(features=tf.train.Features(feature=feature))
+            writer.write(example.SerializeToString())
+        writer.close()
+
+    @staticmethod
+    def get_data_label_pair(list_file, shuffle_data=False):
+        filepath_list = []
+        label_list = []
+        with open(list_file) as f:
+            for line in f:
+                filepath, label = line.split()
+                filepath_list.append(filepath)
+                label_list.append(int(label))
+        index_list = list(range(len(label_list)))
+
+        if shuffle_data:
+            c = list(zip(filepath_list, label_list, index_list))
+            _shuffle(c)
+            filepath_list, label_list, index_list = zip(*c)
+            with open(list_file + '.shuffle.txt', 'w') as f:
+                for item in c:
+                    f.write('{} {}\n'.format(item[0], item[1]))
+        return filepath_list, label_list, index_list
+
+    @staticmethod
+    def read_records(records_name, output_path, list_file, file_type='data', count=5):
+        records_iterator = tf.python_io.tf_record_iterator(records_name)
+        count = count if count != 0 else float('Inf')
+
+        with open(os.path.join(output_path, list_file), "w") as f:
+            num = 0
+            for string_record in records_iterator:
+                if num >= count:
+                    break
+
+                example = tf.train.Example()
+                example.ParseFromString(string_record)
+                label = int(example.features.feature['label'].int64_list.value[0])
+                # index  = int(example.features.feature['index'].int64_list.value[0]) 
+                octree = example.features.feature[file_type].bytes_list.value[0]
+                if 'filename' in example.features.feature:
+                    filename = example.features.feature['filename'].bytes_list.value[0] \
+                        .decode('utf8').replace('/', '_').replace('\\', '_')
+                else:
+                    filename = '%06d.%s' % (num, file_type)
+
+                num += 1
+                with open(os.path.join(output_path, filename), 'wb') as fo:
+                    fo.write(octree)
+
+                f.write("{} {}\n".format(filename, label))

@@ -46,7 +46,7 @@ class TfRunnerTest(tf.test.TestCase):
 
         sess = tf.Session()
         sess.run(tf.initialize_all_variables())
-        summary_dao = SummaryDAO('tmp', sess.graph)
+        summary_dao = SummaryDAO('resources', sess.graph)
         train_summary_op = summary_dao.summary_op('train_summaries', {'cost': cost, 'l2reg': l2reg, 'loss': loss})
         test_summary_op = summary_dao.summary_op('test_summaries', {'cost': cost, 'l2reg': l2reg, 'loss': loss})
 

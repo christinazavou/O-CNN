@@ -1,4 +1,5 @@
 import sys
+from unittest import TestCase
 
 import numpy as np
 
@@ -47,6 +48,26 @@ def make_flags():
     _C.DATA.train.return_pts = False  # Also return points
 
     return _C
+
+
+class Octrees2TFRecordsFileTest(TestCase):
+
+    def test_get_data_label_pair(self):
+        filepaths, labels, indices = OctreesTFRecordsConverter \
+            .get_data_label_pair("resources/m40_test_points_list_sample.txt")
+        self.assertTrue(len(filepaths) == len(labels) == len(indices) == 5)
+
+    def test_write_records(self):
+        OctreesTFRecordsConverter \
+            .write_records("resources/ModelNet40.octree.5.sample", "resources/m40_test_points_list_sample.txt",
+                           "resources/m40_test_points.tfrecords", file_type='data', shuffle=False)
+
+    def test_read_records(self):
+        OctreesTFRecordsConverter \
+            .read_records("/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_test_points.tfrecords",
+                          "./resources/octrees_from_tfrecords",
+                          "/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_test_octree_list.txt",
+                          file_type='data', count=5)
 
 
 class DatasetTest(tf.test.TestCase):
