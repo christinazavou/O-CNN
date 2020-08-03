@@ -1,4 +1,6 @@
+import io
 import shutil
+import sys
 import tempfile
 
 from src.tf_utils import *
@@ -77,9 +79,18 @@ def test_total_params():
 class TfUtilsSummaryDAOTest(tf.test.TestCase):
 
     def test_all(self):
+        captured_output = io.StringIO()
+        sys.stdout = captured_output
+
         summary_dao = SummaryDAO('tmp', None)
         summary_dao.print('events.out.tfevents.1596207515.christina-GE62-7RD', 'cost')
-        print("done")
+
+        sys.stdout = sys.__stdout__
+
+        captured_output = captured_output.getvalue()
+        for i in range(0, 1000):
+            self.assertTrue("{}, ".format(i) in captured_output)
+        print("TfUtilsSummaryDAOTest.test_all checked")
 
 
 if __name__ == "__main__":

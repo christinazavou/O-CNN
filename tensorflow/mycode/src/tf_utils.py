@@ -96,7 +96,7 @@ class SummaryDAO:
         for e in tf.train.summary_iterator(os.path.join(self.log_dir, event_filename)):
             has_value = False
             msg = '{}'.format(e.step)
-            for v in e.summary_op.value:
+            for v in e.summary.value:
                 if tag in v.tag:
                     msg = msg + ', {}'.format(v.simple_value)
                     has_value = True
