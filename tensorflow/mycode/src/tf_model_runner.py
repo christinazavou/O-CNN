@@ -100,6 +100,7 @@ class TFRunner:
             summary_dao = SummaryDAO(self.flags.logdir, sess.graph)
 
             print('Start training ...')
+            # todo: pass function in session_dao and let session_dao do the iterations !?
             for _ in tqdm(range(session_dao.iter, self.flags.max_iter + 1), ncols=80):
                 self.train_iteration(session_dao, summary_dao)
             print('Training done!')
