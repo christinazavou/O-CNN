@@ -43,16 +43,13 @@ class DatasetTest(tf.test.TestCase):
                                   TransformPoints(distort=False, depth=5, offset=0.55, axis='y', scale=0.0,
                                                   jitter=0.0, angle=[180, 180, 180], bounding_sphere=bounding_sphere),
                                   Points2Octree(depth=5))
+            call_points = points(tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/'
+                                                     'tensorflow/script/dataset/ocnn_completion/'
+                                                     'completion_test_points.tfrecords',
+                                 batch_size=32, shuffle_size=1000, return_iterator=False, take=-1, return_pts=False)
 
-            merged_octrees_batch1 = sess.run(
-                points(tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script'
-                                           '/dataset/ocnn_completion/completion_test_points.tfrecords', batch_size=32,
-                       shuffle_size=1000, return_iterator=False, take=-1, return_pts=False))
-            merged_octrees_batch2 = sess.run(
-                points(
-                    tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/'
-                                        'dataset/ocnn_completion/completion_test_points.tfrecords', batch_size=32,
-                    shuffle_size=1000, return_iterator=False, take=-1, return_pts=False))
+            merged_octrees_batch1 = sess.run(call_points)
+            merged_octrees_batch2 = sess.run(call_points)
 
             try:
                 self.assertTrue(np.issubdtype(merged_octrees_batch1[0].dtype, np.integer))
@@ -64,7 +61,6 @@ class DatasetTest(tf.test.TestCase):
                 self.assertEqual(merged_octrees_batch2[1].shape, (32,))
 
                 self.assertTrue(merged_octrees_batch2[0].shape != merged_octrees_batch1[0].shape)
-
             except AssertionError as e:
                 self.verificationErrors.append(str(e))
         print("test_point_dataset checked")
@@ -72,11 +68,11 @@ class DatasetTest(tf.test.TestCase):
     def test_octree_dataset(self):
         with tf.Session() as sess:
             octrees = OctreeDataset(ParseExample(x_alias='data', y_alias='label'))
+            call_octrees = octrees(tf_record_filenames='/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/'
+                                                       'm40_5_2_12_test_octree.tfrecords',
+                                   batch_size=32, shuffle_size=False, return_iterator=False, take=10)
 
-            merged_octrees_batch1 = sess.run(
-                octrees(tf_record_filenames='/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/'
-                                            'm40_5_2_12_test_octree.tfrecords', batch_size=32, shuffle_size=False,
-                        return_iterator=False, take=10))
+            merged_octrees_batch1 = sess.run(call_octrees)
             print(merged_octrees_batch1)
             try:
                 self.assertTrue(np.issubdtype(merged_octrees_batch1[0].dtype, np.integer))
@@ -90,16 +86,13 @@ class DatasetTest(tf.test.TestCase):
     def test_point_cloud_dataset(self):
         with tf.Session() as sess:
             next_point = PointCloudDataset(ParseExample())
+            call_next_point = next_point(tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/'
+                                                             'tensorflow/script/dataset/ocnn_completion/'
+                                                             'completion_test_points.tfrecords',
+                                         batch_size=10, shuffle_size=1000, return_iterator=False, take=-1)
 
-            point_cloud_1 = sess.run(
-                next_point(tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/'
-                                               'script/dataset/ocnn_completion/completion_test_points.tfrecords',
-                           batch_size=10, shuffle_size=1000, return_iterator=False, take=-1))
-
-            point_cloud_2 = sess.run(
-                next_point(tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/'
-                                               'script/dataset/ocnn_completion/completion_test_points.tfrecords',
-                           batch_size=10, shuffle_size=1000, return_iterator=False, take=-1))
+            point_cloud_1 = sess.run(call_next_point)
+            point_cloud_2 = sess.run(call_next_point)
 
             try:
                 self.assertEqual(point_cloud_1[0].shape, (10,))  # batch point clouds
