@@ -2,7 +2,7 @@ from yacs.config import CfgNode as CN
 
 from src.learning_rate import *
 from src.tf_model_runner import *
-from src.tf_utils import GraphAccess, Loss, SummaryDAO
+from src.tf_utils import GraphAccess, Loss, SummaryDAO, Evaluation
 from test.helper import *
 
 
@@ -19,12 +19,6 @@ def make_flags():
     return flags
 
 
-def make_accuracy(targets, predictions):
-    correct_prediction = tf.equal(tf.argmax(targets, 1), tf.argmax(predictions, 1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-    return accuracy
-
-
 class TfRunnerTest(tf.test.TestCase):
 
     def test_solver(self):
@@ -37,10 +31,10 @@ class TfRunnerTest(tf.test.TestCase):
         logits = make_graph(input_data, 10)
         predictions = tf.nn.softmax(logits)
 
-        trainables = GraphAccess.get_variables_by_name('layer', train_only=True, verbose=True)
+        trainables = GraphAccess.get_variables('layer', train_only=True, verbose=True)
         cost, l2reg, loss = Loss.softmax_cross_entropy(target_data, logits, trainables,
                                                        flags.weight_decay)
-        accuracy = make_accuracy(target_data, predictions)
+        accuracy = Evaluation.accuracy(target_data, predictions)
 
         train_op, lr = build_solver(cost, LRFactory(**flags))
 

@@ -7,24 +7,26 @@ from numpy import prod
 class GraphAccess:
 
     @staticmethod
-    def get_variables_by_name(include_substrings, exclude_substrings=None, train_only=True, verbose=False):
-        t_vars = tf.trainable_variables() if train_only else tf.all_variables()
-        d_vars = [var for var in t_vars
-                  if any([incl_sub for incl_sub in include_substrings
-                          if incl_sub.lower() in var.name.lower()])]
+    def get_variables(include_substrings=None, exclude_substrings=None, train_only=True, verbose=False):
+        vars = tf.trainable_variables() if train_only else tf.all_variables()
 
-        if exclude_substrings is not None:
-            d_vars = [var for var in d_vars
-                      if not any([exl_sub for exl_sub in exclude_substrings
-                                  if exl_sub.lower() in var.name.lower()])]
+        if include_substrings is not None and include_substrings != []:
+            vars = [var for var in vars
+                    if any([incl_sub for incl_sub in include_substrings
+                            if incl_sub.lower() in var.name.lower()])]
+
+        if exclude_substrings is not None and exclude_substrings != []:
+            vars = [var for var in vars
+                    if not any([exl_sub for exl_sub in exclude_substrings
+                                if exl_sub.lower() in var.name.lower()])]
 
         if verbose:
             print("[*] Variables that include any of {} and exclude any of {} and are trainable:{}:"
                   .format(include_substrings, exclude_substrings, train_only))
-            for idx, v in enumerate(d_vars):
+            for idx, v in enumerate(vars):
                 print("got {}: {} with shape {}".format(idx, v.name, str(v.get_shape())))
 
-        return d_vars
+        return vars
 
     @staticmethod
     def get_total_params(variables, exclude_substrings=None, verbose=False):
@@ -47,40 +49,73 @@ class GraphAccess:
 class Loss:
 
     @staticmethod
-    def softmax_cross_entropy(targets, logits, weights, weight_decay=0.):
+    def softmax_cross_entropy(targets, logits, weights, weight_decay=0., scope="softmax_cross_entropy"):
         # by default weight_decay is 0 thus no regularization ..
-        cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=targets))
-        l2regularization = Loss.l2_regularizer(weights, weight_decay)
-        loss = cost + l2regularization
-        return cost, l2regularization, loss
+        with tf.name_scope(scope):
+            cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=targets))
+            l2regularization = Loss.l2_regularizer(weights, weight_decay)
+            loss = cost + l2regularization
+            return cost, l2regularization, loss
 
     @staticmethod
-    def l2_regularizer(weights, weight_decay):
-        with tf.name_scope('l2_regularizer'):
+    def l2_regularizer(weights, weight_decay, scope="l2_regularizer"):
+        with tf.name_scope(scope):
             regularizer = tf.add_n([tf.nn.l2_loss(w) for w in weights]) * weight_decay
         return regularizer
 
 
+class Evaluation:
+
+    @staticmethod
+    def accuracy(targets, predictions, scope="accuracy"):
+        with tf.name_scope(scope):
+            correct_prediction = tf.equal(tf.argmax(targets, 1), tf.argmax(predictions, 1))
+            accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        return accuracy
+
+
 class SessionDAO:
 
-    def __init__(self, folder, keep_max=10):
-        self.ckpt_path = os.path.join(folder, 'model')
-        if not os.path.exists(self.ckpt_path):
-            os.makedirs(self.ckpt_path)
+    def __init__(self, session, store_dir, keep_max=10, load_iter=None):
+
+        self.session = session
+        self.checkpoints_path = os.path.join(store_dir, 'model')
         self.keep_max = keep_max
         self.tf_saver = tf.train.Saver(max_to_keep=keep_max)
 
-    def save(self, session, ckpt, write_meta_graph=False):
-        ckpt_name = os.path.join(self.ckpt_path, 'iter_%06d.ckpt' % ckpt)
-        self.tf_saver.save(session, ckpt_name, write_meta_graph=write_meta_graph)
+        if load_iter is not None:
+            print("Loading iter {}".format(load_iter))
+            self.iter = load_iter
+            self.load_iter(load_iter)
+        else:
+            latest_checkpoint_path = self.get_latest_checkpoint_path()
+            if latest_checkpoint_path is not None:
+                print("Loading latest_checkpoint_path {}".format(latest_checkpoint_path))
+                self.load_session_from_path(latest_checkpoint_path)
+                self.iter = SessionDAO.get_iter_from_path(latest_checkpoint_path)
 
-    def load(self, session, ckpt):
-        # example ckpt is /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/logs/m40/ocnn_octree5_b32/model/iter_054000.ckpt
-        self.tf_saver.restore(session, ckpt)
+    def update_iter(self, current_iter):
+        self.iter = current_iter
 
-    # def load(self, ckpt):
-    #     reader = tf.contrib.framework.load_checkpoint(ckpt)
-    #     all_vars = tf.contrib.framework.list_variables(ckpt)
+    def save_iter(self, current_iter, write_meta_graph=False):
+        self.update_iter(current_iter)
+        checkpoint_path = os.path.join(self.checkpoints_path, 'iter_%06d.ckpt' % self.iter)
+        self.tf_saver.save(self.session, checkpoint_path, write_meta_graph=write_meta_graph)
+
+    def load_iter(self, load_iter):
+        checkpoint_path = os.path.join(self.checkpoints_path, 'iter_%06d.ckpt' % load_iter)
+        self.load_session_from_path(checkpoint_path)
+
+    def load_session_from_path(self, checkpoint_path):
+        self.tf_saver.restore(self.session, checkpoint_path)
+
+    def get_latest_checkpoint_path(self, ):
+        # returns path of the latest checkpoint or None if there is no checkpoint under the directory self.checkpoints_path
+        return tf.train.latest_checkpoint(self.checkpoints_path)
+
+    @staticmethod
+    def get_iter_from_path(checkpoint_path):
+        return int(checkpoint_path[checkpoint_path.find("iter") + 5:-5])
 
 
 class SummaryDAO:
