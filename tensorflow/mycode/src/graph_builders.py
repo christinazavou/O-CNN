@@ -75,11 +75,12 @@ def classification_graph(octree, label, flags, training=True, reuse=None):
         return _logit
 
     logit = ocnn_logit()
-    prediction = tf.nn.softmax(logit)  # tf.argmax(logit, axis=1, output_type=tf.int32)
+    # prediction = tf.nn.softmax(logit)  # tf.argmax(logit, axis=1, output_type=tf.int32)
 
     trainables = GraphAccess.get_variables([], [], True, True)
 
-    cost, l2reg, loss = Loss.softmax_cross_entropy(label, logit, trainables, flags.weight_decay)
-    accuracy = Evaluation.accuracy(label, prediction)
+    cost, l2reg, loss = Loss.softmax_cross_entropy(label, logit, trainables, flags.num_class,
+                                                   weight_decay=flags.weight_decay)
+    accuracy = Evaluation.accuracy(logit, label)
 
     return {'cost': cost, 'l2reg': l2reg, 'loss': loss, 'accuracy': accuracy}

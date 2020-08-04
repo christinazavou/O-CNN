@@ -48,14 +48,25 @@ class GraphAccess:
 
 class Loss:
 
+    # @staticmethod
+    # def softmax_cross_entropy(targets, logits, weights, weight_decay=0., scope="softmax_cross_entropy"):
+    #     # by default weight_decay is 0 thus no regularization ..
+    #     with tf.name_scope(scope):
+    #         cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=targets))
+    #         l2regularization = Loss.l2_regularizer(weights, weight_decay)
+    #         loss = cost + l2regularization
+    #         return cost, l2regularization, loss
+
     @staticmethod
-    def softmax_cross_entropy(targets, logits, weights, weight_decay=0., scope="softmax_cross_entropy"):
-        # by default weight_decay is 0 thus no regularization ..
+    def softmax_cross_entropy(label_gt, logit, weights, num_class, weight_decay=0.,
+                              scope="softmax_cross_entropy", label_smoothing=0.0):
         with tf.name_scope(scope):
-            cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=targets))
+            label_gt = tf.cast(label_gt, tf.int32)
+            onehot = tf.one_hot(label_gt, depth=num_class)
+            cost = tf.losses.softmax_cross_entropy(onehot, logit, label_smoothing=label_smoothing)
             l2regularization = Loss.l2_regularizer(weights, weight_decay)
             loss = cost + l2regularization
-            return cost, l2regularization, loss
+        return cost, l2regularization, loss
 
     @staticmethod
     def l2_regularizer(weights, weight_decay, scope="l2_regularizer"):
@@ -66,12 +77,26 @@ class Loss:
 
 class Evaluation:
 
+    # @staticmethod
+    # def accuracy(predictions, targets, scope="accuracy"):
+    #     with tf.name_scope(scope):
+    #         correct_prediction = tf.equal(tf.argmax(targets, 1), tf.argmax(predictions, 1))
+    #         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    #     return accuracy
+
     @staticmethod
-    def accuracy(targets, predictions, scope="accuracy"):
-        with tf.name_scope(scope):
-            correct_prediction = tf.equal(tf.argmax(targets, 1), tf.argmax(predictions, 1))
-            accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    def label_accuracy(label, label_gt):
+        label_gt = tf.cast(label_gt, tf.int32)
+        accuracy = tf.reduce_mean(tf.to_float(tf.equal(label, label_gt)))
         return accuracy
+
+    @staticmethod
+    def accuracy(logit, label, scope="accuracy"):
+        with tf.name_scope(scope):
+            predict = tf.argmax(logit, axis=1, output_type=tf.int32)
+            accu = Evaluation.label_accuracy(predict, tf.cast(label, tf.int32))
+        return accu
+    # prediction = tf.nn.softmax(logit)  # tf.argmax(logit, axis=1, output_type=tf.int32)
 
 
 class SessionDAO:
@@ -160,8 +185,8 @@ class SummaryDAO:
         #   because we will feed it with the average summary of k iterations
         with tf.name_scope('test_summaries'):
             summaries = []
-            summaries_placeholder = []
+            summary_placeholder_dict = {}
             for name in names:
-                summaries_placeholder.append(tf.placeholder(tf.float32))
-                summaries.append(tf.summary.scalar(name, summaries_placeholder[-1]))
-            return tf.summary.merge(summaries), summaries_placeholder
+                summary_placeholder_dict[name] = tf.placeholder(tf.float32, name=name)
+                summaries.append(tf.summary.scalar(name, summary_placeholder_dict[name]))
+            return tf.summary.merge(summaries), summary_placeholder_dict

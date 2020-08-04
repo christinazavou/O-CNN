@@ -39,26 +39,28 @@ class TFRunner:
     def build_test_graph(self):
         octree, label = DatasetFactory(self.test_data_flags)()
         self.test_tensors_dict = self.graph_builder(octree, label, self.flags, training=False, reuse=True)
-        self.test_summary_op, self.test_summary_placeholders = SummaryDAO \
+        self.test_summary_op, self.test_summary_placeholder_dict = SummaryDAO \
             .summary_op_for_test(self.test_tensors_dict.keys())
 
-    def update_logs(self, train_iter, test_avg_metrics):
+    def update_logs(self, train_iter, test_avg_metrics_dict):
         if not self.result_table:
             self.result_table = PrettyTable(
                 ["iter"] + self.test_tensors_dict.keys()
             )
-        self.result_table.add_row([train_iter] + test_avg_metrics)
+        row = [train_iter]
+        for metric_name in self.test_tensors_dict.keys():
+            row.append(test_avg_metrics_dict[metric_name])
+        self.result_table.add_row(row)
 
-    def run_k_iterations(self, session, k, tensors):
-        num_of_metrics = len(tensors)
-        avg_results = [0] * num_of_metrics
+    def run_k_iterations_test(self, session, k):
+        avg_results = {key: 0 for key in self.test_tensors_dict.keys()}
         for _ in range(k):
-            iter_results = session.run(tensors)
-            for metric_idx in range(num_of_metrics):
-                avg_results[metric_idx] += iter_results[metric_idx]
+            iter_results = session.run(self.test_tensors_dict)
+            for key, result in iter_results.items():
+                avg_results[key] += result
 
-        for metric_idx in range(num_of_metrics):
-            avg_results[metric_idx] /= k
+        for key, result in avg_results.items():
+            avg_results[key] /= k
         return avg_results
 
     def train(self):
@@ -78,16 +80,17 @@ class TFRunner:
             print('Start training ...')
             for i in tqdm(range(session_dao.iter, self.flags.max_iter + 1), ncols=80):
                 train_summary, _ = sess.run([self.train_summary_op, self.train_op])
-                summary_dao.add(summary, i)
+                summary_dao.add(train_summary, i)
                 session_dao.update_iter(i)
 
                 if i % self.flags.test_every_iter == 0:
                     print('Evaluating on test date ...')
-                    avg_test_metrics = self.run_k_iterations(sess, self.flags.test_iter, self.test_tensors_dict)
-                    summary = sess.run(self.test_summary_op,
-                                       feed_dict=dict(zip(self.test_summary_placeholders, avg_test_metrics)))
-                    summary_dao.add(summary, i)
-                    self.update_logs(self, i, avg_test_metrics)
+                    avg_test_metrics_dict = self.run_k_iterations_test(sess, self.flags.test_iter)
+                    test_summary = sess.run(self.test_summary_op,
+                                            feed_dict={pl: avg_test_metrics_dict[metric]
+                                                       for metric, pl in self.test_summary_placeholder_dict.items()})
+                    summary_dao.add(test_summary, i)
+                    self.update_logs(i, avg_test_metrics_dict)
                     session_dao.save_iter(i, write_meta_graph=False)
 
             print('Training done!')
