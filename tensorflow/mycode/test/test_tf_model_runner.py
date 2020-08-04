@@ -1,4 +1,3 @@
-from src.tf_model_runner import TFRunner
 from test.helper import *
 
 
@@ -73,14 +72,6 @@ from test.helper import *
 #         #     self.assertEqual(w1.shape, w2.shape)
 #         #     self.assertFalse(np.all(np.equal(w1, w2)))
 
-
-class TfRunnerTest(tf.test.TestCase):
-
-    def test_train(self):
-        from src.config import FLAGS
-        from src.graph_builders import classification_graph
-        tfrunner = TFRunner(FLAGS.DATA.train, FLAGS.DATA.test, FLAGS.MODEL, classification_graph)
-        tfrunner.train()
 
 
 if __name__ == "__main__":

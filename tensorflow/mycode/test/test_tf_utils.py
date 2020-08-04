@@ -20,7 +20,7 @@ class TfUtilsTest(tf.test.TestCase):
 
     def test_all(self):
         input_data = tf.placeholder(tf.float32, shape=[None, 28, 28, 1])
-        make_graph(input_data, 10)
+        mock_graph(input_data, 10)
         sess = tf.Session()
         sess.run(tf.initialize_all_variables())
         try:

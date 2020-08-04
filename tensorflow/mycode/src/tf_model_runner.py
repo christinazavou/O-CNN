@@ -26,6 +26,10 @@ class TFRunner:
         self.flags = model_flags
         self.graph_builder = graph_builder
 
+        self.train_op, self.train_tensors_dict, self.train_summary_op = None, None, None
+        self.test_tensors_dict, self.test_summary_op, self.test_summary_placeholder_dict = None, None, None
+        self.result_table = None
+
     def build_train_graph(self):
         octree, label = DatasetFactory(self.train_data_flags)()
 
@@ -41,12 +45,12 @@ class TFRunner:
         self.test_tensors_dict = self.graph_builder(octree, label, self.flags, training=False, reuse=True)
         self.test_summary_op, self.test_summary_placeholder_dict = SummaryDAO \
             .summary_op_for_test(self.test_tensors_dict.keys())
+        self.init_logs()
+
+    def init_logs(self):
+        self.result_table = PrettyTable(["iter"] + list(self.test_tensors_dict.keys()))
 
     def update_logs(self, train_iter, test_avg_metrics_dict):
-        if not self.result_table:
-            self.result_table = PrettyTable(
-                ["iter"] + self.test_tensors_dict.keys()
-            )
         row = [train_iter]
         for metric_name in self.test_tensors_dict.keys():
             row.append(test_avg_metrics_dict[metric_name])
@@ -62,6 +66,17 @@ class TFRunner:
         for key, result in avg_results.items():
             avg_results[key] /= k
         return avg_results
+
+    def evaluate(self, session_dao, summary_dao, current_iter):
+        print('\nEvaluating on test data ...\n')
+        avg_test_metrics_dict = self.run_k_iterations_test(session_dao.session, self.flags.test_iter)
+        test_summary = session_dao.session.run(self.test_summary_op,
+                                               feed_dict={pl: avg_test_metrics_dict[metric]
+                                                          for metric, pl in self.test_summary_placeholder_dict.items()})
+        summary_dao.add(test_summary, current_iter)
+        self.update_logs(current_iter, avg_test_metrics_dict)
+        session_dao.save_iter(current_iter, write_meta_graph=False)
+        print(self.result_table)
 
     def train(self):
         self.build_train_graph()
@@ -84,13 +99,6 @@ class TFRunner:
                 session_dao.update_iter(i)
 
                 if i % self.flags.test_every_iter == 0:
-                    print('Evaluating on test date ...')
-                    avg_test_metrics_dict = self.run_k_iterations_test(sess, self.flags.test_iter)
-                    test_summary = sess.run(self.test_summary_op,
-                                            feed_dict={pl: avg_test_metrics_dict[metric]
-                                                       for metric, pl in self.test_summary_placeholder_dict.items()})
-                    summary_dao.add(test_summary, i)
-                    self.update_logs(i, avg_test_metrics_dict)
-                    session_dao.save_iter(i, write_meta_graph=False)
+                    self.evaluate(session_dao, summary_dao, i)
 
             print('Training done!')
