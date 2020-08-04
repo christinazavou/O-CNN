@@ -8,49 +8,6 @@ sys.path.append("../..")
 from src.data_parsing import *
 
 
-def make_flags():
-    from yacs.config import CfgNode as CN
-
-    _C = CN()
-
-    # DATA related parameters
-    _C.DATA = CN()
-    _C.DATA.train = CN()
-    _C.DATA.train.dtype = 'points'  # The data type: points or octree
-    _C.DATA.train.x_alias = 'data'  # The alias of the data
-    _C.DATA.train.y_alias = 'label'  # The alias of the target
-
-    _C.DATA.train.depth = 5  # The octree depth
-    _C.DATA.train.full_depth = 2  # The full depth
-    _C.DATA.train.node_dis = False  # Save the node displacement
-    _C.DATA.train.split_label = False  # Save the split label
-    _C.DATA.train.adaptive = False  # Build the adaptive octree
-    _C.DATA.train.node_feat = False  # Calculate the node feature
-
-    _C.DATA.train.distort = False  # Whether to apply data augmentation
-    _C.DATA.train.offset = 0.55  # Offset used to displace the points
-    _C.DATA.train.axis = 'y'  # Rotation axis for data augmentation
-    _C.DATA.train.scale = 0.0  # Scale the points
-    _C.DATA.train.uniform = False  # Generate uniform scales
-    _C.DATA.train.jitter = 0.0  # Jitter the points
-    _C.DATA.train.drop_dim = (8, 32)  # The value used to dropout points
-    _C.DATA.train.dropout = (0, 0)  # The dropout ratio
-    _C.DATA.train.stddev = (0, 0, 0)  # The standard deviation of the random noise
-    _C.DATA.train.interval = (1, 1, 1)  # Use interval&angle to generate random angle
-    _C.DATA.train.angle = (180, 180, 180)
-
-    _C.DATA.train.location = '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/dataset/ocnn_completion/completion_test_points.tfrecords'  # The data location
-    _C.DATA.train.shuffle = 1000  # The shuffle size
-    _C.DATA.train.n_samples = -1  # Use at most `n_samples` elements from this dataset
-    _C.DATA.train.batch_size = 32  # Training data batch size
-    _C.DATA.train.mask_ratio = 0.0  # Mask out some point features
-
-    _C.DATA.train.return_iterator = False  # Return the data iterator
-    _C.DATA.train.return_pts = False  # Also return points
-
-    return _C
-
-
 class Octrees2TFRecordsFileTest(TestCase):
 
     def test_get_data_label_pair(self):
@@ -82,38 +39,40 @@ class DatasetTest(tf.test.TestCase):
 
     def test_point_dataset(self):
         with tf.Session() as sess:
-            flags = make_flags().DATA.train
-            points = PointDataset(ParseExample(**flags),
-                                  TransformPoints(**flags, bounding_sphere=bounding_sphere),
-                                  Points2Octree(**flags))
+            points = PointDataset(ParseExample(x_alias='data', y_alias='label'),
+                                  TransformPoints(distort=False, depth=5, offset=0.55, axis='y', scale=0.0,
+                                                  jitter=0.0, angle=[180, 180, 180], bounding_sphere=bounding_sphere),
+                                  Points2Octree(depth=5))
 
             merged_octrees_batch1 = sess.run(
-                points(tf_record_filenames=flags.location,
-                       batch_size=flags.batch_size,
-                       shuffle_size=flags.shuffle,
-                       return_iterator=flags.return_iterator,
-                       take=flags.n_samples,
-                       return_pts=flags.return_pts))
+                points(
+                    tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/dataset/ocnn_completion/completion_test_points.tfrecords',
+                    batch_size=32,
+                    shuffle_size=1000,
+                    return_iterator=False,
+                    take=-1,
+                    return_pts=False))
 
             try:
                 self.assertTrue(np.issubdtype(merged_octrees_batch1[0].dtype, np.integer))
                 self.assertTrue(np.issubdtype(merged_octrees_batch1[1].dtype, np.integer))
-                self.assertEqual(merged_octrees_batch1[1].shape, (flags.batch_size,))
+                self.assertEqual(merged_octrees_batch1[1].shape, (32,))
             except AssertionError as e:
                 self.verificationErrors.append(str(e))
 
             merged_octrees_batch2 = sess.run(
-                points(tf_record_filenames=flags.location,
-                       batch_size=flags.batch_size,
-                       shuffle_size=flags.shuffle,
-                       return_iterator=flags.return_iterator,
-                       take=flags.n_samples,
-                       return_pts=flags.return_pts))
+                points(
+                    tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/dataset/ocnn_completion/completion_test_points.tfrecords',
+                    batch_size=32,
+                    shuffle_size=1000,
+                    return_iterator=False,
+                    take=-1,
+                    return_pts=False))
 
             try:
                 self.assertTrue(np.issubdtype(merged_octrees_batch2[0].dtype, np.integer))
                 self.assertTrue(np.issubdtype(merged_octrees_batch2[1].dtype, np.integer))
-                self.assertEqual(merged_octrees_batch2[1].shape, (flags.batch_size,))
+                self.assertEqual(merged_octrees_batch2[1].shape, (32,))
 
                 self.assertTrue(merged_octrees_batch2[0].shape != merged_octrees_batch1[0].shape)
 
@@ -123,8 +82,7 @@ class DatasetTest(tf.test.TestCase):
 
     def test_octree_dataset(self):
         with tf.Session() as sess:
-            flags = make_flags().DATA.train
-            octrees = OctreeDataset(ParseExample(**flags))
+            octrees = OctreeDataset(ParseExample(x_alias='data', y_alias='label'))
 
             merged_octrees_batch1 = sess.run(
                 octrees(
@@ -137,7 +95,7 @@ class DatasetTest(tf.test.TestCase):
             try:
                 self.assertTrue(np.issubdtype(merged_octrees_batch1[0].dtype, np.integer))
                 self.assertTrue(np.issubdtype(merged_octrees_batch1[1].dtype, np.integer))
-                self.assertEqual(merged_octrees_batch1[1].shape, (flags.batch_size,))
+                self.assertEqual(merged_octrees_batch1[1].shape, (32,))
             except AssertionError as e:
                 self.verificationErrors.append(str(e))
 
