@@ -67,16 +67,24 @@ class TFRunner:
             avg_results[key] /= k
         return avg_results
 
-    def evaluate(self, session_dao, summary_dao, current_iter):
+    def evaluate_iteration(self, session_dao, summary_dao):
         print('\nEvaluating on test data ...\n')
         avg_test_metrics_dict = self.run_k_iterations_test(session_dao.session, self.flags.test_iter)
         test_summary = session_dao.session.run(self.test_summary_op,
                                                feed_dict={pl: avg_test_metrics_dict[metric]
                                                           for metric, pl in self.test_summary_placeholder_dict.items()})
-        summary_dao.add(test_summary, current_iter)
-        self.update_logs(current_iter, avg_test_metrics_dict)
-        session_dao.save_iter(current_iter, write_meta_graph=False)
+        session_dao.save_iter(session_dao.iter, write_meta_graph=False)
+        summary_dao.add(test_summary, session_dao.iter)
+        self.update_logs(session_dao.iter, avg_test_metrics_dict)
         print(self.result_table)
+
+    def train_iteration(self, session_dao, summary_dao):
+        train_summary, _ = session_dao.session.run([self.train_summary_op, self.train_op])
+        summary_dao.add(train_summary, session_dao.iter)
+        session_dao.iter_plus_one()
+
+        if session_dao.iter % self.flags.test_every_iter == 0:
+            self.evaluate_iteration(session_dao, summary_dao)
 
     def train(self):
         self.build_train_graph()
@@ -86,19 +94,12 @@ class TFRunner:
         config.gpu_options.allow_growth = True
 
         with tf.Session(config=config) as sess:
-
             session_dao = SessionDAO(sess, self.flags.logdir, keep_max=self.flags.ckpt_num,
                                      load_iter=self.flags.ckpt)
             session_dao.initialize()
             summary_dao = SummaryDAO(self.flags.logdir, sess.graph)
 
             print('Start training ...')
-            for i in tqdm(range(session_dao.iter, self.flags.max_iter + 1), ncols=80):
-                train_summary, _ = sess.run([self.train_summary_op, self.train_op])
-                summary_dao.add(train_summary, i)
-                session_dao.update_iter(i)
-
-                if i % self.flags.test_every_iter == 0:
-                    self.evaluate(session_dao, summary_dao, i)
-
+            for _ in tqdm(range(session_dao.iter, self.flags.max_iter + 1), ncols=80):
+                self.train_iteration(session_dao, summary_dao)
             print('Training done!')

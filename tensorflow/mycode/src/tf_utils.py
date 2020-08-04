@@ -111,7 +111,7 @@ class SessionDAO:
         if load_iter is not None and load_iter != "":
             print("Loading iter {}".format(load_iter))
             self.iter = load_iter
-            self.load_iter(load_iter)
+            self.load_iter()
         else:
             latest_checkpoint_path = self.get_latest_checkpoint_path()
             if latest_checkpoint_path is not None:
@@ -122,15 +122,17 @@ class SessionDAO:
                 print("Setting iter to 1...")
                 self.iter = 1
 
-    def update_iter(self, current_iter):
-        self.iter = current_iter
+    def iter_plus_one(self):
+        self.iter += 1
 
-    def save_iter(self, current_iter, write_meta_graph=False):
-        self.update_iter(current_iter)
+    def save_iter(self, current_iter=None, write_meta_graph=False):
+        if current_iter:
+            self.iter = current_iter
         checkpoint_path = os.path.join(self.checkpoints_path, 'iter_%06d.ckpt' % self.iter)
         self.tf_saver.save(self.session, checkpoint_path, write_meta_graph=write_meta_graph)
 
-    def load_iter(self, load_iter):
+    def load_iter(self, load_iter=None):
+        load_iter = load_iter or self.iter
         checkpoint_path = os.path.join(self.checkpoints_path, 'iter_%06d.ckpt' % load_iter)
         self.load_session_from_path(checkpoint_path)
 
