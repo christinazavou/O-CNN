@@ -5,7 +5,7 @@ import tensorflow as tf
 from src.tf_utils import Loss, GraphAccess, Evaluation
 
 sys.path.append("../..")
-from libs import *
+from libs import octree_full_voxel, octree_max_pool, octree_property, octree_conv_memory, octree_conv_fast
 
 
 def autoencoder_graph():

@@ -1,10 +1,10 @@
 SOLVER:
   gpu: 0,
-  logdir: logs/ae/resnet_b16_
+  logdir: logs/ae/resnet_b16_octree
   run: train
-  max_iter: 320000
+  max_iter: 20000
   test_iter: 336
-  test_every_iter: 2000
+  test_every_iter: 1000
   step_size: (80000,)
   ckpt_num: 20
 

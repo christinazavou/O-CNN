@@ -171,9 +171,13 @@ class OctreeDataset:
             def merge_octrees(octrees, labels):
                 return octree_batch(octrees), labels
 
-            dataset = tf.data.TFRecordDataset(tf_record_filenames).take(take).repeat()
-            if shuffle_size > 1: dataset = dataset.shuffle(shuffle_size)
-            itr = dataset.map(self.parse_example, num_parallel_calls=8) \
+            dataset = tf.data.TFRecordDataset(tf_record_filenames) \
+                .take(take) \
+                .repeat()
+            if shuffle_size > 1:
+                dataset = dataset.shuffle(shuffle_size)
+            itr = dataset \
+                .map(self.parse_example, num_parallel_calls=8) \
                 .batch(batch_size) \
                 .map(merge_octrees, num_parallel_calls=8) \
                 .prefetch(8) \
@@ -262,6 +266,9 @@ class OctreesTFRecordsConverter:
     def read_records(records_name, output_path, list_file, file_type='data', count=5):
         records_iterator = tf.python_io.tf_record_iterator(records_name)
         count = count if count != 0 else float('Inf')
+
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
 
         with open(os.path.join(output_path, list_file), "w") as f:
             num = 0

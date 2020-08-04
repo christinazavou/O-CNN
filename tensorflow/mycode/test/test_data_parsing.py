@@ -1,4 +1,5 @@
 import sys
+import unittest
 from unittest import TestCase
 
 import numpy as np
@@ -57,10 +58,11 @@ class Octrees2TFRecordsFileTest(TestCase):
             .get_data_label_pair("resources/m40_test_points_list_sample.txt")
         self.assertTrue(len(filepaths) == len(labels) == len(indices) == 5)
 
+    @unittest.SkipTest
     def test_write_records(self):
         OctreesTFRecordsConverter \
             .write_records("resources/ModelNet40.octree.5.sample", "resources/m40_test_points_list_sample.txt",
-                           "resources/m40_test_points.tfrecords", file_type='data', shuffle=False)
+                           "resources/m40_test_points_sample.tfrecords", file_type='data', shuffle=False)
 
     def test_read_records(self):
         OctreesTFRecordsConverter \
@@ -77,15 +79,6 @@ class DatasetTest(tf.test.TestCase):
 
     def tearDown(self):
         self.assertEqual([], self.verificationErrors)
-
-    # def test_data(self):
-    #     flags = make_flags()
-    #     octree, label = DatasetFactory(flags.DATA.train)()
-    #     print("octree: ", octree)
-    #     with self.cached_session(use_gpu=True):
-    #         octree_1 = octree.eval()
-    #         print(octree_1, len(octree_1))
-    #     self.assertTrue(octree is not None)
 
     def test_point_dataset(self):
         with tf.Session() as sess:
@@ -128,6 +121,28 @@ class DatasetTest(tf.test.TestCase):
                 self.verificationErrors.append(str(e))
         print("test_point_dataset checked")
 
+    def test_octree_dataset(self):
+        with tf.Session() as sess:
+            flags = make_flags().DATA.train
+            octrees = OctreeDataset(ParseExample(**flags))
+
+            merged_octrees_batch1 = sess.run(
+                octrees(
+                    tf_record_filenames='/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_test_octree.tfrecords',
+                    batch_size=32,
+                    shuffle_size=False,
+                    return_iterator=False,
+                    take=10))
+            print(merged_octrees_batch1)
+            try:
+                self.assertTrue(np.issubdtype(merged_octrees_batch1[0].dtype, np.integer))
+                self.assertTrue(np.issubdtype(merged_octrees_batch1[1].dtype, np.integer))
+                self.assertEqual(merged_octrees_batch1[1].shape, (flags.batch_size,))
+            except AssertionError as e:
+                self.verificationErrors.append(str(e))
+
+        print("test_octree_dataset checked")
+
     def test_point_cloud_dataset(self):
         with tf.Session() as sess:
             next_point = PointCloudDataset(ParseExample())
@@ -161,13 +176,6 @@ class DatasetTest(tf.test.TestCase):
                 self.verificationErrors.append(str(e))
 
         print("test_point_cloud_dataset checked")
-
-    # def test_point_dataset(self):
-    #     flags = make_flags().DATA.train
-    #
-    #     with tf.Session() as tmpSess:
-    #         octree_batch = tmpSess.run(octree_batch(octree_samples(['octree_1', 'octree_2'])))
-    #         print("octree_batch", octree_batch)
 
 
 if __name__ == "__main__":
