@@ -23,7 +23,7 @@ def octree_conv_bn_relu(data, octree, depth, channel, training, kernel_size=[3],
 
 def octree_conv_bn(data, octree, depth, channel, training, kernel_size=[3],
                    stride=1, fast_mode=False):
-    if fast_mode == True:
+    if fast_mode:
         conv = octree_conv_fast(data, octree, depth, channel, kernel_size, stride)
     else:
         conv = octree_conv_memory(data, octree, depth, channel, kernel_size, stride)
@@ -41,6 +41,10 @@ def dense(inputs, nout, use_bias=False):
     fc = tf.layers.dense(inputs, nout, use_bias=use_bias,
                          kernel_initializer=tf.contrib.layers.xavier_initializer())
     return fc
+
+
+def batch_norm(inputs, training, axis=1):
+    return tf.layers.batch_normalization(inputs, axis=axis, training=training)
 
 
 def classification_graph(octree, label, flags, training=True, reuse=None):
@@ -61,7 +65,7 @@ def classification_graph(octree, label, flags, training=True, reuse=None):
                 data = octree_full_voxel(data, depth=2)
                 data = tf.layers.dropout(data, rate=0.5, training=training)
 
-        with tf.variable_scope("ocnn_classifier"):
+        with tf.variable_scope("ocnn_classifier", reuse=reuse):
             with tf.variable_scope("fc1"):
                 data = fc_bn_relu(data, channels[2], training=training)
                 data = tf.layers.dropout(data, rate=0.5, training=training)

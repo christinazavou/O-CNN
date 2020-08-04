@@ -83,7 +83,7 @@ class SessionDAO:
         self.keep_max = keep_max
         self.tf_saver = tf.train.Saver(max_to_keep=keep_max)
 
-        if load_iter is not None:
+        if load_iter is not None and load_iter != "":
             print("Loading iter {}".format(load_iter))
             self.iter = load_iter
             self.load_iter(load_iter)
@@ -93,6 +93,9 @@ class SessionDAO:
                 print("Loading latest_checkpoint_path {}".format(latest_checkpoint_path))
                 self.load_session_from_path(latest_checkpoint_path)
                 self.iter = SessionDAO.get_iter_from_path(latest_checkpoint_path)
+            else:
+                print("Setting iter to 1...")
+                self.iter = 1
 
     def update_iter(self, current_iter):
         self.iter = current_iter
@@ -113,6 +116,10 @@ class SessionDAO:
         # returns path of the latest checkpoint or None if there is no checkpoint under the directory self.checkpoints_path
         return tf.train.latest_checkpoint(self.checkpoints_path)
 
+    def initialize(self):
+        print("Initializing session...")
+        self.session.run(tf.global_variables_initializer())
+
     @staticmethod
     def get_iter_from_path(checkpoint_path):
         return int(checkpoint_path[checkpoint_path.find("iter") + 5:-5])
@@ -124,8 +131,8 @@ class SummaryDAO:
         self.log_dir = log_dir
         self.tf_summary_writer = tf.summary.FileWriter(self.log_dir, graph)
 
-    def add(self, summary, iter):
-        self.tf_summary_writer.add_summary(summary, iter)
+    def add(self, summary, train_iter):
+        self.tf_summary_writer.add_summary(summary, train_iter)
 
     def print(self, event_filename, tag):
         for e in tf.train.summary_iterator(os.path.join(self.log_dir, event_filename)):
@@ -139,10 +146,22 @@ class SummaryDAO:
                 print(msg)
 
     @staticmethod
-    def summary_op(scope, tensors):
+    def summary_op_for_train(tensors):
         # tensors is a dict of name:tensor
-        with tf.name_scope(scope):
+        with tf.name_scope("train_summaries"):
             summaries = []
             for tensor_name, tensor in tensors.items():
                 summaries.append(tf.summary.scalar(tensor_name, tensor))
             return tf.summary.merge(summaries)
+
+    @staticmethod
+    def summary_op_for_test(names):
+        #   For test we need placeholder tensors ..
+        #   because we will feed it with the average summary of k iterations
+        with tf.name_scope('test_summaries'):
+            summaries = []
+            summaries_placeholder = []
+            for name in names:
+                summaries_placeholder.append(tf.placeholder(tf.float32))
+                summaries.append(tf.summary.scalar(name, summaries_placeholder[-1]))
+            return tf.summary.merge(summaries), summaries_placeholder

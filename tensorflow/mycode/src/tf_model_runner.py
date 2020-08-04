@@ -1,5 +1,6 @@
 import tensorflow as tf
 from prettytable import PrettyTable
+from tqdm import tqdm
 
 from src.data_parsing import DatasetFactory
 from src.learning_rate import LRFactory
@@ -19,76 +20,74 @@ def build_solver(total_loss, learning_rate_handle):
 
 class TFRunner:
 
-    def __init__(self, flags, graph_builder):
-        self.train_data_flags = flags.data.train
-        self.test_data_flags = flags.data.test
-        self.flags = flags.train
+    def __init__(self, train_data_flags, test_data_flags, model_flags, graph_builder):
+        self.train_data_flags = train_data_flags
+        self.test_data_flags = test_data_flags
+        self.flags = model_flags
+        self.graph_builder = graph_builder
 
     def build_train_graph(self):
         octree, label = DatasetFactory(self.train_data_flags)()
 
-        self.train_tensors = self.graph_builder(octree, label, training=True, reuse=False)
-        self.train_op, lr = build_solver(self.train_tensors['loss'], LRFactory(**self.flags))
+        self.train_tensors_dict = self.graph_builder(octree, label, self.flags, training=True, reuse=False)
+        self.train_op, lr = build_solver(self.train_tensors_dict['loss'], LRFactory(**self.flags))
 
         train_summaries = {'lr': lr}
-        train_summaries.update(self.train_tensors)
-        self.train_summary_op = SummaryDAO.summary_op('train_summaries', train_summaries)
-
-    def update_logs(self):
-        self.result_table = PrettyTable(
-            ["iter", "lr", "cost", "l2reg", "loss", "accuracy"]
-        )
-        self.result_table.add_row(
-            [5, 10, 15]
-        )
+        train_summaries.update(self.train_tensors_dict)
+        self.train_summary_op = SummaryDAO.summary_op_for_train(train_summaries)
 
     def build_test_graph(self):
         octree, label = DatasetFactory(self.test_data_flags)()
-        self.test_tensors = self.graph_builder(octree, label, training=False, reuse=True)
-        self.test_summary_op = SummaryDAO.summary_op('test_summaries', self.test_tensors)
+        self.test_tensors_dict = self.graph_builder(octree, label, self.flags, training=False, reuse=True)
+        self.test_summary_op, self.test_summary_placeholders = SummaryDAO \
+            .summary_op_for_test(self.test_tensors_dict.keys())
+
+    def update_logs(self, train_iter, test_avg_metrics):
+        if not self.result_table:
+            self.result_table = PrettyTable(
+                ["iter"] + self.test_tensors_dict.keys()
+            )
+        self.result_table.add_row([train_iter] + test_avg_metrics)
+
+    def run_k_iterations(self, session, k, tensors):
+        num_of_metrics = len(tensors)
+        avg_results = [0] * num_of_metrics
+        for _ in range(k):
+            iter_results = session.run(tensors)
+            for metric_idx in range(num_of_metrics):
+                avg_results[metric_idx] += iter_results[metric_idx]
+
+        for metric_idx in range(num_of_metrics):
+            avg_results[metric_idx] /= k
+        return avg_results
 
     def train(self):
         self.build_train_graph()
+        self.build_test_graph()
 
-        session_dao = SessionDAO(self.flags.logdir, keep_max=self.flags.ckpt_num)
-
-        start_iter = 1
-
-        if self.flags.ckpt:
-            ckpt = self.flags.ckpt
-        else:
-            ckpt = tf.train.latest_checkpoint(ckpt_path)
-            if ckpt: start_iter = int(ckpt[ckpt.find("iter") + 5:-5]) + 1
-
-        # session
         config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allow_growth = True
-        with tf.Session(config=config) as sess:
-            summary_writer = tf.summary.FileWriter(self.flags.logdir, sess.graph)
 
-            print('Initialize ...')
-            self.initialize(sess)
-            if ckpt: self.restore(sess, ckpt)
+        with tf.Session(config=config) as sess:
+
+            session_dao = SessionDAO(sess, self.flags.logdir, keep_max=self.flags.ckpt_num,
+                                     load_iter=self.flags.ckpt)
+            session_dao.initialize()
+            summary_dao = SummaryDAO(self.flags.logdir, sess.graph)
 
             print('Start training ...')
-            for i in tqdm(range(start_iter, self.flags.max_iter + 1), ncols=80):
-                # training
-                summary, _ = sess.run([self.summ_train, self.train_op])
-                summary_writer.add_summary(summary, i)
+            for i in tqdm(range(session_dao.iter, self.flags.max_iter + 1), ncols=80):
+                train_summary, _ = sess.run([self.train_summary_op, self.train_op])
+                summary_dao.add(summary, i)
+                session_dao.update_iter(i)
 
-                # testing
                 if i % self.flags.test_every_iter == 0:
-                    # run testing average
-                    avg_test = self.run_k_iterations(sess, self.flags.test_iter, self.test_tensors)
-
-                    # run testing summary
-                    summary = sess.run(self.summ_test,
-                                       feed_dict=dict(zip(self.summ_holder, avg_test)))
-                    summary_writer.add_summary(summary, i)
-                    self.summ2txt(avg_test, i)
-
-                    # save session
-                    ckpt_name = os.path.join(ckpt_path, 'iter_%06d.ckpt' % i)
-                    self.tf_saver.save(sess, ckpt_name, write_meta_graph=False)
+                    print('Evaluating on test date ...')
+                    avg_test_metrics = self.run_k_iterations(sess, self.flags.test_iter, self.test_tensors_dict)
+                    summary = sess.run(self.test_summary_op,
+                                       feed_dict=dict(zip(self.test_summary_placeholders, avg_test_metrics)))
+                    summary_dao.add(summary, i)
+                    self.update_logs(self, i, avg_test_metrics)
+                    session_dao.save_iter(i, write_meta_graph=False)
 
             print('Training done!')
