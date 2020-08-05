@@ -1,0 +1,9 @@
+airplane/train/airplane_0001.upgrade.smp.points 0
+airplane/train/airplane_0182.upgrade.smp.points 0
+airplane/train/airplane_0364.upgrade.smp.points 0
+bathtub/train/bathtub_0001.upgrade.smp.points 1
+bathtub/train/bathtub_0002.upgrade.smp.points 1
+bathtub/train/bathtub_0003.upgrade.smp.points 1
+bed/train/bed_0001.upgrade.smp.points 2
+bed/train/bed_0002.upgrade.smp.points 2
+bed/train/bed_0210.upgrade.smp.points 2

@@ -77,7 +77,8 @@ def mock_config():
     _C.DATA.train.interval = (1, 1, 1)  # Use interval&angle to generate random angle
     _C.DATA.train.angle = (180, 180, 180)
 
-    _C.DATA.train.location = '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/dataset/ModelNet40/m40_5_2_12_train_octree.tfrecords'  # The data location
+    _C.DATA.train.location = '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/m40_5_2_12_train_octree.tfrecords'
+    # _C.DATA.train.location = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_train_octree.tfrecords'
     _C.DATA.train.shuffle = 1000  # The shuffle size
     _C.DATA.train.n_samples = 1000  # Use at most `n_samples` elements from this dataset
     _C.DATA.train.batch_size = 32  # Training data batch size
@@ -87,12 +88,13 @@ def mock_config():
     _C.DATA.train.return_pts = False  # Also return points
 
     _C.DATA.test = _C.DATA.train.clone()
-    _C.DATA.test.location = '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/dataset/ModelNet40/m40_5_2_12_test_octree.tfrecords'
+    _C.DATA.test.location = '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords'
+    # _C.DATA.test.location = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_test_octree.tfrecords'
 
     # MODEL related parameters
     _C.MODEL = CN()
     _C.MODEL.gpu = (0,)  # The gpu ids
-    _C.MODEL.logdir = 'logs'  # Directory where to write event logs
+    _C.MODEL.logdir = '/media/christina/Data/ANFASS_data/O-CNN/output/logs'  # Directory where to write event logs
     _C.MODEL.ckpt = ''  # Restore weights from checkpoint file
     _C.MODEL.run = 'train'  # Choose from train or test
     _C.MODEL.max_iter = 5000  # Maximum training iterations
