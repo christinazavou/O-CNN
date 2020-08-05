@@ -1,6 +1,6 @@
 from src.data_parsing import DatasetFactory
 from src.graph_builders import *
-from test.helper import mock_config
+from test.helper import mock_train_config
 
 
 class DatasetTest(tf.test.TestCase):
@@ -12,7 +12,7 @@ class DatasetTest(tf.test.TestCase):
         self.assertEqual([], self.verificationErrors)
 
     def test_convolutions_and_poolings(self):
-        flags_data_train = mock_config().DATA.train
+        flags_data_train = mock_train_config().DATA.train
         depth = 5
         channel = 3
 

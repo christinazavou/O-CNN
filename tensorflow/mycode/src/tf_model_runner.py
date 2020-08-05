@@ -40,9 +40,9 @@ class TFRunner:
         train_summaries.update(self.train_tensors_dict)
         self.train_summary_op = SummaryDAO.summary_op_for_train(train_summaries)
 
-    def build_test_graph(self):
+    def build_test_graph(self, reuse=True):
         octree, label = DatasetFactory(self.test_data_flags)()
-        self.test_tensors_dict = self.graph_builder(octree, label, self.flags, training=False, reuse=True)
+        self.test_tensors_dict = self.graph_builder(octree, label, self.flags, training=False, reuse=reuse)
         self.test_summary_op, self.test_summary_placeholder_dict = SummaryDAO \
             .summary_op_for_test(self.test_tensors_dict.keys())
         self.init_logs()
@@ -58,7 +58,7 @@ class TFRunner:
 
     def run_k_iterations_test(self, session, k):
         avg_results = {key: 0 for key in self.test_tensors_dict.keys()}
-        for _ in range(k):
+        for _ in tqdm(range(0, k + 1), ncols=80):
             iter_results = session.run(self.test_tensors_dict)
             for key, result in iter_results.items():
                 avg_results[key] += result
@@ -67,13 +67,14 @@ class TFRunner:
             avg_results[key] /= k
         return avg_results
 
-    def evaluate_iteration(self, session_dao, summary_dao):
+    def evaluate_iteration(self, session_dao, summary_dao, save=True):
         print('\nEvaluating on test data ...\n')
         avg_test_metrics_dict = self.run_k_iterations_test(session_dao.session, self.flags.test_iter)
         test_summary = session_dao.session.run(self.test_summary_op,
                                                feed_dict={pl: avg_test_metrics_dict[metric]
                                                           for metric, pl in self.test_summary_placeholder_dict.items()})
-        session_dao.save_iter(session_dao.iter, write_meta_graph=False)
+        if save:
+            session_dao.save_iter(session_dao.iter, write_meta_graph=False)
         summary_dao.add(test_summary, session_dao.iter)
         self.update_logs(session_dao.iter, avg_test_metrics_dict)
         print(self.result_table)
@@ -104,3 +105,23 @@ class TFRunner:
             for _ in tqdm(range(session_dao.iter, self.flags.max_iter + 1), ncols=80):
                 self.train_iteration(session_dao, summary_dao)
             print('Training done!')
+
+    def test(self):
+        self.build_test_graph(reuse=False)
+
+        config = tf.ConfigProto(allow_soft_placement=True)
+        config.gpu_options.allow_growth = True
+
+        with tf.Session(config=config) as sess:
+            session_dao = SessionDAO(sess, self.flags.logdir, keep_max=self.flags.ckpt_num,
+                                     load_iter=self.flags.ckpt)
+            session_dao.initialize()
+            summary_dao = SummaryDAO(self.flags.logdir, sess.graph)
+
+            print('Start testing ...')
+            # todo: pass function in session_dao and let session_dao do the iterations !?
+            self.evaluate_iteration(session_dao, summary_dao, save=False)
+            print('Testing done!')
+
+    def run(self):
+        eval('self.{}()'.format(self.flags.run))

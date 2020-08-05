@@ -48,7 +48,7 @@ def mock_graph(image, num_classes):
         return o
 
 
-def mock_config():
+def _mock_config():
     _C = CN()
 
     # DATA related parameters
@@ -78,7 +78,6 @@ def mock_config():
     _C.DATA.train.angle = (180, 180, 180)
 
     _C.DATA.train.location = '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/m40_5_2_12_train_octree.tfrecords'
-    # _C.DATA.train.location = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_train_octree.tfrecords'
     _C.DATA.train.shuffle = 1000  # The shuffle size
     _C.DATA.train.n_samples = 1000  # Use at most `n_samples` elements from this dataset
     _C.DATA.train.batch_size = 32  # Training data batch size
@@ -89,16 +88,10 @@ def mock_config():
 
     _C.DATA.test = _C.DATA.train.clone()
     _C.DATA.test.location = '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords'
-    # _C.DATA.test.location = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_test_octree.tfrecords'
 
     # MODEL related parameters
     _C.MODEL = CN()
     _C.MODEL.gpu = (0,)  # The gpu ids
-    _C.MODEL.logdir = '/media/christina/Data/ANFASS_data/O-CNN/output/logs'  # Directory where to write event logs
-    _C.MODEL.ckpt = ''  # Restore weights from checkpoint file
-    _C.MODEL.run = 'train'  # Choose from train or test
-    _C.MODEL.max_iter = 5000  # Maximum training iterations
-    _C.MODEL.test_iter = 30  # Test steps in testing phase
     _C.MODEL.test_every_iter = 500  # Test model every n training steps
     _C.MODEL.learning_rate = 0.1  # Initial learning rate
     _C.MODEL.gamma = 0.1  # Learning rate step-wise decay
@@ -118,8 +111,25 @@ def mock_config():
     _C.MODEL.weights = (1.0, 1.0)  # The weight factors for different losses
     _C.MODEL.label_smoothing = 0.0  # The factor of label smoothing
 
-    # backup the commands
-    _C.SYS = CN()
-    _C.SYS.cmds = ''  # Used to backup the commands
+    return _C
+
+
+def mock_train_config():
+    _C = _mock_config()
+    _C.MODEL.logdir = '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/output/ModelNetOnly4Samples3/logs'  # Directory where to write event logs
+    _C.MODEL.ckpt = ''  # Restore weights from checkpoint file
+    _C.MODEL.run = 'train'  # Choose from train or test
+    _C.MODEL.max_iter = 5000  # Maximum training iterations
+    _C.MODEL.test_iter = 30  # Test steps in testing phase
+    return _C
+
+
+def mock_test_config():
+    _C = _mock_config()
+    _C.MODEL.logdir = '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/output/ModelNetOnly4Samples3/logs'  # Directory where to write event logs
+    _C.MODEL.ckpt = 1500  # Restore weights from checkpoint file
+    _C.MODEL.run = 'test'  # Choose from train or test
+    _C.MODEL.max_iter = 5000  # Maximum training iterations
+    _C.MODEL.test_iter = 30  # Test steps in testing phase
 
     return _C

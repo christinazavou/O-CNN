@@ -110,7 +110,7 @@ class SessionDAO:
 
         if load_iter is not None and load_iter != "":
             print("Loading iter {}".format(load_iter))
-            self.iter = load_iter
+            self.iter = int(load_iter)
             self.load_iter()
         else:
             latest_checkpoint_path = self.get_latest_checkpoint_path()
