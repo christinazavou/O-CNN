@@ -1,0 +1,3 @@
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/ModelNet40.points/airplane/test/airplane_0627.upgrade.smp.points
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/ModelNet40.points/airplane/test/airplane_0629.upgrade.smp.points
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/ModelNet40.points/airplane/test/airplane_0628.upgrade.smp.points

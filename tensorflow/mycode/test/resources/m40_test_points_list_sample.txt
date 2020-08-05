@@ -1,5 +1,0 @@
-airplane/test/airplane_0627.upgrade.smp.points 0
-airplane/test/airplane_0628.upgrade.smp.points 0
-airplane/test/airplane_0629.upgrade.smp.points 0
-airplane/test/airplane_0630.upgrade.smp.points 0
-airplane/test/airplane_0631.upgrade.smp.points 0

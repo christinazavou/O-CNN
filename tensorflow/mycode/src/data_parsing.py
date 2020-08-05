@@ -266,7 +266,7 @@ class TFRecordsConverter:
         return filepath_list, label_list, index_list
 
     @staticmethod
-    def read_records(records_name, output_path, list_file, file_type='data', count=5):
+    def read_records(records_name, output_path, list_file, file_type='data', count=0):
         records_iterator = tf.python_io.tf_record_iterator(records_name)
         count = count if count != 0 else float('Inf')
 

@@ -1,0 +1,9 @@
+airplane/test/airplane_0627.upgrade.smp.points 0
+airplane/test/airplane_0628.upgrade.smp.points 0
+airplane/test/airplane_0629.upgrade.smp.points 0
+bathtub/test/bathtub_0107.upgrade.smp.points 1
+bathtub/test/bathtub_0120.upgrade.smp.points 1
+bathtub/test/bathtub_0134.upgrade.smp.points 1
+bed/test/bed_0516.upgrade.smp.points 2
+bed/test/bed_0517.upgrade.smp.points 2
+bed/test/bed_0518.upgrade.smp.points 2

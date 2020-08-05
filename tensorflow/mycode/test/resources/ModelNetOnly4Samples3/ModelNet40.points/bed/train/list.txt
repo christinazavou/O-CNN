@@ -1,0 +1,3 @@
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/ModelNet40.points/bed/train/bed_0001.upgrade.smp.points
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/ModelNet40.points/bed/train/bed_0210.upgrade.smp.points
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/ModelNet40.points/bed/train/bed_0002.upgrade.smp.points

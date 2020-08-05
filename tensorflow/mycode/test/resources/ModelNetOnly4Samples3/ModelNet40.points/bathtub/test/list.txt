@@ -1,0 +1,3 @@
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/ModelNet40.points/bathtub/test/bathtub_0120.upgrade.smp.points
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/ModelNet40.points/bathtub/test/bathtub_0107.upgrade.smp.points
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/ModelNet40.points/bathtub/test/bathtub_0134.upgrade.smp.points

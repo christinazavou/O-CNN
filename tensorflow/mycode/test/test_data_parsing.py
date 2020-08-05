@@ -7,32 +7,45 @@ sys.path.append("../..")
 from src.data_parsing import *
 
 
-class Octrees2TFRecordsFileTest(TestCase):
+class TFRecordsConverterTest(TestCase):
 
     def test_get_data_label_pair(self):
         filepaths, labels, indices = TFRecordsConverter \
-            .get_data_label_pair("resources/m40_test_points_list_sample.txt")
-        self.assertTrue(len(filepaths) == len(labels) == len(indices) == 5)
+            .get_data_label_pair("resources/ModelNetOnly4Samples3/m40_test_points_list.txt")
+        self.assertTrue(len(filepaths) == len(labels) == len(indices) == 9)
 
     # @unittest.SkipTest
     def test_write_records(self):
         TFRecordsConverter \
             .write_records("resources/ModelNetOnly4Samples3/ModelNet40.octree.5",
                            "resources/ModelNetOnly4Samples3/m40_test_octree_list.txt",
-                           "output/ModelNetOnly4Samples3/test_write_records/m40_test_octree.tfrecords",
+                           "output/ModelNetOnly4Samples3/test_write_records/m40_5_2_12_test_octree.tfrecords",
                            file_type='data', shuffle=False)
+        self.assertTrue(os.stat('output/ModelNetOnly4Samples3/test_write_records/m40_5_2_12_test_octree.tfrecords')
+                        .st_size >= 8.1 * 1e6)
         TFRecordsConverter \
             .write_records("resources/ModelNetOnly4Samples3/ModelNet40.points",
                            "resources/ModelNetOnly4Samples3/m40_test_points_list.txt",
                            "output/ModelNetOnly4Samples3/test_write_records/m40_test_points.tfrecords",
                            file_type='data', shuffle=False)
+        self.assertTrue(os.stat('output/ModelNetOnly4Samples3/test_write_records/m40_test_points.tfrecords')
+                        .st_size >= 1.3 * 1e6)
 
     def test_read_records(self):
         TFRecordsConverter \
-            .read_records("/media/christina/Data/ANFASS_data/O-CNN/ModelNet40Samples3/m40_test_points.tfrecords",
-                          "./resources/ModelNet40Samples3/octrees_from_tfrecords",
-                          "/media/christina/Data/ANFASS_data/O-CNN/ModelNet40Samples3/m40_test_octree_list.txt",
-                          file_type='data', count=5)
+            .read_records("resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords",
+                          "output/ModelNetOnly4Samples3/test_read_records/ModelNet40.octree.5",
+                          "m40_test_octree_list.txt",
+                          file_type='data', count=0)
+        self.assertEqual(len(os.listdir("output/ModelNetOnly4Samples3/test_read_records/ModelNet40.octree.5")),
+                         108 + 1)
+        TFRecordsConverter \
+            .read_records("resources/ModelNetOnly4Samples3/m40_test_points.tfrecords",
+                          "output/ModelNetOnly4Samples3/test_read_records/ModelNet40.points",
+                          "m40_test_points_list.txt",
+                          file_type='data', count=0)
+        self.assertEqual(len(os.listdir("output/ModelNetOnly4Samples3/test_read_records/ModelNet40.points")),
+                         9 + 1)
 
 
 class DatasetTest(tf.test.TestCase):
@@ -137,6 +150,7 @@ class DatasetTest(tf.test.TestCase):
 
             merged_octrees_batch1 = sess.run(call_octrees)
             print(merged_octrees_batch1)
+
 
 if __name__ == "__main__":
     tf.test.main()
