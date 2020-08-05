@@ -34,3 +34,23 @@ note:
 if we have 9 data .. i.e. 3 categories of 3 samples each ... then generate_point_tfrecords generates 9 tfrecords but generate_octree_tfrecords generates 9x12=108 tfrecords!
 
 basically in the generation of octrees ... from one point cloud we generate 12 octrees .. and the files are named with suffix 0 to 12
+
+
+
+Convolutions:
+---
+feature_reshaped: (1, 3, 119224, 1)
+conv_depth5: (1, 16, 119224, 1)
+pool_depth5: (1, 16, 27872, 1)
+conv_depth4: (1, 32, 27872, 1)
+pool_depth4: (1, 32, 6904, 1)
+conv_depth3: (1, 64, 6904, 1)
+pool_depth3: (1, 64, 2048, 1)
+
+feature_reshaped: (1, 3, 117856, 1)
+conv_depth5: (1, 16, 117856, 1)
+pool_depth5: (1, 16, 27696, 1)
+conv_depth4: (1, 32, 27696, 1)
+pool_depth4: (1, 32, 7424, 1)
+conv_depth3: (1, 64, 7424, 1)
+pool_depth3: (1, 64, 2048, 1)
