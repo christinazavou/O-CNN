@@ -1,26 +1,25 @@
 SOLVER:
   gpu: 0,
-  logdir: logs/m40/ocnn_octree5_b32_del
+  logdir: logs/m40/ocnn_octree5_b32
   run: train
   max_iter: 160000
   test_iter: 925
   test_every_iter: 2000
   step_size: (40000,)
-  ckpt: '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/logs/m40/ocnn_octree5_b32/model/iter_054000.ckpt'
 
 DATA:
   train:
     dtype: octree
     distort: True
     depth: 5
-    location: /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/dataset/ModelNet40/m40_5_2_12_train_octree.tfrecords
+    location: /media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_train_octree.tfrecords
     batch_size: 32
     x_alias: data
   test:
     dtype: octree
     distort: False
     depth: 5
-    location: /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/dataset/ModelNet40/m40_5_2_12_test_octree.tfrecords
+    location: /media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_test_octree.tfrecords
     shuffle: 0
     batch_size: 32
     x_alias: data

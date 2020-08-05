@@ -46,21 +46,22 @@ class TFRunner:
         octree, label = DatasetFactory(self.test_data_flags)()
         self.test_tensors_dict = self.graph_builder(octree, label, self.flags, training=False, reuse=reuse)
         self.test_summary_op, self.test_summary_placeholder_dict = SummaryDAO \
-            .summary_op_for_test(self.test_tensors_dict.keys())
+            .summary_op_for_test(list(self.test_tensors_dict.keys()))
         self.init_logs()
 
     def init_logs(self):
-        self.result_table = PrettyTable(["iter"] + list(self.test_tensors_dict.keys()))
+        self.result_table = PrettyTable()
+        self.result_table.field_names = ["iter"] + list(self.test_tensors_dict.keys())
 
     def update_logs(self, train_iter, test_avg_metrics_dict):
         row = [train_iter]
-        for metric_name in self.test_tensors_dict.keys():
-            row.append(test_avg_metrics_dict[metric_name])
+        for field_name in self.result_table.field_names[1:]:
+            row.append(test_avg_metrics_dict[field_name])
         self.result_table.add_row(row)
 
     def run_k_iterations_test(self, session, k):
         avg_results = {key: 0 for key in self.test_tensors_dict.keys()}
-        for _ in tqdm(range(0, k + 1), ncols=80):
+        for _ in range(0, k + 1):
             iter_results = session.run(self.test_tensors_dict)
             for key, result in iter_results.items():
                 avg_results[key] += result

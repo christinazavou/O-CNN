@@ -106,6 +106,31 @@ class TfUtilsSummaryDAOTest(tf.test.TestCase):
             self.assertTrue("{}, ".format(i) in captured_output)
         print("TfUtilsSummaryDAOTest.test_all checked")
 
+    # def test_test_summary_op(self):
+    #     test_tensors_dict = {'cost': tf.Variable(2.),
+    #                          'l2reg': tf.Variable(3.),
+    #                          'loss': tf.Variable(4.),
+    #                          'accuracy': tf.Variable(1.)}
+    #     summary_dao = SummaryDAO('resources', None)
+    #     test_summary_op, test_summary_placeholder_dict = summary_dao \
+    #         .summary_op_for_test(list(test_tensors_dict.keys()))
+    #
+    #     avg_test_metrics_dict = {key: 0 for key in test_tensors_dict.keys()}
+    #
+    #     with tf.Session() as sess:
+    #         sess.run(tf.global_variables_initializer())
+    #         test_summary = sess.run(test_summary_op,
+    #                                 feed_dict={pl: avg_test_metrics_dict[metric]
+    #                                            for metric, pl in
+    #                                            test_summary_placeholder_dict.items()})
+    #         print(test_summary)
+    #
+    #         avg_results = {key: 0 for key in test_tensors_dict.keys()}
+    #         iter_results = sess.run(test_tensors_dict)
+    #         for key, result in iter_results.items():
+    #             avg_results[key] += result
+    #         print(avg_results)
+
 
 if __name__ == "__main__":
     tf.test.main()
