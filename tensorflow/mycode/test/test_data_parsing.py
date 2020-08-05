@@ -1,5 +1,4 @@
 import sys
-import unittest
 from unittest import TestCase
 
 import numpy as np
@@ -11,21 +10,28 @@ from src.data_parsing import *
 class Octrees2TFRecordsFileTest(TestCase):
 
     def test_get_data_label_pair(self):
-        filepaths, labels, indices = OctreesTFRecordsConverter \
+        filepaths, labels, indices = TFRecordsConverter \
             .get_data_label_pair("resources/m40_test_points_list_sample.txt")
         self.assertTrue(len(filepaths) == len(labels) == len(indices) == 5)
 
-    @unittest.SkipTest
+    # @unittest.SkipTest
     def test_write_records(self):
-        OctreesTFRecordsConverter \
-            .write_records("resources/ModelNet40.octree.5.sample", "resources/m40_test_points_list_sample.txt",
-                           "resources/m40_test_points_sample.tfrecords", file_type='data', shuffle=False)
+        TFRecordsConverter \
+            .write_records("resources/ModelNetOnly4Samples3/ModelNet40.octree.5",
+                           "resources/ModelNetOnly4Samples3/m40_test_octree_list.txt",
+                           "output/ModelNetOnly4Samples3/test_write_records/m40_test_octree.tfrecords",
+                           file_type='data', shuffle=False)
+        TFRecordsConverter \
+            .write_records("resources/ModelNetOnly4Samples3/ModelNet40.points",
+                           "resources/ModelNetOnly4Samples3/m40_test_points_list.txt",
+                           "output/ModelNetOnly4Samples3/test_write_records/m40_test_points.tfrecords",
+                           file_type='data', shuffle=False)
 
     def test_read_records(self):
-        OctreesTFRecordsConverter \
-            .read_records("/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_test_points.tfrecords",
-                          "./resources/octrees_from_tfrecords",
-                          "/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_test_octree_list.txt",
+        TFRecordsConverter \
+            .read_records("/media/christina/Data/ANFASS_data/O-CNN/ModelNet40Samples3/m40_test_points.tfrecords",
+                          "./resources/ModelNet40Samples3/octrees_from_tfrecords",
+                          "/media/christina/Data/ANFASS_data/O-CNN/ModelNet40Samples3/m40_test_octree_list.txt",
                           file_type='data', count=5)
 
 
@@ -108,6 +114,29 @@ class DatasetTest(tf.test.TestCase):
 
         print("test_point_cloud_dataset checked")
 
+    def test_octree_and_points(self):
+        with tf.Session() as sess:
+            # We need a folder with:
+            # 1. tfrecords file containing the bathtub_0001 points
+            # 2. tfrecords file containing the bathtub_0001 octree
+
+            points = PointDataset(ParseExample(x_alias='data', y_alias='label'),
+                                  TransformPoints(distort=False, depth=5, offset=0.55, axis='y', scale=0.0,
+                                                  jitter=0.0, angle=[180, 180, 180], bounding_sphere=bounding_sphere),
+                                  Points2Octree(depth=5))
+            call_points = points(tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/'
+                                                     'tensorflow/script/dataset/ocnn_completion/'
+                                                     'completion_test_points.tfrecords',
+                                 batch_size=32, shuffle_size=1000, return_iterator=False, take=-1, return_pts=False)
+
+            merged_octrees_batch1 = sess.run(call_points)
+            octrees = OctreeDataset(ParseExample(x_alias='data', y_alias='label'))
+            call_octrees = octrees(tf_record_filenames='/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/'
+                                                       'm40_5_2_12_test_octree.tfrecords',
+                                   batch_size=32, shuffle_size=False, return_iterator=False, take=10)
+
+            merged_octrees_batch1 = sess.run(call_octrees)
+            print(merged_octrees_batch1)
 
 if __name__ == "__main__":
     tf.test.main()

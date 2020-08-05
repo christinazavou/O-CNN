@@ -216,7 +216,7 @@ class TFRecordsUtils:
         return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-class OctreesTFRecordsConverter:
+class TFRecordsConverter:
 
     @staticmethod
     def load_octree(file):
@@ -226,14 +226,17 @@ class OctreesTFRecordsConverter:
 
     @staticmethod
     def write_records(octrees_dir, list_file, records_name, file_type='data', shuffle=False):
-        [data, label, index] = OctreesTFRecordsConverter.get_data_label_pair(list_file, shuffle)
+        [data, label, index] = TFRecordsConverter.get_data_label_pair(list_file, shuffle)
+
+        if not os.path.exists(os.path.dirname(records_name)):
+            os.makedirs(os.path.dirname(records_name))
 
         writer = tf.python_io.TFRecordWriter(records_name)
         for i in range(len(data)):
             if not i % 1000:
                 print('data loaded: {}/{}'.format(i, len(data)))
 
-            octree_file = OctreesTFRecordsConverter.load_octree(os.path.join(octrees_dir, data[i]))
+            octree_file = TFRecordsConverter.load_octree(os.path.join(octrees_dir, data[i]))
             feature = {file_type: TFRecordsUtils.bytes_feature(octree_file),
                        'label': TFRecordsUtils.int64_feature(label[i]),
                        'index': TFRecordsUtils.int64_feature(index[i]),
