@@ -20,7 +20,11 @@ parser.add_argument('--simplify_points', type=str, required=False,
 
 abs_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 # root_folder = os.path.join(abs_path, 'script/dataset/ModelNet40')
-root_folder = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40'
+# root_folder = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40Samples3'
+# root_folder = '/media/christina/Data/ANFASS_data/O-CNN/ModelNetOnly4'
+root_folder = '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3'
+# LEN_FOLDERS = 40
+LEN_FOLDERS = 3
 
 
 args = parser.parse_args()
@@ -78,7 +82,7 @@ def clean_off_file(filename):
 def m40_get_filelist(root_folder, train=True, suffix='off'):
   filelist, category = [], []
   folders = sorted(os.listdir(root_folder))
-  assert(len(folders) == 40)
+  assert(len(folders) == LEN_FOLDERS)
   for idx, folder in enumerate(folders):
     subfolder = 'train' if train else 'test'
     current_folder = os.path.join(root_folder, folder, subfolder)
