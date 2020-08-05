@@ -1,4 +1,5 @@
 import sys
+import unittest
 from unittest import TestCase
 
 import numpy as np
@@ -14,7 +15,6 @@ class TFRecordsConverterTest(TestCase):
             .get_data_label_pair("resources/ModelNetOnly4Samples3/m40_test_points_list.txt")
         self.assertTrue(len(filepaths) == len(labels) == len(indices) == 9)
 
-    # @unittest.SkipTest
     def test_write_records(self):
         TFRecordsConverter \
             .write_records("resources/ModelNetOnly4Samples3/ModelNet40.octree.5",
@@ -62,9 +62,7 @@ class DatasetTest(tf.test.TestCase):
                                   TransformPoints(distort=False, depth=5, offset=0.55, axis='y', scale=0.0,
                                                   jitter=0.0, angle=[180, 180, 180], bounding_sphere=bounding_sphere),
                                   Points2Octree(depth=5))
-            call_points = points(tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/'
-                                                     'tensorflow/script/dataset/ocnn_completion/'
-                                                     'completion_test_points.tfrecords',
+            call_points = points(tf_record_filenames='resources/ModelNetOnly4Samples3/m40_test_points.tfrecords',
                                  batch_size=32, shuffle_size=1000, return_iterator=False, take=-1, return_pts=False)
 
             merged_octrees_batch1 = sess.run(call_points)
@@ -87,12 +85,10 @@ class DatasetTest(tf.test.TestCase):
     def test_octree_dataset(self):
         with tf.Session() as sess:
             octrees = OctreeDataset(ParseExample(x_alias='data', y_alias='label'))
-            call_octrees = octrees(tf_record_filenames='/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/'
-                                                       'm40_5_2_12_test_octree.tfrecords',
+            call_octrees = octrees(tf_record_filenames='resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords',
                                    batch_size=32, shuffle_size=False, return_iterator=False, take=10)
 
             merged_octrees_batch1 = sess.run(call_octrees)
-            print(merged_octrees_batch1)
             try:
                 self.assertTrue(np.issubdtype(merged_octrees_batch1[0].dtype, np.integer))
                 self.assertTrue(np.issubdtype(merged_octrees_batch1[1].dtype, np.integer))
@@ -105,9 +101,7 @@ class DatasetTest(tf.test.TestCase):
     def test_point_cloud_dataset(self):
         with tf.Session() as sess:
             next_point = PointCloudDataset(ParseExample())
-            call_next_point = next_point(tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/'
-                                                             'tensorflow/script/dataset/ocnn_completion/'
-                                                             'completion_test_points.tfrecords',
+            call_next_point = next_point(tf_record_filenames='resources/ModelNetOnly4Samples3/m40_test_points.tfrecords',
                                          batch_size=10, shuffle_size=1000, return_iterator=False, take=-1)
 
             point_cloud_1 = sess.run(call_next_point)
@@ -127,7 +121,27 @@ class DatasetTest(tf.test.TestCase):
 
         print("test_point_cloud_dataset checked")
 
+    @staticmethod
+    def run_requirements():
+        TFRecordsConverter \
+            .write_records("resources/ModelNetOnly4Samples3/ModelNet40.points",
+                           "resources/ModelNetOnly4Samples3/m40_test_points_list_sample1.txt",
+                           "intermediate/ModelNetOnly4Samples3/test_octree_and_points"
+                           "/m40_test_points_sample1.tfrecords",
+                           file_type='data', shuffle=False)
+
+        TFRecordsConverter \
+            .write_records("resources/ModelNetOnly4Samples3/ModelNet40.octree.5",
+                           "resources/ModelNetOnly4Samples3/m40_test_octree_list_sample1.txt",
+                           "intermediate/ModelNetOnly4Samples3/test_octree_and_points"
+                           "/m40_5_2_12_test_octree_sample1.tfrecords",
+                           file_type='data', shuffle=False)
+
+    @unittest.SkipTest("No need to run this. We just have 12 octrees in the OctreeDataset and 1 points in the "
+                       "PointsDataset. Both datasets are translated into octrees though.")
     def test_octree_and_points(self):
+        self.run_requirements()
+
         with tf.Session() as sess:
             # We need a folder with:
             # 1. tfrecords file containing the bathtub_0001 points
@@ -137,19 +151,20 @@ class DatasetTest(tf.test.TestCase):
                                   TransformPoints(distort=False, depth=5, offset=0.55, axis='y', scale=0.0,
                                                   jitter=0.0, angle=[180, 180, 180], bounding_sphere=bounding_sphere),
                                   Points2Octree(depth=5))
-            call_points = points(tf_record_filenames='/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/'
-                                                     'tensorflow/script/dataset/ocnn_completion/'
-                                                     'completion_test_points.tfrecords',
-                                 batch_size=32, shuffle_size=1000, return_iterator=False, take=-1, return_pts=False)
+            call_points = points(tf_record_filenames='intermediate/ModelNetOnly4Samples3/test_octree_and_points'
+                                                     '/m40_test_points_sample1.tfrecords',
+                                 batch_size=32, shuffle_size=0, return_iterator=False, take=-1, return_pts=False)
 
-            merged_octrees_batch1 = sess.run(call_points)
+            merged_octrees_batch1_from_points = sess.run(call_points)
+
             octrees = OctreeDataset(ParseExample(x_alias='data', y_alias='label'))
-            call_octrees = octrees(tf_record_filenames='/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/'
-                                                       'm40_5_2_12_test_octree.tfrecords',
-                                   batch_size=32, shuffle_size=False, return_iterator=False, take=10)
+            call_octrees = octrees(tf_record_filenames='intermediate/ModelNetOnly4Samples3/test_octree_and_points'
+                                                       '/m40_5_2_12_test_octree_sample1.tfrecords',
+                                   batch_size=32, shuffle_size=0, return_iterator=False, take=-1)
 
-            merged_octrees_batch1 = sess.run(call_octrees)
-            print(merged_octrees_batch1)
+            merged_octrees_batch1_from_octrees = sess.run(call_octrees)
+
+            print("test_octree_and_points checked")
 
 
 if __name__ == "__main__":

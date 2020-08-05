@@ -1,0 +1,12 @@
+airplane/test/airplane_0627.upgrade.smp_5_2_000.octree 0
+airplane/test/airplane_0627.upgrade.smp_5_2_001.octree 0
+airplane/test/airplane_0627.upgrade.smp_5_2_002.octree 0
+airplane/test/airplane_0627.upgrade.smp_5_2_003.octree 0
+airplane/test/airplane_0627.upgrade.smp_5_2_004.octree 0
+airplane/test/airplane_0627.upgrade.smp_5_2_005.octree 0
+airplane/test/airplane_0627.upgrade.smp_5_2_006.octree 0
+airplane/test/airplane_0627.upgrade.smp_5_2_007.octree 0
+airplane/test/airplane_0627.upgrade.smp_5_2_008.octree 0
+airplane/test/airplane_0627.upgrade.smp_5_2_009.octree 0
+airplane/test/airplane_0627.upgrade.smp_5_2_010.octree 0
+airplane/test/airplane_0627.upgrade.smp_5_2_011.octree 0

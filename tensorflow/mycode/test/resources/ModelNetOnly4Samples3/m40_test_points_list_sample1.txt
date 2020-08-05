@@ -1,0 +1,1 @@
+airplane/test/airplane_0627.upgrade.smp.points 0
