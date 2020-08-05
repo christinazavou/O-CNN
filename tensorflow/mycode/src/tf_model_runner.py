@@ -1,3 +1,5 @@
+import os
+
 import tensorflow as tf
 from prettytable import PrettyTable
 from tqdm import tqdm
@@ -86,6 +88,7 @@ class TFRunner:
 
         if session_dao.iter % self.flags.test_every_iter == 0:
             self.evaluate_iteration(session_dao, summary_dao)
+            self.save_results(os.path.join(session_dao.checkpoints_path, "results_table.txt"))
 
     def train(self):
         self.build_train_graph()
@@ -121,7 +124,16 @@ class TFRunner:
             print('Start testing ...')
             # todo: pass function in session_dao and let session_dao do the iterations !?
             self.evaluate_iteration(session_dao, summary_dao, save=False)
+            self.save_results(os.path.join(session_dao.checkpoints_path, "results_table.txt"))
             print('Testing done!')
+
+    def save_results(self, output_path):
+        open_mode = 'a'
+        if not os.path.exists(os.path.dirname(output_path)):
+            os.makedirs(os.path.dirname(output_path))
+            open_mode = 'w'
+        with open(output_path, open_mode) as f:
+            f.write(str(self.result_table))
 
     def run(self):
         eval('self.{}()'.format(self.flags.run))
