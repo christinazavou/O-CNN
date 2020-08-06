@@ -16,7 +16,7 @@ _C.DATA.train.split_label = False  # Save the split label
 _C.DATA.train.adaptive = False  # Build the adaptive octree
 _C.DATA.train.node_feat = False  # Calculate the node feature
 
-_C.DATA.train.distort = False  # Whether to apply data augmentation
+_C.DATA.train.distort = True  # Whether to apply data augmentation
 _C.DATA.train.offset = 0.55  # Offset used to displace the points
 _C.DATA.train.axis = 'y'  # Rotation axis for data augmentation
 _C.DATA.train.scale = 0.0  # Scale the points
@@ -28,9 +28,9 @@ _C.DATA.train.stddev = (0, 0, 0)  # The standard deviation of the random noise
 _C.DATA.train.interval = (1, 1, 1)  # Use interval&angle to generate random angle
 _C.DATA.train.angle = (180, 180, 180)
 
-_C.DATA.train.location = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_train_octree.tfrecords'
+_C.DATA.train.location = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_train_octree.tfrecords'  # The data location
 _C.DATA.train.shuffle = 1000  # The shuffle size
-_C.DATA.train.n_samples = -1  # Use at most `n_samples` elements from this dataset
+_C.DATA.train.n_samples = -1  # Use at most `take` elements from this dataset
 _C.DATA.train.batch_size = 32  # Training data batch size
 _C.DATA.train.mask_ratio = 0.0  # Mask out some point features
 
@@ -39,26 +39,36 @@ _C.DATA.train.return_pts = False  # Also return points
 
 _C.DATA.test = _C.DATA.train.clone()
 _C.DATA.test.location = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_test_octree.tfrecords'
+_C.DATA.test.distort = False
+_C.DATA.test.shuffle = 0
 
 # MODEL related parameters
 _C.MODEL = CN()
 _C.MODEL.gpu = (0,)  # The gpu ids
-_C.MODEL.logdir = '/media/christina/Data/ANFASS_data/O-CNN/output/ModelNet40/logs'
+_C.MODEL.logdir = '/media/christina/Data/ANFASS_data/O-CNN/output/ModelNet40/logsT3'  # Directory where to write event logs
 _C.MODEL.ckpt = ''  # Restore weights from checkpoint file
 _C.MODEL.run = 'train'  # Choose from train or test
+_C.MODEL.type = 'sgd'  # Choose from sgd or adam
 _C.MODEL.max_iter = 160000  # Maximum training iterations
-_C.MODEL.test_iter = 100  # Test steps in testing phase
-_C.MODEL.test_every_iter = 1000  # Test model every n training steps
+_C.MODEL.test_iter = 925  # Test steps in testing phase
+_C.MODEL.test_every_iter = 2000  # Test model every n training steps
+_C.MODEL.lr_type = 'step'  # Learning rate type: step or cos
 _C.MODEL.learning_rate = 0.1  # Initial learning rate
 _C.MODEL.gamma = 0.1  # Learning rate step-wise decay
-_C.MODEL.lr_type = 'step'
 _C.MODEL.step_size = (40000,)  # Learning rate step size.
 _C.MODEL.ckpt_num = 100  # The number of checkpoint kept
+_C.MODEL.var_name = ('_name',)  # Variable names used for finetuning
+_C.MODEL.ignore_var_name = ('_name',)  # Ignore variable names when loading ckpt
+_C.MODEL.verbose = False  # Whether to output some messages
+_C.MODEL.name = 'ocnn'  # The name of the model
 _C.MODEL.depth = 5  # The input octree depth
 _C.MODEL.depth_out = 5  # The output feature depth
 _C.MODEL.channel = 3  # The input feature channel
+_C.MODEL.factor = 1  # The factor used to widen the network
 _C.MODEL.nout = 40  # The output feature channel
 _C.MODEL.nouts = 40,  # The output feature channels
+_C.MODEL.resblock_num = 3  # The resblock number
+_C.MODEL.bottleneck = 4  # The bottleneck factor of one resblock
 _C.MODEL.dropout = (0.0,)  # The dropout ratio
 _C.MODEL.signal_abs = False  # Use the absolute value of signal
 _C.MODEL.upsample = 'nearest'  # The method used for upsampling

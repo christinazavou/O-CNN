@@ -237,6 +237,7 @@ def softmax_loss(logit, label_gt, num_class, label_smoothing=0.0):
 def l2_regularizer(name, weight_decay):
   with tf.name_scope('l2_regularizer'):
     var = get_variables_with_name(name)
+    print("variables for regularizer:\n", var)
     regularizer = tf.add_n([tf.nn.l2_loss(v) for v in var]) * weight_decay
   return regularizer
 
