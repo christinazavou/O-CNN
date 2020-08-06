@@ -1,3 +1,5 @@
+import os
+
 from yacs.config import CfgNode as CN
 
 _C = CN()
@@ -16,7 +18,7 @@ _C.DATA.train.split_label = False  # Save the split label
 _C.DATA.train.adaptive = False  # Build the adaptive octree
 _C.DATA.train.node_feat = False  # Calculate the node feature
 
-_C.DATA.train.distort = True  # Whether to apply data augmentation
+_C.DATA.train.distort = False  # Whether to apply data augmentation
 _C.DATA.train.offset = 0.55  # Offset used to displace the points
 _C.DATA.train.axis = 'y'  # Rotation axis for data augmentation
 _C.DATA.train.scale = 0.0  # Scale the points
@@ -39,15 +41,15 @@ _C.DATA.train.return_pts = False  # Also return points
 
 _C.DATA.test = _C.DATA.train.clone()
 _C.DATA.test.location = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_test_octree.tfrecords'
-_C.DATA.test.distort = False
+# _C.DATA.test.distort = False
 _C.DATA.test.shuffle = 0
 
 # MODEL related parameters
 _C.MODEL = CN()
 _C.MODEL.gpu = (0,)  # The gpu ids
 _C.MODEL.logdir = '/media/christina/Data/ANFASS_data/O-CNN/output/ModelNet40/logsT3'  # Directory where to write event logs
-_C.MODEL.ckpt = ''  # Restore weights from checkpoint file
-_C.MODEL.run = 'train'  # Choose from train or test
+_C.MODEL.ckpt = '66000'  # Restore weights from checkpoint file
+_C.MODEL.run = 'test'  # Choose from train or test
 _C.MODEL.type = 'sgd'  # Choose from sgd or adam
 _C.MODEL.max_iter = 160000  # Maximum training iterations
 _C.MODEL.test_iter = 925  # Test steps in testing phase
@@ -82,3 +84,55 @@ _C.SYS = CN()
 _C.SYS.cmds = ''  # Used to backup the commands
 
 FLAGS = _C
+
+
+def save_config(filename="config.yaml"):
+    if not os.path.exists(FLAGS.MODEL.logdir):
+        os.makedirs(FLAGS.MODEL.logdir)
+    filename = os.path.join(FLAGS.MODEL.logdir, filename)
+    with open(filename, 'w') as fid:
+        fid.write(FLAGS.dump())
+
+
+CLASS_TO_LABEL = {
+    'airplane': 0,
+    'bathtub': 1,
+    'bed': 2,
+    'bench': 3,
+    'bookshelf': 4,
+    'bottle': 5,
+    'bowl': 6,
+    'car': 7,
+    'chair': 8,
+    'cone': 9,
+    'cup': 10,
+    'curtain': 11,
+    'desk': 12,
+    'door': 13,
+    'dresser': 14,
+    'flower_pot': 15,
+    'glass_box': 16,
+    'guitar': 17,
+    'keyboard': 18,
+    'lamp': 19,
+    'laptop': 20,
+    'mantel': 21,
+    'monitor': 22,
+    'night_stand': 23,
+    'person': 24,
+    'piano': 25,
+    'plant': 26,
+    'radio': 27,
+    'range_hood': 28,
+    'sink': 29,
+    'sofa': 30,
+    'stairs': 31,
+    'stool': 32,
+    'table': 33,
+    'tent': 34,
+    'toilet': 35,
+    'tv_stand': 36,
+    'vase': 37,
+    'wardrobe': 38,
+    'xbox': 39
+}

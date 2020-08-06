@@ -96,7 +96,14 @@ class Evaluation:
             predict = tf.argmax(logit, axis=1, output_type=tf.int32)
             accu = Evaluation.label_accuracy(predict, tf.cast(label, tf.int32))
         return accu
+
     # prediction = tf.nn.softmax(logit)  # tf.argmax(logit, axis=1, output_type=tf.int32)
+
+    @staticmethod
+    def confusion_matrix(prediction, label, num_classes, weights=None):
+        return tf.math.confusion_matrix(
+            label, prediction, num_classes=num_classes, weights=weights, dtype=tf.dtypes.int32, name=None
+        )
 
 
 class SessionDAO:

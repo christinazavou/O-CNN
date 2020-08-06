@@ -295,3 +295,26 @@ class TFRecordsConverter:
                     fo.write(octree)
 
                 f.write("{} {}\n".format(filename, label))
+
+
+class ClassificationDatasetStatistics:
+
+    def __init__(self, points_folder):
+        self.folder = points_folder
+        self.categories = os.listdir(points_folder)
+        self.test_samples, self.train_samples = self.points_per_class()
+        self.train_n = sum(self.train_samples)
+        self.test_n = sum(self.test_samples)
+
+    def points_per_class(self):
+        test_samples = []
+        train_samples = []
+        for category in self.categories:
+            directory = os.path.join(self.folder, category, "test")
+            points_filenames = [f for f in os.listdir(directory) if '.points' in f]
+            test_samples.append(len(points_filenames))
+
+            directory = os.path.join(self.folder, category, "train")
+            points_filenames = [f for f in os.listdir(directory) if '.points' in f]
+            train_samples.append(len(points_filenames))
+        return test_samples, train_samples

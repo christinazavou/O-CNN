@@ -119,7 +119,6 @@ class TFRunner:
         with tf.Session(config=config) as sess:
             session_dao = SessionDAO(sess, self.flags.logdir, keep_max=self.flags.ckpt_num,
                                      load_iter=self.flags.ckpt)
-            session_dao.initialize()
             summary_dao = SummaryDAO(self.flags.logdir, sess.graph)
 
             print('Start testing ...')

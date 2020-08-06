@@ -3,7 +3,7 @@
 SOLVER:
   gpu: 0,
   logdir: logs/m40/0322_ocnn_octree_test
-  ckpt: logs/m40/0322_ocnn_octree/model/iter_160000.ckpt
+  ckpt: logs/m40/ocnn_octree5_b32/model/iter_068000.ckpt
   run: test
   test_iter: 925
 
@@ -11,7 +11,7 @@ DATA:
   test: 
     dtype: octree
     depth: 5
-    location: dataset/ModelNet40/m40_5_2_12_test_octree.tfrecords
+    location: /media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_test_octree.tfrecords
     shuffle: 0
     batch_size: 32
     x_alias: data

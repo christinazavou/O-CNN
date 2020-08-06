@@ -1,11 +1,21 @@
 import sys
-import unittest
 from unittest import TestCase
 
 import numpy as np
 
 sys.path.append("../..")
 from src.data_parsing import *
+
+
+class ClassificationDatasetStatisticsTest(TestCase):
+
+    def test_all(self):
+        cds = ClassificationDatasetStatistics("/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/ModelNet40.points")
+        # train_samples, test_samples, categories = zip(
+        #     *sorted(zip(cds.train_samples, cds.test_samples, cds.categories), reverse=True))
+        # Visualizer.bar_plot(train_samples, test_samples, categories, 'Train samples', 'Test samples')
+        self.assertEqual(len(cds.categories), 40)
+        self.assertAlmostEqual(cds.train_n + cds.test_n, 12311, delta=5)
 
 
 class TFRecordsConverterTest(TestCase):
