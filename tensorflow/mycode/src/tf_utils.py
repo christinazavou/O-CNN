@@ -91,19 +91,20 @@ class Evaluation:
         return accuracy
 
     @staticmethod
-    def accuracy(logit, label, scope="accuracy"):
+    def classification_metrics(logit, label, num_classes, scope="classification_metrics"):
         with tf.name_scope(scope):
-            predict = tf.argmax(logit, axis=1, output_type=tf.int32)
-            accu = Evaluation.label_accuracy(predict, tf.cast(label, tf.int32))
-        return accu
-
-    # prediction = tf.nn.softmax(logit)  # tf.argmax(logit, axis=1, output_type=tf.int32)
+            prediction = tf.argmax(logit, axis=1, output_type=tf.int32)
+            # prediction = tf.nn.softmax(logit)  # tf.argmax(logit, axis=1, output_type=tf.int32)
+            accuracy = Evaluation.label_accuracy(prediction, tf.cast(label, tf.int32))
+            confusion_matrix = Evaluation.confusion_matrix(prediction, label, num_classes)
+        return accuracy, confusion_matrix
 
     @staticmethod
     def confusion_matrix(prediction, label, num_classes, weights=None):
-        return tf.math.confusion_matrix(
-            label, prediction, num_classes=num_classes, weights=weights, dtype=tf.dtypes.int32, name=None
+        matrix = tf.math.confusion_matrix(
+            label, prediction, num_classes=num_classes, weights=weights, dtype=tf.dtypes.float32, name=None
         )
+        return tf.reshape(matrix, (1, num_classes, num_classes, 1))
 
 
 class SessionDAO:
@@ -180,22 +181,29 @@ class SummaryDAO:
                 print(msg)
 
     @staticmethod
-    def summary_op_for_train(tensors):
+    def summary_op_for_train(tensors_dict):
         # tensors is a dict of name:tensor
         with tf.name_scope("train_summaries"):
             summaries = []
-            for tensor_name, tensor in tensors.items():
-                summaries.append(tf.summary.scalar(tensor_name, tensor))
+            for tensor_name, tensor in tensors_dict.items():
+                if tensor_name == 'confusion_matrix':
+                    summaries.append(tf.summary.image(tensor_name, tensor))
+                else:
+                    summaries.append(tf.summary.scalar(tensor_name, tensor))
             return tf.summary.merge(summaries)
 
     @staticmethod
-    def summary_op_for_test(names):
+    def summary_op_for_test(tensors_dict):
         #   For test we need placeholder tensors ..
         #   because we will feed it with the average summary of k iterations
         with tf.name_scope('test_summaries'):
             summaries = []
             summary_placeholder_dict = {}
-            for name in names:
-                summary_placeholder_dict[name] = tf.placeholder(tf.float32, name=name)
-                summaries.append(tf.summary.scalar(name, summary_placeholder_dict[name]))
+            for name in tensors_dict.keys():
+                if name == 'confusion_matrix':
+                    summary_placeholder_dict[name] = tf.placeholder(tf.float32, tensors_dict[name].get_shape(), name)
+                    summaries.append(tf.summary.image(name, summary_placeholder_dict[name]))
+                else:
+                    summary_placeholder_dict[name] = tf.placeholder(tf.float32, name=name)
+                    summaries.append(tf.summary.scalar(name, summary_placeholder_dict[name]))
             return tf.summary.merge(summaries), summary_placeholder_dict

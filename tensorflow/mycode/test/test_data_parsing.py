@@ -16,6 +16,8 @@ class ClassificationDatasetStatisticsTest(TestCase):
         # Visualizer.bar_plot(train_samples, test_samples, categories, 'Train samples', 'Test samples')
         self.assertEqual(len(cds.categories), 40)
         self.assertAlmostEqual(cds.train_n + cds.test_n, 12311, delta=5)
+        print("Test data:", cds.test_n)
+        print("Training data:", cds.train_n)
 
 
 class TFRecordsConverterTest(TestCase):

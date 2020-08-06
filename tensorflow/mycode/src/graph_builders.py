@@ -104,6 +104,6 @@ def classification_graph(octree, label, flags, training=True, reuse=None):
 
     cost, l2reg, loss = Loss.softmax_cross_entropy(label, logit, trainables, flags.num_class,
                                                    weight_decay=flags.weight_decay)
-    accuracy = Evaluation.accuracy(logit, label)
+    accuracy, confusion_matrix = Evaluation.classification_metrics(logit, label, flags.num_class)
 
-    return {'cost': cost, 'l2reg': l2reg, 'loss': loss, 'accuracy': accuracy}
+    return {'cost': cost, 'l2reg': l2reg, 'loss': loss, 'accuracy': accuracy, 'confusion_matrix': confusion_matrix}

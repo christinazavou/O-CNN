@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import seaborn as sn
 
 
@@ -14,21 +15,21 @@ class Visualizer:
         bars_1 = ax.bar(x - Visualizer._bar_width / 2, y_values1, Visualizer._bar_width, label=label_1)
         bars_2 = ax.bar(x + Visualizer._bar_width / 2, y_values2, Visualizer._bar_width, label=label_2)
 
-        Visualizer.common_annotation(ax, ylabel=ylabel, title=title, xticks=x, xticklabels=x_labels, legend=True)
-        Visualizer.annotated_bars(ax, bars_1)
-        Visualizer.annotated_bars(ax, bars_2)
+        Visualizer._common_annotation(ax, ylabel=ylabel, title=title, xticks=x, xticklabels=x_labels, legend=True)
+        Visualizer._annotated_bars(ax, bars_1)
+        Visualizer._annotated_bars(ax, bars_2)
 
         fig.tight_layout()
         plt.show()
 
     @staticmethod
-    def annotated_bars(ax, bars):
+    def _annotated_bars(ax, bars):
         for bar in bars:
             ax.annotate(str(bar.get_height()), xy=(bar.get_x() + bar.get_width() / 2, bar.get_height()),
                         xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=8)
 
     @staticmethod
-    def common_annotation(ax, xlabel=None, ylabel=None, title=None, xticks=None, xticklabels=None, legend=False):
+    def _common_annotation(ax, xlabel=None, ylabel=None, title=None, xticks=None, xticklabels=None, legend=False):
         if xlabel is not None:
             ax.set_xlabel(xlabel)
         if ylabel is not None:
@@ -43,9 +44,11 @@ class Visualizer:
             ax.legend()
 
     @staticmethod
-    def confusion_matrix(matrix):
+    def confusion_matrix(matrix, categories):
+        df_cm = pd.DataFrame(matrix, index=categories, columns=categories)
         plt.figure()
-        sn.heatmap(matrix, annot=True, annot_kws={"size": 10})
+        sn.heatmap(df_cm, annot=True, annot_kws={"size": 10})
         plt.show()
 
 # Visualizer.bar_plot([2, 2, 2], [4, 4, 4], ['a', 'b', 'c'], 'ena', 'dio')
+# Visualizer.confusion_matrix([[1, 1, 2, 0], [1, 0, 1, 0], [0, 0, 1, 1], [0, 1, 2, 2]], ['a', 'b', 'c', 'd'])

@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import tensorflow as tf
 from prettytable import PrettyTable
 from tqdm import tqdm
@@ -29,6 +30,8 @@ class TFRunner:
         self.graph_builder = graph_builder
 
         self.train_op, self.train_tensors_dict, self.train_summary_op = None, None, None
+        self.train_summary_confusion_op = None  # keep it separate and calculate it only every few iterations
+        # because it will grow the summary files a lot
         self.test_tensors_dict, self.test_summary_op, self.test_summary_placeholder_dict = None, None, None
         self.result_table = None
 
@@ -40,18 +43,25 @@ class TFRunner:
 
         train_summaries = {'lr': lr}
         train_summaries.update(self.train_tensors_dict)
+        del train_summaries['confusion_matrix']
         self.train_summary_op = SummaryDAO.summary_op_for_train(train_summaries)
+        self.train_summary_confusion_op = SummaryDAO.summary_op_for_train(
+            {'confusion_matrix': self.train_tensors_dict['confusion_matrix']})
 
     def build_test_graph(self, reuse=True):
         octree, label = DatasetFactory(self.test_data_flags)()
         self.test_tensors_dict = self.graph_builder(octree, label, self.flags, training=False, reuse=reuse)
         self.test_summary_op, self.test_summary_placeholder_dict = SummaryDAO \
-            .summary_op_for_test(list(self.test_tensors_dict.keys()))
+            .summary_op_for_test(self.test_tensors_dict)
         self.init_logs()
 
     def init_logs(self):
         self.result_table = PrettyTable()
-        self.result_table.field_names = ["iter"] + list(self.test_tensors_dict.keys())
+        fields = ["iter"]
+        for key in self.test_tensors_dict.keys():
+            if key != "confusion_matrix":
+                fields.append(key)
+        self.result_table.field_names = fields
 
     def update_logs(self, train_iter, test_avg_metrics_dict):
         row = [train_iter]
@@ -60,11 +70,11 @@ class TFRunner:
         self.result_table.add_row(row)
 
     def run_k_iterations_test(self, session, k):
-        avg_results = {key: 0 for key in self.test_tensors_dict.keys()}
+        avg_results = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
         for _ in range(0, k + 1):
             iter_results = session.run(self.test_tensors_dict)
             for key, result in iter_results.items():
-                avg_results[key] += result
+                avg_results[key] += np.array(result)
 
         for key, result in avg_results.items():
             avg_results[key] /= k
@@ -85,11 +95,15 @@ class TFRunner:
     def train_iteration(self, session_dao, summary_dao):
         train_summary, _ = session_dao.session.run([self.train_summary_op, self.train_op])
         summary_dao.add(train_summary, session_dao.iter)
-        session_dao.iter_plus_one()
 
         if session_dao.iter % self.flags.test_every_iter == 0:
+            train_summary_confusion = session_dao.session.run(self.train_summary_confusion_op)
+            summary_dao.add(train_summary_confusion, session_dao.iter)
+
             self.evaluate_iteration(session_dao, summary_dao)
             self.save_results(os.path.join(session_dao.checkpoints_path, "results_table.txt"))
+
+        session_dao.iter_plus_one()
 
     def train(self):
         self.build_train_graph()
