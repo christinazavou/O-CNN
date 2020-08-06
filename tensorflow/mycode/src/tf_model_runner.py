@@ -5,9 +5,11 @@ import tensorflow as tf
 from prettytable import PrettyTable
 from tqdm import tqdm
 
+from src.config import CLASS_TO_LABEL
 from src.data_parsing import DatasetFactory
 from src.learning_rate import LRFactory
 from src.tf_utils import SummaryDAO, SessionDAO
+from src.visualization import Visualizer
 
 
 def build_solver(total_loss, learning_rate_handle):
@@ -80,17 +82,21 @@ class TFRunner:
             avg_results[key] /= k
         return avg_results
 
-    def evaluate_iteration(self, session_dao, summary_dao, save=True):
+    def evaluate_iteration(self, session_dao, summary_dao, save_model=True):
         print('\nEvaluating on test data ...\n')
         avg_test_metrics_dict = self.run_k_iterations_test(session_dao.session, self.flags.test_iter)
         test_summary = session_dao.session.run(self.test_summary_op,
                                                feed_dict={pl: avg_test_metrics_dict[metric]
                                                           for metric, pl in self.test_summary_placeholder_dict.items()})
-        if save:
+        if save_model:
             session_dao.save_iter(session_dao.iter, write_meta_graph=False)
         summary_dao.add(test_summary, session_dao.iter)
         self.update_logs(session_dao.iter, avg_test_metrics_dict)
         print(self.result_table)
+        if not save_model:  # i.e. we are not training; we are just testing a loaded model
+            Visualizer.confusion_matrix(
+                avg_test_metrics_dict['confusion_matrix'].reshape(self.flags.num_class, self.flags.num_class),
+                CLASS_TO_LABEL.keys())
 
     def train_iteration(self, session_dao, summary_dao):
         train_summary, _ = session_dao.session.run([self.train_summary_op, self.train_op])
@@ -137,7 +143,7 @@ class TFRunner:
 
             print('Start testing ...')
             # todo: pass function in session_dao and let session_dao do the iterations !?
-            self.evaluate_iteration(session_dao, summary_dao, save=False)
+            self.evaluate_iteration(session_dao, summary_dao, save_model=False)
             self.save_results(os.path.join(session_dao.checkpoints_path, "results_table.txt"))
             print('Testing done!')
 

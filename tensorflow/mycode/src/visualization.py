@@ -4,6 +4,9 @@ import pandas as pd
 import seaborn as sn
 
 
+# from src.config import CLASS_TO_LABEL
+
+
 class Visualizer:
     _bar_width = 0.35
 
@@ -47,8 +50,9 @@ class Visualizer:
     def confusion_matrix(matrix, categories):
         df_cm = pd.DataFrame(matrix, index=categories, columns=categories)
         plt.figure()
-        sn.heatmap(df_cm, annot=True, annot_kws={"size": 10})
+        g = sn.heatmap(df_cm, annot=True, fmt='.1f', xticklabels=categories, yticklabels=categories)
+        g.set_xticklabels(categories, rotation=-65)
         plt.show()
 
 # Visualizer.bar_plot([2, 2, 2], [4, 4, 4], ['a', 'b', 'c'], 'ena', 'dio')
-# Visualizer.confusion_matrix([[1, 1, 2, 0], [1, 0, 1, 0], [0, 0, 1, 1], [0, 1, 2, 2]], ['a', 'b', 'c', 'd'])
+# Visualizer.confusion_matrix(np.random.random((40, 40)), CLASS_TO_LABEL.keys())

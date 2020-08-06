@@ -18,7 +18,7 @@ _C.DATA.train.split_label = False  # Save the split label
 _C.DATA.train.adaptive = False  # Build the adaptive octree
 _C.DATA.train.node_feat = False  # Calculate the node feature
 
-_C.DATA.train.distort = True  # Whether to apply data augmentation
+_C.DATA.train.distort = False  # Whether to apply data augmentation
 _C.DATA.train.offset = 0.55  # Offset used to displace the points
 _C.DATA.train.axis = 'y'  # Rotation axis for data augmentation
 _C.DATA.train.scale = 0.0  # Scale the points
@@ -41,15 +41,15 @@ _C.DATA.train.return_pts = False  # Also return points
 
 _C.DATA.test = _C.DATA.train.clone()
 _C.DATA.test.location = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_test_octree.tfrecords'
-_C.DATA.test.distort = False
+# _C.DATA.test.distort = False
 _C.DATA.test.shuffle = 0
 
 # MODEL related parameters
 _C.MODEL = CN()
 _C.MODEL.gpu = (0,)  # The gpu ids
-_C.MODEL.logdir = '/media/christina/Data/ANFASS_data/O-CNN/output/ModelNet40/logsTestMatrix'  # Directory where to write event logs
-_C.MODEL.ckpt = ''  # Restore weights from checkpoint file
-_C.MODEL.run = 'train'  # Choose from train or test
+_C.MODEL.logdir = '/media/christina/Data/ANFASS_data/O-CNN/output/ModelNet40/logsT3'  # Directory where to write event logs
+_C.MODEL.ckpt = '66000'  # Restore weights from checkpoint file
+_C.MODEL.run = 'test'  # Choose from train or test
 _C.MODEL.type = 'sgd'  # Choose from sgd or adam
 _C.MODEL.max_iter = 160000  # Maximum training iterations
 _C.MODEL.test_iter = 925  # Test steps in testing phase
