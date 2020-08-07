@@ -30,6 +30,7 @@ _C.DATA.train.stddev = (0, 0, 0)  # The standard deviation of the random noise
 _C.DATA.train.interval = (1, 1, 1)  # Use interval&angle to generate random angle
 _C.DATA.train.angle = (180, 180, 180)
 
+_C.DATA.train.source_dir = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/ModelNet40.octree.5'
 _C.DATA.train.location = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_train_octree.tfrecords'  # The data location
 _C.DATA.train.shuffle = 1000  # The shuffle size
 _C.DATA.train.n_samples = -1  # Use at most `take` elements from this dataset
@@ -136,3 +137,5 @@ CLASS_TO_LABEL = {
     'wardrobe': 38,
     'xbox': 39
 }
+
+LABEL_TO_CLASS = {value: key for key, value in CLASS_TO_LABEL.items()}

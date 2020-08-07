@@ -54,6 +54,7 @@ class TFRunner:
             {'confusion_matrix': self.train_tensors_dict['confusion_matrix']})
 
     def build_test_graph(self, reuse=True):
+        # TODO: pass logit to find only top misclassified
         self.test_octree, self.test_label, self.test_filename = DatasetFactoryDebug(self.test_data_flags)()
         self.test_prediction, self.test_tensors_dict = self.graph_builder(self.test_octree, self.test_label, self.flags,
                                                                           training=False, reuse=reuse)
@@ -76,23 +77,26 @@ class TFRunner:
         self.result_table.add_row(row)
 
     def run_k_iterations_test(self, session, k):
-        mo = MisclassifiedOctrees(os.path.join(self.flags.logdir, "misclassified"))
+        mo = MisclassifiedOctrees(self.flags.logdir, self.train_data_flags.source_dir)
         avg_results = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
         for _ in range(0, k + 1):
-            iter_results, octrees, labels, predictions = session.run([self.test_tensors_dict,
-                                                                      self.test_octree,
-                                                                      self.test_label,
-                                                                      self.test_prediction])
+            iter_results, octrees, labels, filenames, predictions = session.run([self.test_tensors_dict,
+                                                                                 self.test_octree,
+                                                                                 self.test_label,
+                                                                                 self.test_filename,
+                                                                                 self.test_prediction])
             for key, result in iter_results.items():
                 avg_results[key] += np.array(result)
 
             if self.flags.run == 'test':
                 misclassified_indices = np.where(labels != predictions)[0]
                 for mi in misclassified_indices:
-                    mo(octrees[mi], labels[mi], predictions[mi])
+                    # TODO: find how to parse string from tfrecord without need of decode()
+                    mo(filenames[mi].decode('utf-8'), labels[mi], predictions[mi])
 
         for key, result in avg_results.items():
             avg_results[key] /= k
+        mo.save()
         return avg_results
 
     def evaluate_iteration(self, session_dao, summary_dao):

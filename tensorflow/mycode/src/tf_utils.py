@@ -1,7 +1,11 @@
 import os
+import shutil
 
 import tensorflow as tf
 from numpy import prod
+from prettytable import PrettyTable
+
+from src.config import LABEL_TO_CLASS
 
 
 class GraphAccess:
@@ -77,14 +81,26 @@ class Loss:
 
 class MisclassifiedOctrees:
 
-    def __init__(self, directory):
-        self.directory = directory
+    def __init__(self, logs_directory, data_directory):
+        self.out_directory = os.path.join(logs_directory, "misclassified")
+        if not os.path.exists(self.out_directory):
+            os.makedirs(self.out_directory)
+        self.data_directory = data_directory
+        self.result_table = PrettyTable()
+        self.result_table.field_names = ['case#', 'filename', 'label', 'prediction']
         self.case_id = 0
 
-    def __call__(self, octree, label, prediction):
-        os.makedirs(os.path.join(self.directory, str(self.case_id)))
+    def __call__(self, filename, label, prediction):
         self.case_id += 1
-        print("label ", label)
+        self.result_table.add_row([self.case_id, filename, label, prediction])
+        src_path = os.path.join(self.data_directory, LABEL_TO_CLASS[label], "test", os.path.basename(filename))
+        destination_path = os.path.join(self.out_directory, "{}_{}_{}".format(
+            os.path.basename(filename), LABEL_TO_CLASS[label], LABEL_TO_CLASS[prediction]))
+        shutil.copyfile(src_path, destination_path)
+
+    def save(self):
+        with open(os.path.join(self.out_directory, "misclassified.txt"), "w") as f:
+            f.write(str(self.result_table))
 
 
 class Evaluation:
