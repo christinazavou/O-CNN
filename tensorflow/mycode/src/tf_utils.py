@@ -99,7 +99,7 @@ class MisclassifiedOctrees:
         self.case_id += 1
         label, prediction, filename = LABEL_TO_CLASS[label], LABEL_TO_CLASS[prediction], os.path.basename(filename)
         src_path = os.path.join(self.data_directory, label, "test", filename)
-        self.add_record(self.case_id, src_path, label, prediction, probability)
+        self.add_record(self.case_id, src_path, label, prediction, round(probability, 4))
         # destination_path = os.path.join(self.out_directory, "{}_{}_{}".format(filename, label, prediction))
         # shutil.copyfile(src_path, destination_path)
 

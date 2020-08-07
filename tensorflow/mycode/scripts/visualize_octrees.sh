@@ -1,9 +1,10 @@
 #!/bin/bash
 
+cur_dir=$(pwd)
+
 out_dir='/media/christina/Data/ANFASS_data/O-CNN/output/ModelNet40/logsT3/misclassified'
 prob='0.9'
-mkdir ${out_dir}
-mkdir ${out_dir}/probability_${prob}
+#mkdir ${out_dir}/probability_${prob}
 
 cd ../../../octree/build
 
