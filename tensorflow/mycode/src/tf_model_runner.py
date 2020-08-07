@@ -29,43 +29,47 @@ class TFRunner:
         self.train_data_flags = train_data_flags
         self.test_data_flags = test_data_flags
         self.flags = model_flags
+
         self.graph_builder = graph_builder
 
-        self.train_op, self.train_tensors_dict, self.train_summary_op = None, None, None
-        self.train_summary_confusion_op = None  # keep it separate and calculate it only every few iterations
-        # because it will grow the summary files a lot
-        self.test_tensors_dict, self.test_summary_op, self.test_summary_placeholder_dict = None, None, None
+        self.train_op, self.lr = None, None
+        self.train_output_tensors_dict, self.train_metrics_tensors_dict = None, None
+        self.tr_summary_op_always, self.tr_summary_op_occasionally = None, None
+
+        self.test_output_tensors_dict, self.test_metrics_tensors_dict = None, None
+        self.test_summary_op, self.test_summary_placeholder_dict = None, None
         self.result_table = None
 
-        self.test_octree, self.test_label, self.test_prediction, self.test_filename = None, None, None, None  # in case
-        # we want to evaluate each prediction ...
+        # keep tensors of each test example to evaluate each prediction ...
+        self.test_octree, self.test_label, self.test_filename = None, None, None
+
+    def init_train_summaries(self):
+        train_summaries_always = {'lr': self.lr}
+        train_summaries_always.update(self.train_metrics_tensors_dict)
+        del train_summaries_always['confusion_matrix']
+        train_summaries_occasionally = {'confusion_matrix': self.train_metrics_tensors_dict['confusion_matrix']}
+        self.tr_summary_op_always = SummaryDAO.summary_op_for_train(train_summaries_always)
+        self.tr_summary_op_occasionally = SummaryDAO.summary_op_for_train(train_summaries_occasionally)
 
     def build_train_graph(self):
         octree, label, filename = DatasetFactoryDebug(self.train_data_flags)()
-
-        _, self.train_tensors_dict = self.graph_builder(octree, label, self.flags, training=True, reuse=False)
-        self.train_op, lr = build_solver(self.train_tensors_dict['loss'], LRFactory(**self.flags))
-
-        train_summaries = {'lr': lr}
-        train_summaries.update(self.train_tensors_dict)
-        del train_summaries['confusion_matrix']
-        self.train_summary_op = SummaryDAO.summary_op_for_train(train_summaries)
-        self.train_summary_confusion_op = SummaryDAO.summary_op_for_train(
-            {'confusion_matrix': self.train_tensors_dict['confusion_matrix']})
+        self.train_output_tensors_dict, self.train_metrics_tensors_dict = \
+            self.graph_builder(octree, label, self.flags, training=True, reuse=False)
+        self.train_op, self.lr = build_solver(self.train_metrics_tensors_dict['loss'], LRFactory(**self.flags))
+        self.init_train_summaries()
 
     def build_test_graph(self, reuse=True):
-        # TODO: pass logit to find only top misclassified
         self.test_octree, self.test_label, self.test_filename = DatasetFactoryDebug(self.test_data_flags)()
-        self.test_prediction, self.test_tensors_dict = self.graph_builder(self.test_octree, self.test_label, self.flags,
-                                                                          training=False, reuse=reuse)
+        self.test_output_tensors_dict, self.test_metrics_tensors_dict = \
+            self.graph_builder(self.test_octree, self.test_label, self.flags, training=False, reuse=reuse)
         self.test_summary_op, self.test_summary_placeholder_dict = SummaryDAO \
-            .summary_op_for_test(self.test_tensors_dict)
-        self.init_logs()
+            .summary_op_for_test(self.test_metrics_tensors_dict)
+        self.init_test_logs()
 
-    def init_logs(self):
+    def init_test_logs(self):
         self.result_table = PrettyTable()
         fields = ["iter"]
-        for key in self.test_tensors_dict.keys():
+        for key in self.test_metrics_tensors_dict.keys():
             if key != "confusion_matrix":
                 fields.append(key)
         self.result_table.field_names = fields
@@ -78,21 +82,24 @@ class TFRunner:
 
     def run_k_iterations_test(self, session, k):
         mo = MisclassifiedOctrees(self.flags.logdir, self.train_data_flags.source_dir)
-        avg_results = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
+        avg_results = {key: np.zeros(value.get_shape()) for key, value in self.test_metrics_tensors_dict.items()}
         for _ in range(0, k + 1):
-            iter_results, octrees, labels, filenames, predictions = session.run([self.test_tensors_dict,
-                                                                                 self.test_octree,
-                                                                                 self.test_label,
-                                                                                 self.test_filename,
-                                                                                 self.test_prediction])
+            iter_results, octrees, labels, filenames, outputs = session.run([self.test_metrics_tensors_dict,
+                                                                             self.test_octree,
+                                                                             self.test_label,
+                                                                             self.test_filename,
+                                                                             self.test_output_tensors_dict])
             for key, result in iter_results.items():
                 avg_results[key] += np.array(result)
 
             if self.flags.run == 'test':
-                misclassified_indices = np.where(labels != predictions)[0]
+                misclassified_indices = np.where(labels != outputs['prediction'])[0]
                 for mi in misclassified_indices:
-                    # TODO: find how to parse string from tfrecord without need of decode()
-                    mo(filenames[mi].decode('utf-8'), labels[mi], predictions[mi])
+                    prediction = outputs['prediction'][mi]
+                    probability = outputs['probability'][mi, prediction]
+                    if probability > self.flags.misclassified_low_prob:
+                        # TODO: find how to parse string from tfrecord without need of decode()
+                        mo(filenames[mi].decode('utf-8'), labels[mi], outputs['prediction'][mi], probability)
 
         for key, result in avg_results.items():
             avg_results[key] /= k
@@ -116,11 +123,11 @@ class TFRunner:
                 CLASS_TO_LABEL.keys())
 
     def train_iteration(self, session_dao, summary_dao):
-        train_summary, _ = session_dao.session.run([self.train_summary_op, self.train_op])
+        train_summary, _ = session_dao.session.run([self.tr_summary_op_always, self.train_op])
         summary_dao.add(train_summary, session_dao.iter)
 
         if session_dao.iter % self.flags.test_every_iter == 0:
-            train_summary_confusion = session_dao.session.run(self.train_summary_confusion_op)
+            train_summary_confusion = session_dao.session.run(self.tr_summary_op_occasionally)
             summary_dao.add(train_summary_confusion, session_dao.iter)
 
             self.evaluate_iteration(session_dao, summary_dao)

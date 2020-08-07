@@ -105,8 +105,13 @@ def classification_graph(octree, label, flags, training=True, reuse=None):
                                                    weight_decay=flags.weight_decay)
     accuracy, confusion_matrix = Evaluation.classification_metrics(logit, label, flags.num_class)
 
-    return tf.argmax(logit, axis=1, output_type=tf.int32), {'cost': cost,
-                                                            'l2reg': l2reg,
-                                                            'loss': loss,
-                                                            'accuracy': accuracy,
-                                                            'confusion_matrix': confusion_matrix}
+    output_tensors_dict = {'logit': logit,
+                           'probability': tf.nn.softmax(logit),
+                           'prediction': tf.argmax(logit, axis=1, output_type=tf.int32)}
+    metrics_tensors_dict = {'cost': cost,
+                            'l2reg': l2reg,
+                            'loss': loss,
+                            'accuracy': accuracy,
+                            'confusion_matrix': confusion_matrix}
+
+    return output_tensors_dict, metrics_tensors_dict

@@ -87,12 +87,12 @@ class MisclassifiedOctrees:
             os.makedirs(self.out_directory)
         self.data_directory = data_directory
         self.result_table = PrettyTable()
-        self.result_table.field_names = ['case#', 'filename', 'label', 'prediction']
+        self.result_table.field_names = ['case#', 'filename', 'label', 'prediction', 'probability']
         self.case_id = 0
 
-    def __call__(self, filename, label, prediction):
+    def __call__(self, filename, label, prediction, probability=None):
         self.case_id += 1
-        self.result_table.add_row([self.case_id, filename, label, prediction])
+        self.result_table.add_row([self.case_id, filename, label, prediction, probability])
         src_path = os.path.join(self.data_directory, LABEL_TO_CLASS[label], "test", os.path.basename(filename))
         destination_path = os.path.join(self.out_directory, "{}_{}_{}".format(
             os.path.basename(filename), LABEL_TO_CLASS[label], LABEL_TO_CLASS[prediction]))

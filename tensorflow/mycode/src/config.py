@@ -79,6 +79,7 @@ _C.MODEL.num_class = 40  # The class number for the cross-entropy loss
 _C.MODEL.weight_decay = 0.0005  # The weight decay on model weights
 _C.MODEL.weights = (1.0, 1.0)  # The weight factors for different losses
 _C.MODEL.label_smoothing = 0.0  # The factor of label smoothing
+_C.MODEL.misclassified_low_prob = 0.6
 
 # backup the commands
 _C.SYS = CN()
