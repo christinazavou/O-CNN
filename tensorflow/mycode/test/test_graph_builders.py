@@ -1,4 +1,4 @@
-from src.data_parsing import DatasetFactory
+from src.data_parsing import DatasetFactoryDebug
 from src.graph_builders import *
 from test.helper import mock_train_config
 
@@ -16,7 +16,7 @@ class DatasetTest(tf.test.TestCase):
         depth = 5
         channel = 3
 
-        octree, label = DatasetFactory(flags_data_train)()
+        octree, label, filename = DatasetFactoryDebug(flags_data_train)()
 
         encoded_data, debug_checks = ocnn_encoder(octree, depth, channel, True, False, True)
         _, debug_checks_fc = ocnn_classification_logit(encoded_data, 40, True, False, True)

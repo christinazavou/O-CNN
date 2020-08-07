@@ -70,7 +70,7 @@ class DatasetTest(tf.test.TestCase):
 
     def test_point_dataset(self):
         with tf.Session() as sess:
-            points = PointDataset(ParseExample(x_alias='data', y_alias='label'),
+            points = PointDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
                                   TransformPoints(distort=False, depth=5, offset=0.55, axis='y', scale=0.0,
                                                   jitter=0.0, angle=[180, 180, 180], bounding_sphere=bounding_sphere),
                                   Points2Octree(depth=5))
@@ -96,38 +96,60 @@ class DatasetTest(tf.test.TestCase):
 
     def test_octree_dataset(self):
         with tf.Session() as sess:
-            octrees = OctreeDataset(ParseExample(x_alias='data', y_alias='label'))
-            call_octrees = octrees(tf_record_filenames='resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords',
-                                   batch_size=32, shuffle_size=False, return_iterator=False, take=10)
+            octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
+            call_octrees = \
+                octrees(tf_record_filenames='resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords',
+                        batch_size=32, shuffle_size=False, return_iterator=False, take=10)
 
-            merged_octrees_batch1 = sess.run(call_octrees)
+            octrees, labels, filenames = sess.run(call_octrees)
             try:
-                self.assertTrue(np.issubdtype(merged_octrees_batch1[0].dtype, np.integer))
-                self.assertTrue(np.issubdtype(merged_octrees_batch1[1].dtype, np.integer))
-                self.assertEqual(merged_octrees_batch1[1].shape, (32,))
+                self.assertTrue(np.issubdtype(octrees.dtype, np.integer))
+                self.assertTrue(np.issubdtype(labels.dtype, np.integer))
+                self.assertTrue(np.issubdtype(filenames.dtype, np.object))
+                self.assertEqual(len(octrees.shape), 1)
+                self.assertEqual(labels.shape, (32,))
+                self.assertEqual(filenames.shape, (32,))
             except AssertionError as e:
                 self.verificationErrors.append(str(e))
 
         print("test_octree_dataset checked")
 
+    def test_octree_dataset_batch1(self):
+        with tf.Session() as sess:
+            octree = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
+            call_octree = \
+                octree(tf_record_filenames='resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords',
+                       batch_size=3, shuffle_size=False, return_iterator=False, take=10)
+
+            octree_b, labels_b, filenames_b = sess.run(call_octree)
+            try:
+                self.assertTrue(octree_b.shape, (3,))
+                self.assertTrue('test' in str(filenames_b[0]))
+            except AssertionError as e:
+                self.verificationErrors.append(str(e))
+
+        print("test_octree_dataset_batch1 checked")
+
     def test_point_cloud_dataset(self):
         with tf.Session() as sess:
-            next_point = PointCloudDataset(ParseExample())
-            call_next_point = next_point(tf_record_filenames='resources/ModelNetOnly4Samples3/m40_test_points.tfrecords',
-                                         batch_size=10, shuffle_size=1000, return_iterator=False, take=-1)
+            next_point = PointCloudDataset(ParseExampleDebug())
+            call_next_point = next_point(
+                tf_record_filenames='resources/ModelNetOnly4Samples3/m40_test_points.tfrecords',
+                batch_size=10, shuffle_size=1000, return_iterator=False, take=-1)
 
-            point_cloud_1 = sess.run(call_next_point)
-            point_cloud_2 = sess.run(call_next_point)
+            batch_point_clouds1, batch_labels1, batch_filenames1 = sess.run(call_next_point)
+            batch_point_clouds2, batch_labels2, batch_filenames2 = sess.run(call_next_point)
 
             try:
-                self.assertEqual(point_cloud_1[0].shape, (10,))  # batch point clouds
-                self.assertEqual(point_cloud_1[0].dtype, object)  # point cloud represented as string
-                self.assertEqual(point_cloud_1[1].shape, (10,))  # batch point cloud labels
-                self.assertEqual(point_cloud_1[1].dtype, int)  # point cloud label represented as int
+                self.assertEqual(batch_point_clouds1.shape, (10,))  # batch point clouds
+                self.assertEqual(batch_point_clouds1.dtype, object)  # point cloud represented as string
+                self.assertEqual(batch_labels1.shape, (10,))  # batch point cloud labels
+                self.assertEqual(batch_labels1.dtype, int)  # point cloud label represented as int
 
-                # NOTE: becuase next_point is calling the next element of the generated TFRecordDataset everytime we call it we get the next element ;) !
-                self.assertFalse(all(point_cloud_1[0] == point_cloud_2[0]))
-                self.assertFalse(all(point_cloud_1[1] == point_cloud_2[1]))
+                # NOTE: because next_point is calling the next element of the generated TFRecordDataset
+                # everytime we call it we get the next element ;) !
+                self.assertFalse(all(batch_point_clouds1 == batch_point_clouds2))
+                self.assertFalse(all(batch_labels1 == batch_labels2))
             except AssertionError as e:
                 self.verificationErrors.append(str(e))
 

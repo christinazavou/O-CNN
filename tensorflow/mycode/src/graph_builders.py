@@ -98,7 +98,6 @@ def ocnn_classification_logit(encoded_data, n_out, training=True, reuse=None, de
 def classification_graph(octree, label, flags, training=True, reuse=None):
     encoded_data, _ = ocnn_encoder(octree, flags.depth, flags.channel, training, reuse)
     logit, _ = ocnn_classification_logit(encoded_data, flags.nout, training, reuse)
-    # prediction = tf.nn.softmax(logit)  # tf.argmax(logit, axis=1, output_type=tf.int32)
 
     trainables = GraphAccess.get_variables(None, None, True, True)
 
@@ -106,4 +105,8 @@ def classification_graph(octree, label, flags, training=True, reuse=None):
                                                    weight_decay=flags.weight_decay)
     accuracy, confusion_matrix = Evaluation.classification_metrics(logit, label, flags.num_class)
 
-    return {'cost': cost, 'l2reg': l2reg, 'loss': loss, 'accuracy': accuracy, 'confusion_matrix': confusion_matrix}
+    return tf.argmax(logit, axis=1, output_type=tf.int32), {'cost': cost,
+                                                            'l2reg': l2reg,
+                                                            'loss': loss,
+                                                            'accuracy': accuracy,
+                                                            'confusion_matrix': confusion_matrix}

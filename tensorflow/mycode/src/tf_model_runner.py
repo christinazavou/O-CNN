@@ -6,9 +6,9 @@ from prettytable import PrettyTable
 from tqdm import tqdm
 
 from src.config import CLASS_TO_LABEL
-from src.data_parsing import DatasetFactory
+from src.data_parsing import DatasetFactoryDebug
 from src.learning_rate import LRFactory
-from src.tf_utils import SummaryDAO, SessionDAO
+from src.tf_utils import SummaryDAO, SessionDAO, MisclassifiedOctrees
 from src.visualization import Visualizer
 
 
@@ -37,10 +37,13 @@ class TFRunner:
         self.test_tensors_dict, self.test_summary_op, self.test_summary_placeholder_dict = None, None, None
         self.result_table = None
 
-    def build_train_graph(self):
-        octree, label = DatasetFactory(self.train_data_flags)()
+        self.test_octree, self.test_label, self.test_prediction, self.test_filename = None, None, None, None  # in case
+        # we want to evaluate each prediction ...
 
-        self.train_tensors_dict = self.graph_builder(octree, label, self.flags, training=True, reuse=False)
+    def build_train_graph(self):
+        octree, label, filename = DatasetFactoryDebug(self.train_data_flags)()
+
+        _, self.train_tensors_dict = self.graph_builder(octree, label, self.flags, training=True, reuse=False)
         self.train_op, lr = build_solver(self.train_tensors_dict['loss'], LRFactory(**self.flags))
 
         train_summaries = {'lr': lr}
@@ -51,8 +54,9 @@ class TFRunner:
             {'confusion_matrix': self.train_tensors_dict['confusion_matrix']})
 
     def build_test_graph(self, reuse=True):
-        octree, label = DatasetFactory(self.test_data_flags)()
-        self.test_tensors_dict = self.graph_builder(octree, label, self.flags, training=False, reuse=reuse)
+        self.test_octree, self.test_label, self.test_filename = DatasetFactoryDebug(self.test_data_flags)()
+        self.test_prediction, self.test_tensors_dict = self.graph_builder(self.test_octree, self.test_label, self.flags,
+                                                                          training=False, reuse=reuse)
         self.test_summary_op, self.test_summary_placeholder_dict = SummaryDAO \
             .summary_op_for_test(self.test_tensors_dict)
         self.init_logs()
@@ -72,28 +76,37 @@ class TFRunner:
         self.result_table.add_row(row)
 
     def run_k_iterations_test(self, session, k):
+        mo = MisclassifiedOctrees(os.path.join(self.flags.logdir, "misclassified"))
         avg_results = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
         for _ in range(0, k + 1):
-            iter_results = session.run(self.test_tensors_dict)
+            iter_results, octrees, labels, predictions = session.run([self.test_tensors_dict,
+                                                                      self.test_octree,
+                                                                      self.test_label,
+                                                                      self.test_prediction])
             for key, result in iter_results.items():
                 avg_results[key] += np.array(result)
+
+            if self.flags.run == 'test':
+                misclassified_indices = np.where(labels != predictions)[0]
+                for mi in misclassified_indices:
+                    mo(octrees[mi], labels[mi], predictions[mi])
 
         for key, result in avg_results.items():
             avg_results[key] /= k
         return avg_results
 
-    def evaluate_iteration(self, session_dao, summary_dao, save_model=True):
+    def evaluate_iteration(self, session_dao, summary_dao):
         print('\nEvaluating on test data ...\n')
         avg_test_metrics_dict = self.run_k_iterations_test(session_dao.session, self.flags.test_iter)
         test_summary = session_dao.session.run(self.test_summary_op,
                                                feed_dict={pl: avg_test_metrics_dict[metric]
                                                           for metric, pl in self.test_summary_placeholder_dict.items()})
-        if save_model:
+        if self.flags.run == 'train':
             session_dao.save_iter(session_dao.iter, write_meta_graph=False)
         summary_dao.add(test_summary, session_dao.iter)
         self.update_logs(session_dao.iter, avg_test_metrics_dict)
         print(self.result_table)
-        if not save_model:  # i.e. we are not training; we are just testing a loaded model
+        if self.flags.run == 'test':
             Visualizer.confusion_matrix(
                 avg_test_metrics_dict['confusion_matrix'].reshape(self.flags.num_class, self.flags.num_class),
                 CLASS_TO_LABEL.keys())
@@ -143,7 +156,7 @@ class TFRunner:
 
             print('Start testing ...')
             # todo: pass function in session_dao and let session_dao do the iterations !?
-            self.evaluate_iteration(session_dao, summary_dao, save_model=False)
+            self.evaluate_iteration(session_dao, summary_dao)
             self.save_results(os.path.join(session_dao.checkpoints_path, "results_table.txt"))
             print('Testing done!')
 

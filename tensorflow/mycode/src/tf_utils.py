@@ -75,6 +75,18 @@ class Loss:
         return regularizer
 
 
+class MisclassifiedOctrees:
+
+    def __init__(self, directory):
+        self.directory = directory
+        self.case_id = 0
+
+    def __call__(self, octree, label, prediction):
+        os.makedirs(os.path.join(self.directory, str(self.case_id)))
+        self.case_id += 1
+        print("label ", label)
+
+
 class Evaluation:
 
     # @staticmethod
@@ -94,7 +106,6 @@ class Evaluation:
     def classification_metrics(logit, label, num_classes, scope="classification_metrics"):
         with tf.name_scope(scope):
             prediction = tf.argmax(logit, axis=1, output_type=tf.int32)
-            # prediction = tf.nn.softmax(logit)  # tf.argmax(logit, axis=1, output_type=tf.int32)
             accuracy = Evaluation.label_accuracy(prediction, tf.cast(label, tf.int32))
             confusion_matrix = Evaluation.confusion_matrix(prediction, label, num_classes)
         return accuracy, confusion_matrix
