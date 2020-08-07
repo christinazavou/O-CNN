@@ -1,9 +1,8 @@
 import os
-import shutil
 
+import pandas as pd
 import tensorflow as tf
 from numpy import prod
-from prettytable import PrettyTable
 
 from src.config import LABEL_TO_CLASS
 
@@ -86,21 +85,28 @@ class MisclassifiedOctrees:
         if not os.path.exists(self.out_directory):
             os.makedirs(self.out_directory)
         self.data_directory = data_directory
-        self.result_table = PrettyTable()
-        self.result_table.field_names = ['case#', 'filename', 'label', 'prediction', 'probability']
+        self.results = {'case#': [], 'filename': [], 'label': [], 'prediction': [], 'probability': []}
         self.case_id = 0
+
+    def add_record(self, case_id, filename, label, prediction, probability):
+        self.results['case#'].append(case_id)
+        self.results['filename'].append(filename)
+        self.results['label'].append(label)
+        self.results['prediction'].append(prediction)
+        self.results['probability'].append(probability)
 
     def __call__(self, filename, label, prediction, probability=None):
         self.case_id += 1
-        self.result_table.add_row([self.case_id, filename, label, prediction, probability])
-        src_path = os.path.join(self.data_directory, LABEL_TO_CLASS[label], "test", os.path.basename(filename))
-        destination_path = os.path.join(self.out_directory, "{}_{}_{}".format(
-            os.path.basename(filename), LABEL_TO_CLASS[label], LABEL_TO_CLASS[prediction]))
-        shutil.copyfile(src_path, destination_path)
+        label, prediction, filename = LABEL_TO_CLASS[label], LABEL_TO_CLASS[prediction], os.path.basename(filename)
+        src_path = os.path.join(self.data_directory, label, "test", filename)
+        self.add_record(self.case_id, src_path, label, prediction, probability)
+        # destination_path = os.path.join(self.out_directory, "{}_{}_{}".format(filename, label, prediction))
+        # shutil.copyfile(src_path, destination_path)
 
     def save(self):
-        with open(os.path.join(self.out_directory, "misclassified.txt"), "w") as f:
-            f.write(str(self.result_table))
+        df = pd.DataFrame(self.results)
+        df = df.sort_values(by='probability')
+        df.to_csv(os.path.join(self.out_directory, "misclassified.csv"), sep=';', header=True, index=False)
 
 
 class Evaluation:
