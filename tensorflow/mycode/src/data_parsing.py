@@ -315,3 +315,33 @@ class ClassificationDatasetStatistics:
             points_filenames = [f for f in os.listdir(directory) if '.points' in f]
             train_samples.append(len(points_filenames))
         return test_samples, train_samples
+
+
+class FileManipulator:
+
+    @staticmethod
+    def generate_list_text_files(points_folder):
+        for point_folder in os.listdir(points_folder):
+            point_folder = os.path.join(points_folder, point_folder)
+            print("processing point folder: ", point_folder)
+            with open(os.path.join(point_folder, "list.txt"), "w") as f:
+                for point_name in os.listdir(point_folder):
+                    if ".points" in point_name:
+                        point_file = os.path.join(point_folder, point_name)
+                        f.write(point_file + "\n")
+
+    @staticmethod
+    def generate_octrees_for_each_folder(points_folder, out_dir):
+        for point_folder in os.listdir(points_folder):
+            filenames = os.path.join(points_folder, point_folder, "list.txt")
+            output_path = os.path.join(out_dir, point_folder)
+            cmd = "octree --filenames {} --output_path {} --depth 5 --adaptive 0 --node_dis 0 --axis z" \
+                .format(filenames, output_path)
+            print(cmd)
+
+
+if __name__ == '__main__':
+    # FileManipulator.generate_list_text_files('/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.points')
+    FileManipulator.generate_octrees_for_each_folder(
+        '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.points',
+        '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.octrees')
