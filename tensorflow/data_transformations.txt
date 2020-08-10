@@ -54,3 +54,12 @@ conv_depth4: (1, 32, 27696, 1)
 pool_depth4: (1, 32, 7424, 1)
 conv_depth3: (1, 64, 7424, 1)
 pool_depth3: (1, 64, 2048, 1)
+
+
+Translating shape_completion dataset from points to octrees to run autoencoder with ocnn:
+ - use generate_octrees_from_points.sh
+ - use data_parsing.FileManipulator.point_list_to_octree_list
+ - use data_parsing.TFRecordsConverter.write_records
+    - test_scans_octrees: 14400 data samples
+    - test_octrees: 64608 data samples
+    - train_octrees: 307080 data samples

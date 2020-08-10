@@ -339,9 +339,24 @@ class FileManipulator:
                 .format(filenames, output_path)
             print(cmd)
 
+    @staticmethod
+    def point_list_to_octree_list(point_file, octree_file):
+        with open(point_file, "r") as fin, open(octree_file, "w") as fout:
+            lines = fin.readlines()
+            for line in lines:
+                for i in range(12):
+                    fout.write(line.replace(".points", "_5_2_{0:03}.octree".format(i)))
 
-if __name__ == '__main__':
-    # FileManipulator.generate_list_text_files('/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.points')
-    FileManipulator.generate_octrees_for_each_folder(
-        '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.points',
-        '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.octrees')
+# if __name__ == '__main__':
+# FileManipulator.generate_list_text_files('/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.points')
+# FileManipulator.generate_octrees_for_each_folder(
+#     '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.points',
+#     '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.octrees')
+# FileManipulator.point_list_to_octree_list(
+#     "/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/filelist_train.txt",
+#     "/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/filelist_train_octrees.txt")
+# TFRecordsConverter.write_records(
+#     "/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.octrees",
+#     "/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/filelist_train_octrees.txt",
+#     "/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_train_octrees.tfrecords",
+#     file_type='data', shuffle=False)

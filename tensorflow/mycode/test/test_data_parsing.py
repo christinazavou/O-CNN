@@ -170,36 +170,50 @@ class DatasetTest(tf.test.TestCase):
                            "intermediate/ModelNetOnly4Samples3/test_octree_and_points"
                            "/m40_5_2_12_test_octree_sample1.tfrecords",
                            file_type='data', shuffle=False)
-    #
-    # @unittest.SkipTest("No need to run this. We just have 12 octrees in the OctreeDataset and 1 points in the "
-    #                    "PointsDataset. Both datasets are translated into octrees though.")
-    # def test_octree_and_points(self):
-    #     self.run_requirements()
-    #
-    #     with tf.Session() as sess:
-    #         # We need a folder with:
-    #         # 1. tfrecords file containing the bathtub_0001 points
-    #         # 2. tfrecords file containing the bathtub_0001 octree
-    #
-    #         points = PointDataset(ParseExample(x_alias='data', y_alias='label'),
-    #                               TransformPoints(distort=False, depth=5, offset=0.55, axis='y', scale=0.0,
-    #                                               jitter=0.0, angle=[180, 180, 180], bounding_sphere=bounding_sphere),
-    #                               Points2Octree(depth=5))
-    #         call_points = points(tf_record_filenames='intermediate/ModelNetOnly4Samples3/test_octree_and_points'
-    #                                                  '/m40_test_points_sample1.tfrecords',
-    #                              batch_size=32, shuffle_size=0, return_iterator=False, take=-1, return_pts=False)
-    #
-    #         merged_octrees_batch1_from_points = sess.run(call_points)
-    #
-    #         octrees = OctreeDataset(ParseExample(x_alias='data', y_alias='label'))
-    #         call_octrees = octrees(tf_record_filenames='intermediate/ModelNetOnly4Samples3/test_octree_and_points'
-    #                                                    '/m40_5_2_12_test_octree_sample1.tfrecords',
-    #                                batch_size=32, shuffle_size=0, return_iterator=False, take=-1)
-    #
-    #         merged_octrees_batch1_from_octrees = sess.run(call_octrees)
-    #
-    #         print("test_octree_and_points checked")
-    #
+
+    def test_octree_and_points(self):
+        self.run_requirements()
+
+        with tf.Session() as sess:
+            # We need a folder with:
+            # 1. tfrecords file containing the bathtub_0001 points
+            # 2. tfrecords file containing the bathtub_0001 octree
+
+            points = PointDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
+                                  TransformPoints(distort=False, depth=5, offset=0.55, axis='y', scale=0.0,
+                                                  jitter=0.0, angle=[180, 180, 180], bounding_sphere=bounding_sphere),
+                                  Points2Octree(depth=5))
+            call_points = points(tf_record_filenames='intermediate/ModelNetOnly4Samples3/test_octree_and_points'
+                                                     '/m40_test_points_sample1.tfrecords',
+                                 batch_size=1, shuffle_size=0, return_iterator=False, take=-1, return_pts=False)
+
+            octree_from_points_first = sess.run(call_points)
+
+            octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
+            call_octrees = octrees(tf_record_filenames='intermediate/ModelNetOnly4Samples3/test_octree_and_points'
+                                                       '/m40_5_2_12_test_octree_sample1.tfrecords',
+                                   batch_size=1, shuffle_size=0, return_iterator=False, take=-1)
+            octree_from_octrees_first = sess.run(call_octrees)
+
+            found_equal = np.all(octree_from_octrees_first[0] == octree_from_points_first[0])
+            print(found_equal)
+            found_equal_size = octree_from_points_first[0].shape == octree_from_octrees_first[0].shape
+            print(found_equal_size)
+
+            found_equal_points = []
+            for i in range(11):
+                octree_from_points = sess.run(call_points)
+                found_equal_points.append(np.all(octree_from_points[0] == octree_from_points_first[0]))
+
+                octree_from_octrees = sess.run(call_octrees)
+                found_equal = np.all(octree_from_octrees[0] == octree_from_points_first[0])
+                print(found_equal)
+
+            self.assertTrue(all(found_equal_points))
+            print("test_octree_and_points checked")
+            # ****** We have 12 octrees in the OctreeDataset and 1 points in the PointsDataset.
+            # ****** Both datasets are translated into octrees though.
+
 
 if __name__ == "__main__":
     tf.test.main()
