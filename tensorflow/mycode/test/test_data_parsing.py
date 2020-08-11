@@ -64,42 +64,54 @@ class DatasetTest(tf.test.TestCase):
 
     def setUp(self):
         self.verificationErrors = []
+        self.points = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
+                                          TransformPoints(distort=False, depth=5, offset=0.55, axis='z', scale=0.0,
+                                                          jitter=0.0, angle=[180, 180, 180],
+                                                          bounding_sphere=bounding_sphere),
+                                          Points2Octree(depth=5))
+        self.octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
 
     def tearDown(self):
         self.assertEqual([], self.verificationErrors)
 
     def test_point_dataset(self):
+
         with tf.Session() as sess:
-            points = PointDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
-                                  TransformPoints(distort=False, depth=5, offset=0.55, axis='y', scale=0.0,
-                                                  jitter=0.0, angle=[180, 180, 180], bounding_sphere=bounding_sphere),
-                                  Points2Octree(depth=5))
-            call_points = points(tf_record_filenames='resources/ModelNetOnly4Samples3/m40_test_points.tfrecords',
-                                 batch_size=32, shuffle_size=1000, return_iterator=False, take=-1, return_pts=False)
+            for filename in ['resources/ModelNetOnly4Samples3/m40_test_points.tfrecords',
+                             'resources/ocnn_completion_only2samples2/completion_test_points.tfrecords']:
 
-            merged_octrees_batch1 = sess.run(call_points)
-            merged_octrees_batch2 = sess.run(call_points)
+                merged_octrees_batch1 = sess.run(self.points(tf_record_filenames=filename, batch_size=32,
+                                                             shuffle_size=1000, return_iterator=False, take=-1,
+                                                             return_pts=False))
+                merged_octrees_batch2 = sess.run(self.points(tf_record_filenames=filename, batch_size=32,
+                                                             shuffle_size=1000, return_iterator=False, take=-1,
+                                                             return_pts=False))
+                merged_octrees_batch3 = sess.run(self.points(tf_record_filenames=filename, batch_size=32,
+                                                             shuffle_size=1000, return_iterator=False, take=-1,
+                                                             return_pts=True))
 
-            try:
-                self.assertTrue(np.issubdtype(merged_octrees_batch1[0].dtype, np.integer))
-                self.assertTrue(np.issubdtype(merged_octrees_batch1[1].dtype, np.integer))
-                self.assertEqual(merged_octrees_batch1[1].shape, (32,))
+                try:
+                    self.assertTrue(np.issubdtype(merged_octrees_batch1[0].dtype, np.integer))
+                    self.assertTrue(np.issubdtype(merged_octrees_batch1[1].dtype, np.integer))
+                    self.assertEqual(merged_octrees_batch1[1].shape, (32,))
 
-                self.assertTrue(np.issubdtype(merged_octrees_batch2[0].dtype, np.integer))
-                self.assertTrue(np.issubdtype(merged_octrees_batch2[1].dtype, np.integer))
-                self.assertEqual(merged_octrees_batch2[1].shape, (32,))
+                    self.assertTrue(np.issubdtype(merged_octrees_batch2[0].dtype, np.integer))
+                    self.assertTrue(np.issubdtype(merged_octrees_batch2[1].dtype, np.integer))
+                    self.assertEqual(merged_octrees_batch2[1].shape, (32,))
 
-                self.assertTrue(merged_octrees_batch2[0].shape != merged_octrees_batch1[0].shape)
-            except AssertionError as e:
-                self.verificationErrors.append(str(e))
+                    self.assertTrue(merged_octrees_batch2[0].shape != merged_octrees_batch1[0].shape)
+                    self.assertTrue(len(merged_octrees_batch1) == 2)
+                    self.assertTrue(len(merged_octrees_batch2) == 2)
+                    self.assertTrue(len(merged_octrees_batch3) == 3)
+                except AssertionError as e:
+                    self.verificationErrors.append(str(e))
         print("test_point_dataset checked")
 
     def test_octree_dataset(self):
         with tf.Session() as sess:
-            octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
             call_octrees = \
-                octrees(tf_record_filenames='resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords',
-                        batch_size=32, shuffle_size=False, return_iterator=False, take=10)
+                self.octrees(tf_record_filenames='resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords',
+                             batch_size=32, shuffle_size=False, return_iterator=False, take=10)
 
             octrees, labels, filenames = sess.run(call_octrees)
             try:
@@ -116,10 +128,9 @@ class DatasetTest(tf.test.TestCase):
 
     def test_octree_dataset_batch1(self):
         with tf.Session() as sess:
-            octree = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
             call_octree = \
-                octree(tf_record_filenames='resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords',
-                       batch_size=3, shuffle_size=False, return_iterator=False, take=10)
+                self.octrees(tf_record_filenames='resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords',
+                             batch_size=3, shuffle_size=False, return_iterator=False, take=10)
 
             octree_b, labels_b, filenames_b = sess.run(call_octree)
             try:
@@ -179,13 +190,9 @@ class DatasetTest(tf.test.TestCase):
             # 1. tfrecords file containing the bathtub_0001 points
             # 2. tfrecords file containing the bathtub_0001 octree
 
-            points = PointDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
-                                  TransformPoints(distort=False, depth=5, offset=0.55, axis='y', scale=0.0,
-                                                  jitter=0.0, angle=[180, 180, 180], bounding_sphere=bounding_sphere),
-                                  Points2Octree(depth=5))
-            call_points = points(tf_record_filenames='intermediate/ModelNetOnly4Samples3/test_octree_and_points'
-                                                     '/m40_test_points_sample1.tfrecords',
-                                 batch_size=1, shuffle_size=0, return_iterator=False, take=-1, return_pts=False)
+            call_points = self.points(tf_record_filenames='intermediate/ModelNetOnly4Samples3/test_octree_and_points'
+                                                          '/m40_test_points_sample1.tfrecords',
+                                      batch_size=1, shuffle_size=0, return_iterator=False, take=-1, return_pts=False)
 
             octree_from_points_first = sess.run(call_points)
 
