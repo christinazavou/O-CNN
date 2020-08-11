@@ -93,9 +93,10 @@ class ParseExampleDebug:
     def __init__(self, x_alias='data', y_alias='label', **kwargs):
         self.x_alias = x_alias
         self.y_alias = y_alias
-        self.features = {x_alias: tf.FixedLenFeature([], tf.string),
-                         y_alias: tf.FixedLenFeature([], tf.int64),
-                         'filename': tf.FixedLenFeature([], tf.string)}
+        self.features = {x_alias: TFRecordsUtils.from_bytes_feature(),
+                         y_alias: TFRecordsUtils.from_ints_feature(),
+                         'index': TFRecordsUtils.from_ints_feature(),
+                         'filename': TFRecordsUtils.from_bytes_feature()}
 
     def __call__(self, record):
         parsed = tf.io.parse_single_example(record, self.features)
@@ -205,12 +206,70 @@ class DatasetFactoryDebug:
 
 class TFRecordsUtils:
     @staticmethod
-    def int64_feature(value):
+    def to_int64_feature(value):
         return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
     @staticmethod
-    def bytes_feature(value):
+    def to_bytes_feature(value):
         return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+
+    @staticmethod
+    def from_bytes_feature():
+        return tf.FixedLenFeature([], tf.string)
+
+    @staticmethod
+    def from_ints_feature():
+        return tf.FixedLenFeature([], tf.int64)
+
+    @staticmethod
+    def byte_from_example(example, feature_name):
+        return example.features.feature[feature_name].bytes_list.value[0]
+
+    @staticmethod
+    def int_from_example(example, feature_name):
+        return int(example.features.feature[feature_name].int64_list.value[0])
+
+
+class TFRWriter:
+    def __init__(self, records_name):
+        self.writer = tf.python_io.TFRecordWriter(records_name)
+
+    def __call__(self, file_type, octrees_dir, label, index, in_filename, save_filename):
+        octree_file = TFRecordsConverter.load_octree(os.path.join(octrees_dir, in_filename))
+        feature = {file_type: TFRecordsUtils.to_bytes_feature(octree_file),
+                   'label': TFRecordsUtils.to_int64_feature(label),
+                   'index': TFRecordsUtils.to_int64_feature(index),
+                   'filename': TFRecordsUtils.to_bytes_feature(save_filename)}
+        example = tf.train.Example(features=tf.train.Features(feature=feature))
+        self.writer.write(example.SerializeToString())
+
+    def close(self):
+        self.writer.close()
+
+
+class TFRReader:
+
+    def __init__(self, records_name):
+        self.records_iterator = tf.python_io.tf_record_iterator(records_name)
+
+    def __call__(self, take_max, file_type='data'):
+        num = 0
+        for string_record in self.records_iterator:
+            if num >= take_max:
+                break
+
+            example = tf.train.Example()
+            example.ParseFromString(string_record)
+            label = TFRecordsUtils.int_from_example(example, 'label')
+            index = TFRecordsUtils.int_from_example(example, 'index')
+            octree = TFRecordsUtils.byte_from_example(example, file_type)
+            if 'filename' in example.features.feature:
+                filename = TFRecordsUtils.byte_from_example(example, 'filename') \
+                    .decode('utf8').replace('/', '_').replace('\\', '_')
+            else:
+                filename = '%06d.%s' % (num, file_type)
+            num += 1
+            yield octree, label, index, filename
 
 
 class TFRecordsConverter:
@@ -228,18 +287,11 @@ class TFRecordsConverter:
         if not os.path.exists(os.path.dirname(records_name)):
             os.makedirs(os.path.dirname(records_name))
 
-        writer = tf.python_io.TFRecordWriter(records_name)
+        writer = TFRWriter(records_name)
         for i in range(len(data)):
             if not i % 1000:
                 print('data loaded: {}/{}'.format(i, len(data)))
-
-            octree_file = TFRecordsConverter.load_octree(os.path.join(octrees_dir, data[i]))
-            feature = {file_type: TFRecordsUtils.bytes_feature(octree_file),
-                       'label': TFRecordsUtils.int64_feature(label[i]),
-                       'index': TFRecordsUtils.int64_feature(index[i]),
-                       'filename': TFRecordsUtils.bytes_feature(('%06d_%s' % (i, data[i])).encode('utf8'))}
-            example = tf.train.Example(features=tf.train.Features(feature=feature))
-            writer.write(example.SerializeToString())
+            writer(file_type, octrees_dir, label[i], index[i], data[i], ('%06d_%s' % (i, data[i])).encode('utf8'))
         writer.close()
 
     @staticmethod
@@ -264,33 +316,16 @@ class TFRecordsConverter:
 
     @staticmethod
     def read_records(records_name, output_path, list_file, file_type='data', count=0):
-        records_iterator = tf.python_io.tf_record_iterator(records_name)
+        reader = TFRReader(records_name)
         count = count if count != 0 else float('Inf')
 
         if not os.path.exists(output_path):
             os.makedirs(output_path)
 
         with open(os.path.join(output_path, list_file), "w") as f:
-            num = 0
-            for string_record in records_iterator:
-                if num >= count:
-                    break
-
-                example = tf.train.Example()
-                example.ParseFromString(string_record)
-                label = int(example.features.feature['label'].int64_list.value[0])
-                # index  = int(example.features.feature['index'].int64_list.value[0]) 
-                octree = example.features.feature[file_type].bytes_list.value[0]
-                if 'filename' in example.features.feature:
-                    filename = example.features.feature['filename'].bytes_list.value[0] \
-                        .decode('utf8').replace('/', '_').replace('\\', '_')
-                else:
-                    filename = '%06d.%s' % (num, file_type)
-
-                num += 1
+            for octree, label, index, filename in reader(count, file_type):
                 with open(os.path.join(output_path, filename), 'wb') as fo:
                     fo.write(octree)
-
                 f.write("{} {}\n".format(filename, label))
 
 
