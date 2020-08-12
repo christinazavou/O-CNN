@@ -28,16 +28,5 @@ decoder:
 'label_gt_d6' = "ocnn_decoder/loss_6/label_gt/OctreeProperty:0", shape=(1, ?)  ===> (1,212216)
 
 
-why depth 6 ?
-
-i guess points have 4 channels : x,y,z,d
-
-should my octrees be generated with different params ?
-
-why is the option of using points translating points to octrees on the fly (or not on the fly!?) but still using resnet instead of ocnn ??
-
-
-
-
 in resources: completion_test_octrees.tfrecords has 48 records
               completion_test_points.tfrecords has 4 records

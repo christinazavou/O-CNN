@@ -291,7 +291,12 @@ class TFRecordsConverter:
         for i in range(len(data)):
             if not i % 1000:
                 print('data loaded: {}/{}'.format(i, len(data)))
-            writer(file_type, octrees_dir, label[i], index[i], data[i], ('%06d_%s' % (i, data[i])).encode('utf8'))
+            writer(file_type,
+                   octrees_dir,
+                   label[i],
+                   index[i],
+                   data[i],
+                   ('%06d_%s' % (i, data[i])).encode('utf8'))
         writer.close()
 
     @staticmethod
@@ -366,38 +371,32 @@ class FileManipulator:
                         f.write(point_file + "\n")
 
     @staticmethod
-    def generate_octrees_for_each_folder(points_folder, out_dir):
+    def generate_octrees_for_each_folder(points_folder, out_dir, args):
         for point_folder in os.listdir(points_folder):
             filenames = os.path.join(points_folder, point_folder, "list.txt")
             output_path = os.path.join(out_dir, point_folder)
-            cmd = "octree --filenames {} --output_path {} --depth 5 --adaptive 0 --node_dis 0 --axis z" \
-                .format(filenames, output_path)
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
+            cmd = "cd /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/octree/build && ./octree --filenames {} --output_path {} {}".format(
+                filenames, output_path, args)
             print(cmd)
+            os.system(cmd)
 
     @staticmethod
-    def point_list_to_octree_list(point_file, octree_file):
+    def point_list_to_octree_list(point_file, octree_file, depth, rot_num, full_depth=2):
         with open(point_file, "r") as fin, open(octree_file, "w") as fout:
             lines = fin.readlines()
             for line in lines:
-                for i in range(12):
-                    fout.write(line.replace(".points", "_5_2_{0:03}.octree".format(i)))
+                for i in range(rot_num):
+                    new_prefix = "_{}_{}_".format(depth, full_depth) + "{0:03}.octree".format(i)
+                    fout.write(line.replace(".points", new_prefix))
 
-                # if __name__ == '__main__':
+
 # FileManipulator.generate_list_text_files('/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.points')
-# FileManipulator.generate_octrees_for_each_folder(
-#     '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.points',
-#     '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.octrees')
-# FileManipulator.point_list_to_octree_list(
-#     "/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ocnn_completion_only2samples2/filelist_test_points.txt",
-#     "/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ocnn_completion_only2samples2/filelist_test_octrees.txt")
-# TFRecordsConverter.write_records(
-#     "/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ocnn_completion_only2samples2/shape.octrees",
-#     "/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ocnn_completion_only2samples2/filelist_test_octrees.txt",
-#     "/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ocnn_completion_only2samples2/completion_test_octrees.tfrecords",
-#     file_type='data', shuffle=False)
-# TFRecordsConverter.write_records(
-#     "/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ocnn_completion_only2samples2/shape.points",
-#     "/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ocnn_completion_only2samples2/filelist_test_points.txt",
-#     "/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ocnn_completion_only2samples2/completion_test_points.tfrecords",
-#     file_type='data', shuffle=False)
-#
+
+if __name__ == '__main__':
+    try:
+        eval(sys.argv[1])
+    except Exception as e:
+        print("Couldn't evaluate and run the given command: " + sys.argv[1])
+        raise Exception(e)

@@ -1,1 +1,0 @@
-- why from octree getting the "feature" property gives a shape (3, ?) ?
