@@ -2,6 +2,8 @@
 
 cd ../../src
 
+python data_parsing.py """FileManipulator.generate_list_text_files('/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.points')"""
+
 python data_parsing.py """FileManipulator.generate_octrees_for_each_folder('/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.points', '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.octrees', '--depth 6 --split_label 1 --rot_num 6')"""
 
 python data_parsing.py """FileManipulator.point_list_to_octree_list('/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/filelist_test.txt', '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/filelist_test_octrees.txt', 6, 6)"""

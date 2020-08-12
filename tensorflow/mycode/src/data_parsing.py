@@ -392,8 +392,6 @@ class FileManipulator:
                     fout.write(line.replace(".points", new_prefix))
 
 
-# FileManipulator.generate_list_text_files('/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.points')
-
 if __name__ == '__main__':
     try:
         eval(sys.argv[1])
