@@ -27,7 +27,7 @@ class AutoEncoderOcnn:
       with tf.variable_scope('code'):
         code = conv2d_bn(data, channel[1], kernel_size=1, stride=1, training=training)
         code = tf.nn.tanh(code)
-    return code
+    return code, {}
 
   def octree_decoder(self, code, octree, training, reuse=False):
     flags = self.flags
@@ -69,7 +69,7 @@ class AutoEncoderOcnn:
             signal = predict_signal(data, flags.channel, 32, training)
             loss.append(regress_loss(signal, signal_gt))
 
-    return loss, accu
+    return loss, accu, {}
 
   def octree_decode_shape(self, code, training, reuse=False):
     flags = self.flags
@@ -116,6 +116,9 @@ class AutoEncoderResnet:
     self.flags = flags
 
   def octree_encoder(self, octree, training, reuse=False):
+
+    debug_checks = {}
+
     flags = self.flags
     depth, nout = flags.depth, flags.nout
     channels = [4, nout, 256, 256, 128, 64, 32, 16]
@@ -123,27 +126,36 @@ class AutoEncoderResnet:
       with tf.variable_scope('signal_gt'):
         data = octree_property(octree, property_name="feature", dtype=tf.float32,
                               depth=depth, channel=flags.channel)
+        debug_checks['feature_d{}'.format(depth)] = data
         data = tf.reshape(data, [1, flags.channel, -1, 1])
       
       with tf.variable_scope("front"):
         data = octree_conv_bn_relu(data, octree, depth, channels[depth], training)
+        debug_checks['fron_conv_data'] = data
 
       for d in range(depth, 2, -1):
         for i in range(0, flags.resblock_num):
           with tf.variable_scope('resblock_%d_%d' % (d, i)):
             data = octree_resblock(data, octree, d, channels[d], 1, training)
+            debug_checks['resblock_d{}'.format(d)] = data
         with tf.variable_scope('down_%d' % d):
           data = octree_conv_bn_relu(data, octree, d, channels[d-1], training,
-                                    stride=2, kernel_size=[2])
+                                     stride=2, kernel_size=[2])
+          debug_checks['down_d{}'.format(d)] = data
 
       with tf.variable_scope('code'):
         # code = conv2d_bn(data, channels[1], kernel_size=1, stride=1, training=training)
+        debug_checks['code before conv'] = data
         code = octree_conv1x1_bn(data, flags.nout, training=training)
+        debug_checks['code after conv'] = data
         code = tf.nn.tanh(code)
-    return code
+    return code, debug_checks
 
   def octree_decoder(self, code, octree, training, reuse=False):
-    flags = self.flags    
+
+    debug_checks = {}
+
+    flags = self.flags
     depth = flags.depth
     channels = [4, 64, 256, 256, 128, 64, 32, 16]
     with tf.variable_scope('ocnn_decoder', reuse=reuse):    
@@ -153,35 +165,44 @@ class AutoEncoderResnet:
         for i in range(0, flags.resblock_num):
           with tf.variable_scope('resblock_%d_%d' % (d, i)):
             data = octree_resblock(data, octree, d, channels[d], 1, training)
+            debug_checks["resblock_d{}".format(d)] = data
 
         with tf.variable_scope('predict_%d' % d):
           logit, label = predict_label(data, 2, 32, training)
-          logit = tf.transpose(tf.squeeze(logit, [0,3])) # (1, C, H, 1) -> (H, C)        
+          debug_checks["logit_d{}".format(d)] = logit
+          debug_checks["label_d{}".format(d)] = label
+          logit = tf.transpose(tf.squeeze(logit, [0,3])) # (1, C, H, 1) -> (H, C)
+          debug_checks["logit_transp_d{}".format(d)] = logit
 
         with tf.variable_scope('loss_%d' % d):
           with tf.variable_scope('label_gt'):
-            label_gt = octree_property(octree, property_name="split", 
-                dtype=tf.float32, depth=d, channel=1)
+            label_gt = octree_property(octree, property_name="split", dtype=tf.float32, depth=d, channel=1)
+            debug_checks["split_label_gt_d{}".format(d)] = label_gt
             label_gt = tf.reshape(tf.cast(label_gt, dtype=tf.int32), [-1])
+            debug_checks["split_label_gt_reshape_d{}".format(d)] = label_gt
           loss.append(softmax_loss(logit, label_gt, num_class=2))
           accu.append(label_accuracy(label, label_gt))
 
         if d == depth:
           with tf.variable_scope('regress_%d' % d):
             signal = predict_signal(data, flags.channel, 32, training)
-          
+            debug_checks["signal"] = signal
+
           with tf.variable_scope('loss_regress'):
             with tf.variable_scope('signal_gt'):
-              signal_gt = octree_property(octree, property_name="feature", 
+              signal_gt = octree_property(octree, property_name="feature",
                   dtype=tf.float32, depth=depth, channel=flags.channel)
+              debug_checks["feature_signal_gt"] = signal_gt
               signal_gt = tf.reshape(signal_gt, [1, flags.channel, -1, 1])
+              debug_checks["feature_signal_gt_reshape"] = signal_gt
             loss.append(regress_loss(signal, signal_gt))
 
         if d < depth:
           with tf.variable_scope('up_%d' % d):
             data = octree_deconv_bn_relu(data, octree, d, channels[d-1], training,
-                                        stride=2, kernel_size=[2])
-    return loss, accu
+                                         stride=2, kernel_size=[2])
+            debug_checks["up_data_d{}".format(d)] = data
+    return loss, accu, debug_checks
 
   def octree_decode_shape(self, code, training, reuse=False):
     flags = self.flags

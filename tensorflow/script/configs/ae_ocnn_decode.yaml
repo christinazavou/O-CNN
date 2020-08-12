@@ -1,13 +1,13 @@
 SOLVER:
   gpu: 0,
-  logdir: /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/logs/ae/resnet_b16_decode_shape
-  ckpt: logs/ae/resnet_b16/model/iter_002800.ckpt
+  logdir: /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/logs/ae/ocnn_b16_decode_shape
+  ckpt: logs/ae/ocnn_b16/model/iter_012000.ckpt
   run: decode_shape
   test_iter: 20
 
 DATA:
   test: 
-    dtype: points
+    dtype: octree
     depth: 6
     location: /media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points_notshuffle.tfrecords
     batch_size: 1
@@ -18,8 +18,8 @@ DATA:
     shuffle: 0
 
 MODEL:
-  name: resnet
-  channel: 4
+  name: ocnn
+  channel: 3
   nout: 32   # The channel of the hidden code
   depth: 6
 

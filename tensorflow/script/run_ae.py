@@ -20,8 +20,9 @@ autoencoder = make_autoencoder(FLAGS.MODEL)
 def compute_graph(dataset='train', training=True, reuse=False):
   flags_data = FLAGS.DATA.train if dataset=='train' else FLAGS.DATA.test
   octree, label = DatasetFactory(flags_data)()
-  code = autoencoder.octree_encoder(octree, training, reuse)
-  loss, accu = autoencoder.octree_decoder(code, octree, training, reuse)
+  code, dbe = autoencoder.octree_encoder(octree, training, reuse)
+  loss, accu, dbd = autoencoder.octree_decoder(code, octree, training, reuse)
+  debug_checks = {'encoder': dbe, 'decoder': dbd}
 
   with tf.name_scope('total_loss'):
     reg = l2_regularizer('ocnn', FLAGS.LOSS.weight_decay)
@@ -30,7 +31,7 @@ def compute_graph(dataset='train', training=True, reuse=False):
   depth = FLAGS.MODEL.depth
   names = ['loss%d' % d for d in range(2, depth + 1)] + ['normal', 'reg'] + \
           ['accu%d' % d for d in range(2, depth + 1)] + ['total_loss']
-  return tensors, names
+  return tensors, names, octree, label, debug_checks
 
 # define the solver
 class AeTFSolver(TFSolver):
@@ -40,7 +41,7 @@ class AeTFSolver(TFSolver):
   def decode_shape(self):
     # build graph
     octree, label =  DatasetFactory(FLAGS.DATA.test)()
-    code = autoencoder.octree_encoder(octree, training=False, reuse=False)
+    code, _ = autoencoder.octree_encoder(octree, training=False, reuse=False)
     octree_pred = autoencoder.octree_decode_shape(code, training=False, reuse=False)
 
     # checkpoint
@@ -58,12 +59,19 @@ class AeTFSolver(TFSolver):
       tf.summary.FileWriter(logdir, sess.graph)
 
       print('Start testing ...')
-      for i in tqdm(range(0, self.flags.test_iter)):
-        origin, reconstructed = sess.run([octree, octree_pred])
-        with open(logdir + ('/%04d_input.octree' % i), "wb") as f:
-          f.write(origin.tobytes())
-        with open(logdir + ('/%04d_output.octree' % i), "wb") as f:
-          f.write(reconstructed.tobytes())
+      if not os.path.exists(os.path.join(logdir, "inputshapes")):
+        os.makedirs(os.path.join(logdir, "inputshapes"))
+      if not os.path.exists(os.path.join(logdir, "outputshapes")):
+        os.makedirs(os.path.join(logdir, "outputshapes"))
+      with open(os.path.join(logdir, "input_shapes.txt"), "w") as fi, open(os.path.join(logdir, "output_shapes.txt"), "w") as fo:
+        for i in tqdm(range(0, self.flags.test_iter)):
+          origin, reconstructed = sess.run([octree, octree_pred])
+          with open(os.path.join(logdir, "inputshapes", ('%04d_input.octree' % i)), "wb") as f:
+            f.write(origin.tobytes())
+          with open(os.path.join(logdir, "outputshapes", ('%04d_output.octree' % i)), "wb") as f:
+            f.write(reconstructed.tobytes())
+          fi.write(os.path.join(logdir, "inputshapes", ('%04d_input.octree' % i))+"\n")
+          fo.write(os.path.join(logdir, "outputshapes", ('%04d_output.octree' % i))+"\n")
 
 # run the experiments
 solver = AeTFSolver(FLAGS.SOLVER, compute_graph)

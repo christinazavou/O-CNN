@@ -1,10 +1,10 @@
 SOLVER:
   gpu: 0,
-  logdir: logs/ae/resnet_b16_octree
+  logdir: logs/ae/resnet_b16
   run: train
   max_iter: 20000
   test_iter: 336
-  test_every_iter: 1000
+  test_every_iter: 400
   step_size: (80000,)
   ckpt_num: 20
 
@@ -12,7 +12,7 @@ DATA:
   train:
     dtype: points
     depth: 6
-    location: dataset/ocnn_completion/completion_train_points.tfrecords
+    location: /media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_train_points.tfrecords
     batch_size: 16
     distort: False
     offset: 0.0
@@ -22,7 +22,7 @@ DATA:
   test: 
     dtype: points
     depth: 6
-    location: dataset/ocnn_completion/completion_test_points.tfrecords
+    location: /media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords
     batch_size: 16
     distort: False
     offset: 0.0

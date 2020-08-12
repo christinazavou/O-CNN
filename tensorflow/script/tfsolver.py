@@ -15,8 +15,8 @@ class TFSolver:
     self.build_solver = build_solver
 
   def build_train_graph(self):
-    self.train_tensors, train_names = self.graph('train', training=True, reuse=False)
-    self.test_tensors, self.test_names  = self.graph('test', training=False, reuse=True)
+    self.train_tensors, train_names, self.mytroctree, self.mytrlabel, self.tr_debug_checks = self.graph('train', training=True, reuse=False)
+    self.test_tensors, self.test_names, _, _, _  = self.graph('test', training=False, reuse=True)
     total_loss = self.train_tensors[train_names.index('total_loss')] # TODO: use dict
     self.train_op, lr = self.build_solver(total_loss, LRFactory(self.flags))
     self.summaries(train_names + ['lr'], self.train_tensors + [lr,], self.test_names)
