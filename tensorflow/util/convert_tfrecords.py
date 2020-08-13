@@ -12,9 +12,10 @@ parser.add_argument('--records_name', type=str, required=True,
                     help='Name of tfrecords')
 parser.add_argument('--file_type', type=str, required=False, default='data',
                     help='File type')
-parser.add_argument('--shuffle', type=str, required=False, default='',
+parser.add_argument('--shuffle_data', type=bool, required=False, default=False,
                     help='Whether to shuffle the data order')
-shuffle_data = False
+parser.add_argument('--count', type=int, required=False, default=-1,
+                    help='Amount of cases to include')
 
 
 def _int64_feature(value):
@@ -31,8 +32,8 @@ def load_octree(file):
   return octree_bytes
 
 
-def write_data_to_tfrecords(file_dir, list_file, records_name, file_type):
-  [data, label, index] = get_data_label_pair(list_file)
+def write_data_to_tfrecords(file_dir, list_file, records_name, file_type, shuffle_data, count):
+  [data, label, index] = get_data_label_pair(list_file, shuffle_data, count)
   
   writer = tf.python_io.TFRecordWriter(records_name)
   for i in range(len(data)):
@@ -49,17 +50,20 @@ def write_data_to_tfrecords(file_dir, list_file, records_name, file_type):
   writer.close()
 
 
-def get_data_label_pair(list_file):
+def get_data_label_pair(list_file, shuffle_data, count):
   file_list = []
   label_list = []
   with open(list_file) as f:
-    for line in f:
+    for i, line in enumerate(f):
+      if count != -1 and i > count:
+        break
       file, label = line.split()
       file_list.append(file)
       label_list.append(int(label))
   index_list = list(range(len(label_list)))
 
   if shuffle_data:
+    print("shuffling data")
     c = list(zip(file_list, label_list, index_list))
     shuffle(c)
     file_list, label_list, index_list = zip(*c)
@@ -69,11 +73,11 @@ def get_data_label_pair(list_file):
   return file_list, label_list, index_list
 
 
-
 if __name__ == '__main__':
   args = parser.parse_args()
-  shuffle_data = args.shuffle
-  write_data_to_tfrecords(args.file_dir, 
+  write_data_to_tfrecords(args.file_dir,
                           args.list_file, 
                           args.records_name, 
-                          args.file_type)
+                          args.file_type,
+                          args.shuffle_data,
+                          args.count)
