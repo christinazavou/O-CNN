@@ -78,7 +78,7 @@ class DatasetTest(tf.test.TestCase):
 
         with tf.Session() as sess:
             for filename in ['resources/ModelNetOnly4Samples3/m40_test_points.tfrecords',
-                             'resources/ocnn_completion_only2samples2/completion_test_points.tfrecords']:
+                             'intermediate/ocnn_completion_only2samples2/test_points.tfrecords']:
 
                 merged_octrees_batch1 = sess.run(self.points(tf_record_filenames=filename, batch_size=32,
                                                              shuffle_size=1000, return_iterator=False, take=-1,

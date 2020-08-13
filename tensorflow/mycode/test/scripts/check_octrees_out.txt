@@ -1,0 +1,234 @@
+
+===============
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ocnn_completion_only2samples2/shape.octrees/02691156/1a04e3eab45ca15dd86060f189eb133_5_2_000.octree infomation:
+This is a valid octree!
+magic_str:_OCTREE_1.0_
+batch_size: 1
+depth: 5
+full_layer: 2
+adaptive_layer: 4
+threshold_distance: 2
+threshold_normal: 0.1
+is_adaptive: 0
+has_displace: 0
+nnum: 1 8 64 224 1040 4704 0 0 0 0 0 0 0 0 0 0 
+nnum_cum: 0 1 9 73 297 1337 6041 6041 0 0 0 0 0 0 0 0 
+nnum_nempty: 1 8 28 130 588 2325 0 0 0 0 0 0 0 0 0 0 
+total_nnum: 6041
+total_nnum_capacity: 6041
+channel: 1 1 0 3 0 0 
+locations: -1 -1 0 5 0 0 
+bbox_max: 129.576 131.772 121.063 
+bbox_min: 16.3212 18.5169 7.80819 
+key2xyz: 0
+sizeof_octree: 105492
+===============
+
+
+===============
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ocnn_completion_only2samples2/shape.octrees/02691156/1a04e3eab45ca15dd86060f189eb133_5_2_001.octree infomation:
+This is a valid octree!
+magic_str:_OCTREE_1.0_
+batch_size: 1
+depth: 5
+full_layer: 2
+adaptive_layer: 4
+threshold_distance: 2
+threshold_normal: 0.1
+is_adaptive: 0
+has_displace: 0
+nnum: 1 8 64 224 1048 4912 0 0 0 0 0 0 0 0 0 0 
+nnum_cum: 0 1 9 73 297 1345 6257 6257 0 0 0 0 0 0 0 0 
+nnum_nempty: 1 8 28 131 614 2627 0 0 0 0 0 0 0 0 0 0 
+total_nnum: 6257
+total_nnum_capacity: 6257
+channel: 1 1 0 3 0 0 
+locations: -1 -1 0 5 0 0 
+bbox_max: 129.576 131.772 121.063 
+bbox_min: 16.3212 18.5169 7.80819 
+key2xyz: 0
+sizeof_octree: 109716
+===============
+
+
+===============
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ocnn_completion_only2samples2/shape.octrees/02933112/1a1b62a38b2584874c62bee40dcdc539_5_2_000.octree infomation:
+This is a valid octree!
+magic_str:_OCTREE_1.0_
+batch_size: 1
+depth: 5
+full_layer: 2
+adaptive_layer: 4
+threshold_distance: 2
+threshold_normal: 0.1
+is_adaptive: 0
+has_displace: 0
+nnum: 1 8 64 224 832 5472 0 0 0 0 0 0 0 0 0 0 
+nnum_cum: 0 1 9 73 297 1129 6601 6601 0 0 0 0 0 0 0 0 
+nnum_nempty: 1 8 28 104 684 2923 0 0 0 0 0 0 0 0 0 0 
+total_nnum: 6601
+total_nnum_capacity: 6601
+channel: 1 1 0 3 0 0 
+locations: -1 -1 0 5 0 0 
+bbox_max: 140.639 141.136 140.97 
+bbox_min: -12.3008 -11.8047 -11.9703 
+key2xyz: 0
+sizeof_octree: 119188
+===============
+
+
+===============
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ocnn_completion_only2samples2/shape.octrees/02933112/1a1b62a38b2584874c62bee40dcdc539_5_2_001.octree infomation:
+This is a valid octree!
+magic_str:_OCTREE_1.0_
+batch_size: 1
+depth: 5
+full_layer: 2
+adaptive_layer: 4
+threshold_distance: 2
+threshold_normal: 0.1
+is_adaptive: 0
+has_displace: 0
+nnum: 1 8 64 384 1104 5928 0 0 0 0 0 0 0 0 0 0 
+nnum_cum: 0 1 9 73 457 1561 7489 7489 0 0 0 0 0 0 0 0 
+nnum_nempty: 1 8 48 138 741 3472 0 0 0 0 0 0 0 0 0 0 
+total_nnum: 7489
+total_nnum_capacity: 7489
+channel: 1 1 0 3 0 0 
+locations: -1 -1 0 5 0 0 
+bbox_max: 140.639 141.136 140.97 
+bbox_min: -12.3008 -11.8047 -11.9703 
+key2xyz: 0
+sizeof_octree: 131764
+===============
+
+
+===============
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/ModelNet40.octree.5/airplane/test/airplane_0627.upgrade.smp_5_2_000.octree infomation:
+This is a valid octree!
+magic_str:_OCTREE_1.0_
+batch_size: 1
+depth: 5
+full_layer: 2
+adaptive_layer: 4
+threshold_distance: 2
+threshold_normal: 0.1
+is_adaptive: 0
+has_displace: 0
+nnum: 1 8 64 144 480 1856 0 0 0 0 0 0 0 0 0 0 
+nnum_cum: 0 1 9 73 217 697 2553 2553 0 0 0 0 0 0 0 0 
+nnum_nempty: 1 8 18 60 232 833 0 0 0 0 0 0 0 0 0 0 
+total_nnum: 2553
+total_nnum_capacity: 2553
+channel: 1 1 0 3 0 0 
+locations: -1 -1 0 5 0 0 
+bbox_max: 563.252 1111.51 730.384 
+bbox_min: -571.313 -23.054 -404.181 
+key2xyz: 0
+sizeof_octree: 43412
+===============
+
+
+===============
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/ModelNet40.octree.5/airplane/test/airplane_0627.upgrade.smp_5_2_007.octree infomation:
+This is a valid octree!
+magic_str:_OCTREE_1.0_
+batch_size: 1
+depth: 5
+full_layer: 2
+adaptive_layer: 4
+threshold_distance: 2
+threshold_normal: 0.1
+is_adaptive: 0
+has_displace: 0
+nnum: 1 8 64 144 432 1816 0 0 0 0 0 0 0 0 0 0 
+nnum_cum: 0 1 9 73 217 649 2465 2465 0 0 0 0 0 0 0 0 
+nnum_nempty: 1 8 18 54 227 836 0 0 0 0 0 0 0 0 0 0 
+total_nnum: 2465
+total_nnum_capacity: 2465
+channel: 1 1 0 3 0 0 
+locations: -1 -1 0 5 0 0 
+bbox_max: 563.252 1111.51 730.384 
+bbox_min: -571.313 -23.054 -404.181 
+key2xyz: 0
+sizeof_octree: 42228
+===============
+
+
+===============
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/output/build_octrees/1a1b62a38b2584874c62bee40dcdc539_6_2_000.octree infomation:
+This is a valid octree!
+magic_str:_OCTREE_1.0_
+batch_size: 1
+depth: 6
+full_layer: 2
+adaptive_layer: 4
+threshold_distance: 2
+threshold_normal: 0.1
+is_adaptive: 0
+has_displace: 0
+nnum: 1 8 64 224 768 4784 24016 0 0 0 0 0 0 0 0 0 
+nnum_cum: 0 1 9 73 297 1065 5849 29865 29865 0 0 0 0 0 0 0 
+nnum_nempty: 1 8 28 96 598 3002 11912 0 0 0 0 0 0 0 0 0 
+total_nnum: 29865
+total_nnum_capacity: 29865
+channel: 1 1 0 3 0 1 
+locations: -1 -1 0 6 0 -1 
+bbox_max: 139.369 139.865 139.699 
+bbox_min: -11.0302 -10.534 -10.6996 
+key2xyz: 0
+sizeof_octree: 647288
+===============
+
+
+===============
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/output/build_octrees/airplane_0627.upgrade.smp_6_2_000.octree infomation:
+This is a valid octree!
+magic_str:_OCTREE_1.0_
+batch_size: 1
+depth: 6
+full_layer: 2
+adaptive_layer: 4
+threshold_distance: 2
+threshold_normal: 0.1
+is_adaptive: 0
+has_displace: 0
+nnum: 1 8 64 144 448 1552 5920 0 0 0 0 0 0 0 0 0 
+nnum_cum: 0 1 9 73 217 665 2217 8137 8137 0 0 0 0 0 0 0 
+nnum_nempty: 1 8 18 56 194 740 2905 0 0 0 0 0 0 0 0 0 
+total_nnum: 8137
+total_nnum_capacity: 8137
+channel: 1 1 0 3 0 1 
+locations: -1 -1 0 6 0 -1 
+bbox_max: 553.826 1102.08 720.958 
+bbox_min: -561.887 -13.6278 -394.755 
+key2xyz: 0
+sizeof_octree: 169400
+===============
+
+
+===============
+/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/intermediate/ocnn_completion_only2samples2/shape.octrees/02691156/1a04e3eab45ca15dd86060f189eb133_6_2_000.octree infomation:
+This is a valid octree!
+magic_str:_OCTREE_1.0_
+batch_size: 1
+depth: 6
+full_layer: 2
+adaptive_layer: 4
+threshold_distance: 2
+threshold_normal: 0.1
+is_adaptive: 0
+has_displace: 0
+nnum: 1 8 64 224 1000 4336 17320 0 0 0 0 0 0 0 0 0 
+nnum_cum: 0 1 9 73 297 1297 5633 22953 22953 0 0 0 0 0 0 0 
+nnum_nempty: 1 8 28 125 542 2165 8177 0 0 0 0 0 0 0 0 0 
+total_nnum: 22953
+total_nnum_capacity: 22953
+channel: 1 1 0 3 0 1 
+locations: -1 -1 0 6 0 -1 
+bbox_max: 128.635 130.831 120.122 
+bbox_min: 17.2621 19.4578 8.74912 
+key2xyz: 0
+sizeof_octree: 483992
+===============
+

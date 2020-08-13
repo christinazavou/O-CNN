@@ -7,6 +7,8 @@ import tensorflow as tf
 sys.path.append("../..")
 from libs import bounding_sphere, points2octree, transform_points, octree_batch
 
+OCTREE_PATH = "/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/octree/build"
+
 
 class TransformPoints:
     def __init__(self, distort, depth, offset=0.55, axis='xyz', scale=0.25,
@@ -377,8 +379,8 @@ class FileManipulator:
             output_path = os.path.join(out_dir, point_folder)
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
-            cmd = "cd /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/octree/build && ./octree --filenames {} --output_path {} {}".format(
-                filenames, output_path, args)
+            cmd = "cd {} && ./octree --filenames {} --output_path {} {}".format(
+                OCTREE_PATH, filenames, output_path, args)
             print(cmd)
             os.system(cmd)
 
@@ -390,6 +392,15 @@ class FileManipulator:
                 for i in range(rot_num):
                     new_prefix = "_{}_{}_".format(depth, full_depth) + "{0:03}.octree".format(i)
                     fout.write(line.replace(".points", new_prefix))
+
+    @staticmethod
+    def points_to_ply(ply_dir, points_file):
+        if not os.path.exists(ply_dir):
+            os.makedirs(ply_dir)
+        cmd = "cd {} && ./points2ply --filenames {} --output_path {}".format(
+            OCTREE_PATH, points_file, ply_dir)
+        print(cmd)
+        os.system(cmd)
 
 
 if __name__ == '__main__':

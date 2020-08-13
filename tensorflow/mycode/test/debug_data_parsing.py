@@ -8,14 +8,6 @@ from libs import *
 class DatasetDebug:
 
     @staticmethod
-    def check_points_to_ply():
-        build_path = "/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/octree/build"
-        f = os.getcwd() + "/resources/ocnn_completion_only2samples2/points2ply.txt"
-        o = os.getcwd() + "/output/ocnn_completion/points2ply"
-        os.makedirs(o)
-        os.system("cd {} && ./points2ply --filenames {} --output_path {}".format(build_path, f, o))
-
-    @staticmethod
     def check_properties():
         # filename = 'resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords'
         # octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
@@ -61,4 +53,4 @@ class DatasetDebug:
 
 
 # DatasetDebug.check_points_to_ply()
-DatasetDebug.check_properties()
+# DatasetDebug.check_properties()
