@@ -237,6 +237,9 @@ class TFRWriter:
         self.writer = tf.python_io.TFRecordWriter(records_name)
 
     def __call__(self, file_type, octrees_dir, label, index, in_filename, save_filename):
+        if not os.path.exists(os.path.join(octrees_dir, in_filename)):
+            print("octree file %s doesnt exist" % os.path.join(octrees_dir, in_filename))
+            return
         octree_file = TFRecordsConverter.load_octree(os.path.join(octrees_dir, in_filename))
         feature = {file_type: TFRecordsUtils.to_bytes_feature(octree_file),
                    'label': TFRecordsUtils.to_int64_feature(label),
