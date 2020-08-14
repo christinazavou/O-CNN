@@ -80,12 +80,10 @@ Also, the decoded octrees from resnet are much better than the ones from ocnn: e
 
 Q2. I also have a question regarding the input signal. In classification both cls_octree.yaml and cls_points.yaml have input channel 3, which as I understand it represents the normals at the leaf octants, i.e. nx,ny,nz. In the autoencoder however,  ae_resnet.yaml specifies input channel as 4, but using my ae_ocnn.yaml I get error if I don't set input channel to 3. This made me think that I have to generate adaptive octrees, so I repeated step 2. with "--adaptive 4". However, running the ocnn autoencoder showed again the same error i.e. ```F octree_property_op.cc:101] Check failed: channel_ == channel (4 vs. 3)The specified channel_ is wrong.``` I'm also wondering why the cls_points.yaml has model channel 3.
 
-
-AOCNN paper: from fig4 i see the encoder having skip_connections ... are these the ones referred in the code (where there is flag to use skip_connections)  or not !?
-
-also wondering what does the output of check_octree means:
+Q3. I'm also wondering what does the output of check_octree means:
 
 example of an octree generated with "octree ... --depth 6 --split_label 1 --rot_num 6":
+```
 ===============
 ../ocnn_completion/.../02691156/1a04e3eab45ca15dd86060f189eb133_6_2_000.octree infomation:
 This is a valid octree!
@@ -110,8 +108,9 @@ bbox_min: 17.2621 19.4578 8.74912
 key2xyz: 0
 sizeof_octree: 483992
 ===============
-
+```
 example of an octree generated with "octree ... --depth 6 --split_label 1 --rot_num 6 --adaptive true":
+```
 ===============
 .../ocnn_completion/.../02691156/10aa040f470500c6a66ef8df4909ded9_6_2_000.octree infomation:
 This is a valid octree!
@@ -136,11 +135,12 @@ bbox_min: 3.37262 4.88874 10.0632
 key2xyz: 0
 sizeof_octree: 66404
 ===============
+```
 
-1. i guess adaptive_layer:4 is dummy in the first example because of is_adaptive: 0
-2. what is the channel parameter and the locations parameter showing?
+Q4. i guess adaptive_layer:4 is dummy in the first example because of is_adaptive: 0 ?!
+Q5. what is the channel parameter and the locations parameter showing?
 
-I'm also trying to understand the octree_property function, and I have the following:
+Lastly, trying to understand the octree_property function, I run the following code:
 
 ```
 import sys
@@ -192,7 +192,7 @@ class DatasetDebug:
 DatasetDebug.check_properties()
 ```
 
-and the result i get is:
+which gives:
 ```
 d  -10  split  (0, 1596993073)
 d  -10  label  (0, 1596993073)
@@ -261,17 +261,14 @@ d  6  xyz  (1, 23328)
 d  7  xyz  (1, 23600)
 ```
 
-can i get "shuffle key" from octree_property?
-is "label" in "octree_property" giving the "which indicates that it is the p-th non-empty octant in the sorted octant list of the l-th depth." ?
-can i get "input signal" from octree_property? is it the "xyz" property or the "feature" property ?
-can i get "cnn features" from octree_property? if i apply a convolution and call again octree_property with this i will get a new result in each training step?
+Q6. I'm confused with the use of 'points' vs 'octree'. In the classification code, using 'octree' calls the DatasetFactory that reads from octree tfrecords, and using 'points' calls the DatasetFactory that reads from point tfrecords , transforms them and merges them to octrees. So is 'merge octree' a function that can run either on ".octree" or on ".points" and generate either merged ".octrees" or merged ".points"? Both formats are in bytes and i can't see their difference and i see that is possible to call 
+ the octree_property function on either data loaded from ".points" file or ".octree" files...
 
-displace = translate the location of the object ? that's why in input/output of decoder we have different locations ?
+Q7. is the "shuffle key" the "index" or "xyz" of octree_property ?
+Q8. is "label" in "octree_property" giving the "which indicates that it is the p-th non-empty octant in the sorted octant list of the l-th depth." ?
+Q9. is the "input signal" the "xyz" property or the "feature" property ? can i get "cnn features" from octree_property? if i apply a convolution and call again octree_property with this i will get a new result in each training step?
 
 the octree2mesh ... if i have a predicted octree from OCNN i will see equal size patches and if i predicted octree from AOCNN i will see different-size patches?!
 
-what is the 4-dim input signal ? why autoencoder with points wants channel 4 and with octrees wants channel 3 ?
-
 the autoencoder results are both input and output saved as ".octree" even if we use resnet or ocnn ... why/how
-
-However, I'm not sure I understand the difference of the code using 'points' and using 'octree'. In the classification code, using 'octree' calls the DatasetFactory that reads from octree tfrecords, and using 'points' calls the DatasetFactory that reads from point tfrecords , transforms them and merges them to octrees. So is 'merge octree' a function that can be run either on ".octree" or on ".points" and it generates either merged ".octrees" or merged ".points"? Because both formats are in bytes and i can't see their difference; Also, can I call "octree_property" function both on data loaded from ".points" file or ".octree" file but with different arguments? Which arguments can be used for each one?
+why input of ocnn vs resnet are slightly different?
