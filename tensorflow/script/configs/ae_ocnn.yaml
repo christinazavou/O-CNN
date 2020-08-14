@@ -1,6 +1,6 @@
 SOLVER:
   gpu: 0,
-  logdir: logs/ae/ocnn_b16
+  logdir: /media/christina/Data/ANFASS_data/O-CNN/output/ocnn_completion/ae/ocnn_b16
   run: train
   max_iter: 20000
   test_iter: 336
@@ -12,7 +12,6 @@ DATA:
   train:
     dtype: octree
     depth: 6
-#    location: /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/intermediate/ocnn_completion_only2samples2/autoencoder_train_octrees.tfrecords
     location: /media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_train_octrees.tfrecords
     batch_size: 16
     distort: False
@@ -23,7 +22,6 @@ DATA:
   test: 
     dtype: octree
     depth: 6
-#    location: /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/intermediate/ocnn_completion_only2samples2/autoencoder_test_octrees.tfrecords
     location: /media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_octrees.tfrecords
     batch_size: 16
     distort: False

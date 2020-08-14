@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,
-  logdir: /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/logs/ae/ocnn_b16_decode_shape
-  ckpt: logs/ae/ocnn_b16/model/iter_012000.ckpt
+  logdir: /media/christina/Data/ANFASS_data/O-CNN/output/ocnn_completion/ae/ocnn_b16_decode_shape
+  ckpt: /media/christina/Data/ANFASS_data/O-CNN/output/ocnn_completion/ae/ocnn_b16/model/iter_020000.ckpt
   run: decode_shape
   test_iter: 43
 
