@@ -2,3 +2,4 @@
 /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/intermediate/ocnn_completion_only2samples2/shape.octrees/02691156/1a04e3eab45ca15dd86060f189eb133_6_2_001.octree
 /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/ModelNet40.octree.5/airplane/test/airplane_0627.upgrade.smp_5_2_000.octree
 /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode/test/resources/ModelNetOnly4Samples3/ModelNet40.octree.5/airplane/test/airplane_0627.upgrade.smp_5_2_001.octree
+/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.octrees.adaptive.d6r6sl/02691156/10aa040f470500c6a66ef8df4909ded9_6_2_000.octree
