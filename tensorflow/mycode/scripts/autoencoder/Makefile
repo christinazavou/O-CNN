@@ -44,3 +44,14 @@ visualize-ocnn:
 
 visualize-ocnn: visualize-resnet visualize-ocnn
 #----------------------------------------------------------------------------------------------------------------------#
+
+
+#----------------------------------------------------------------------------------------------------------------------#
+mycode="/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/mycode"
+
+make-10-octrees:
+	export PATH=/home/christina/miniconda3/bin/:$$PATH \
+		&& source activate OCNN \
+		&& cd ${mycode}/src \
+		&& python data_parsing.py """FileManipulator.generate_octrees_for_each_folder('/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.points', '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/shape.octrees.adaptive.d6r6sl', '--depth 6 --split_label 1 --rot_num 6 --adaptive true', 10)"""
+#----------------------------------------------------------------------------------------------------------------------#

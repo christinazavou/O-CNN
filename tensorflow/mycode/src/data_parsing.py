@@ -373,14 +373,21 @@ class FileManipulator:
                         f.write(point_file + "\n")
 
     @staticmethod
-    def generate_octrees_for_each_folder(points_folder, out_dir, args):
+    def generate_octrees_for_each_folder(points_folder, out_dir, octree_args, count=-1):
+        count = int(count)
         for point_folder in os.listdir(points_folder):
             filenames = os.path.join(points_folder, point_folder, "list.txt")
             output_path = os.path.join(out_dir, point_folder)
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
+            if count != -1:
+                with open(filenames, "r") as fin:
+                    lines = fin.readlines()[:count]
+                    filenames = filenames.replace(".txt", "{}.txt".format(count))
+                    with open(filenames, "w") as fout:
+                        [fout.write(l) for l in lines]
             cmd = "cd {} && ./octree --filenames {} --output_path {} {}".format(
-                OCTREE_PATH, filenames, output_path, args)
+                OCTREE_PATH, filenames, output_path, octree_args)
             print(cmd)
             os.system(cmd)
 
