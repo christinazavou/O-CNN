@@ -1,9 +1,13 @@
 import os
+import sys
 
 import numpy as np
 import tensorflow as tf
 from prettytable import PrettyTable
 from tqdm import tqdm
+
+sys.path.append("../..")
+from libs import octree_property
 
 from src.config import CLASS_TO_LABEL
 from src.data_parsing import DatasetFactoryDebug
@@ -170,6 +174,29 @@ class TFRunner:
             self.evaluate_iteration(session_dao, summary_dao)
             self.save_results(os.path.join(session_dao.checkpoints_path, "results_table.txt"))
             print('Testing done!')
+
+    def debug(self):
+        self.build_test_graph(reuse=False)
+
+        config = tf.ConfigProto(allow_soft_placement=True)
+        config.gpu_options.allow_growth = True
+
+        print('Start debugging ...')
+        with tf.Session(config=config) as sess:
+            session_dao = SessionDAO(sess, self.flags.logdir, keep_max=self.flags.ckpt_num,
+                                     load_iter=self.flags.ckpt)
+            octrees, labels, filenames = sess.run([self.test_octree, self.test_label, self.test_filename])
+            features = sess.run(octree_property(octrees, property_name='feature', depth=0, channel=3, dtype=tf.float32))
+            print("features ", features.shape)
+            np.savetxt('features_d0_{}.np'.format(self.flags.ckpt), features)
+            features = sess.run(octree_property(octrees, property_name='feature', depth=1, channel=3, dtype=tf.float32))
+            print("features ", features.shape)
+            np.savetxt('features_d1_{}.np'.format(self.flags.ckpt), features)
+            features = sess.run(octree_property(octrees, property_name='feature', depth=2, channel=3, dtype=tf.float32))
+            print("features ", features.shape)
+            np.savetxt('features_d2_{}.np'.format(self.flags.ckpt), features)
+
+        print('Debugging done!')
 
     def save_results(self, output_path):
         open_mode = 'a'

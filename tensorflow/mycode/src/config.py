@@ -44,13 +44,14 @@ _C.DATA.test = _C.DATA.train.clone()
 _C.DATA.test.location = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_test_octree.tfrecords'
 # _C.DATA.test.distort = False
 _C.DATA.test.shuffle = 0
+# _C.DATA.test.batch_size = 1
 
 # MODEL related parameters
 _C.MODEL = CN()
 _C.MODEL.gpu = (0,)  # The gpu ids
 _C.MODEL.logdir = '/media/christina/Data/ANFASS_data/O-CNN/output/ModelNet40/logsT3'  # Directory where to write event logs
 _C.MODEL.ckpt = '66000'  # Restore weights from checkpoint file
-_C.MODEL.run = 'test'  # Choose from train or test
+_C.MODEL.run = 'test'  # Choose from train or test or debug
 _C.MODEL.type = 'sgd'  # Choose from sgd or adam
 _C.MODEL.max_iter = 160000  # Maximum training iterations
 _C.MODEL.test_iter = 925  # Test steps in testing phase

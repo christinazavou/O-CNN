@@ -160,32 +160,39 @@ from libs import *
 
 class DatasetDebug:
     classification_channels = {'split': 0, 'label': 0, 'feature': 3, 'index': 1, 'xyz': 1}
-    shape_completion_channels = {'split': 1, 'label': 1, 'feature': 3, 'index': 1, 'xyz': 1}
+    shape_completion_channels = {'split': 1, 'label': 0, 'feature': 3, 'index': 1, 'xyz': 1}
 
     @staticmethod
     def check_properties():
-        # filename = 'resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords'
+        # # filename = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_test_octree.tfrecords'
+        # # depth = 5
+        # # channels_dict = DatasetDebug.classification_channels
+        # filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_octrees.tfrecords'
+        # depth = 6
+        # channels_dict = DatasetDebug.shape_completion_channels
         # octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
-        # octree, label, filename = octrees(filename, 32, shuffle_size=False, return_iterator=False, take=10)
-        # filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
-        # octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
-        # octree, label, filename = octrees(filename, 32, shuffle_size=False, return_iterator=False, take=10)
+        # octree, label, filenames = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+        # octreesN = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
+        # octree5, label5, filenames5 = octreesN(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
 
-        # filename = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_test_points.tfrecords'
-        # depth = 5
-        filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
-        depth = 6
+        filename = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_test_points.tfrecords'
+        depth = 5
+        split_label = False
+        channels_dict = DatasetDebug.classification_channels
+        # filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
+        # depth = 6
+        # split_label = True
+        # channels_dict = DatasetDebug.shape_completion_channels
         octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
                                       TransformPoints(distort=False, depth=depth, offset=0.55, axis='z', scale=0.0,
                                                       jitter=0.0, angle=[180, 180, 180],
                                                       bounding_sphere=bounding_sphere),
-                                      Points2Octree(depth=depth))
-        octree, label = octrees(filename, batch_size=1, shuffle_size=False, return_iterator=False, take=10)
-        channels_dict = DatasetDebug.classification_channels
+                                      Points2Octree(depth=depth, split_label=split_label))
+        octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+        octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
 
         with tf.Session() as sess:
-            # gives error if channel!=0
-            for d in range(-10, 10):
+            for d in range(0, depth + 1):
                 property_name = 'split'
                 result = sess.run(octree_property(octree, property_name=property_name, depth=d,
                                                   channel=channels_dict[property_name], dtype=tf.float32))
@@ -195,30 +202,32 @@ class DatasetDebug:
                                                   channel=channels_dict[property_name], dtype=tf.float32))
                 print("depth {} {} {}".format(d, property_name, result.shape))
 
-            # gives error if channel!=3
-            property_name = 'feature'
-            for d in range(1, depth + 1):
+            property_name = 'feature'  # this must be the input signal..i.e. in last depth is the nx,ny,nz and then
+            # in each preceding depth is the average of its children nodes
+            for d in range(0, depth + 1):
                 result = sess.run(octree_property(octree, property_name=property_name, depth=d,
                                                   channel=channels_dict[property_name], dtype=tf.float32))
                 print("depth {} {} {}".format(d, property_name, result.shape))
 
             result = sess.run(octree_property(octree, property_name=property_name, depth=-6,
                                               channel=channels_dict[property_name], dtype=tf.float32))
-            print("depth {} {} {}".format(d, property_name, result.shape))
+            print("depth {} {} {}".format(-6, property_name, result.shape))
 
-            # gives error if channel!=1
             property_name = 'index'
-            for d in range(-1, 8):
+            for d in range(0, depth + 1):
                 result = sess.run(octree_property(octree, property_name=property_name, depth=d,
                                                   channel=channels_dict[property_name], dtype=tf.int32))
                 print("depth {} {} {}".format(d, property_name, result.shape))
 
-            # gives error if channel!=1
-            property_name = 'xyz'
-            for d in range(-1, 8):
+            property_name = 'xyz'  # this is the shuffle key
+            for d in range(0, depth + 1):
                 result = sess.run(octree_property(octree, property_name=property_name, depth=d,
                                                   channel=channels_dict[property_name], dtype=tf.uint32))
                 print("depth {} {} {}".format(d, property_name, result.shape))
+
+            result = sess.run(octree_property(octree5, property_name=property_name, depth=0,
+                                              channel=channels_dict[property_name], dtype=tf.uint32))
+            print("octree5: depth {} {} {}".format(0, property_name, result.shape))
 
 
 DatasetDebug.check_properties()
@@ -226,26 +235,6 @@ DatasetDebug.check_properties()
 
 which gives:
 ```
-depth -10 split (0, 1596993073)
-depth -10 label (0, 1596993073)
-depth -9 split (0, 0)
-depth -9 label (0, 0)
-depth -8 split (0, 1)
-depth -8 label (0, 1)
-depth -7 split (0, 6)
-depth -7 label (0, 6)
-depth -6 split (0, 2)
-depth -6 label (0, 2)
-depth -5 split (0, 4)
-depth -5 label (0, 4)
-depth -4 split (0, 0)
-depth -4 label (0, 0)
-depth -3 split (0, 1073741824)
-depth -3 label (0, 1073741824)
-depth -2 split (0, 1036831949)
-depth -2 label (0, 1036831949)
-depth -1 split (0, 0)
-depth -1 label (0, 0)
 depth 0 split (0, 1)
 depth 0 label (0, 1)
 depth 1 split (0, 8)
@@ -253,54 +242,40 @@ depth 1 label (0, 8)
 depth 2 split (0, 64)
 depth 2 label (0, 64)
 depth 3 split (0, 160)
-depth 3 label (0, 160)
-depth 4 split (0, 568)
-depth 4 label (0, 688)
-depth 5 split (0, 1696)
-depth 5 label (0, 1952)
-depth 6 split (0, 7472)
-depth 6 label (0, 7016)
-depth 7 split (0, 0)
-depth 7 label (0, 0)
-depth 8 split (0, 0)
-depth 8 label (0, 0)
-depth 9 split (0, 0)
-depth 9 label (0, 0)
+depth 3 label (0, 112)
+depth 4 split (0, 512)
+depth 4 label (0, 512)
+depth 5 split (0, 1856)
+depth 5 label (0, 1656)
+depth 0 feature (3, 1)
 depth 1 feature (3, 8)
 depth 2 feature (3, 64)
-depth 3 feature (3, 176)
-depth 4 feature (3, 464)
-depth 5 feature (3, 1768)
-depth 6 feature (3, 5080)
-depth 6 feature (3, 2)
-depth -1 index (1, 0)
+depth 3 feature (3, 160)
+depth 4 feature (3, 504)
+depth 5 feature (3, 1696)
+depth -6 feature (3, 2)
 depth 0 index (1, 1)
 depth 1 index (1, 8)
 depth 2 index (1, 64)
-depth 3 index (1, 192)
-depth 4 index (1, 552)
-depth 5 index (1, 1704)
-depth 6 index (1, 6784)
-depth 7 index (1, 0)
-depth -1 xyz (1, 0)
+depth 3 index (1, 176)
+depth 4 index (1, 448)
+depth 5 index (1, 1968)
 depth 0 xyz (1, 1)
 depth 1 xyz (1, 8)
 depth 2 xyz (1, 64)
-depth 3 xyz (1, 192)
-depth 4 xyz (1, 576)
-depth 5 xyz (1, 1968)
-depth 6 xyz (1, 7016)
-depth 7 xyz (1, 0)
+depth 3 xyz (1, 176)
+depth 4 xyz (1, 512)
+depth 5 xyz (1, 1856)
+octree5: depth 0 xyz (1, 5)
 ```
 
 **Q3.1.** what is split ?
 
-**Q3.2.** i guess in all properties i should ignore anything that is called with a non existing depth.
+**Q3.2.** i guess octree_property function shouldn't be possible  to be called with a non existing depth however it is sometimes possible like in the line with 'feature' property and 'depth=-6'
 
-for classification we don't have label for each voxel that's why channel = 0 and result arrays have zero rows. (in SHAPE COMPLETION / partnet segmentation DATA CHANNEL SHOULD BE 1!?)
+**Q3.3.** does the property_name='feature' correspond to the "Input Signal" except if we specifically do some CNN calculations and call octree_set_property with that result - when it will correspond to the "CNN features"?
 
-Q8. is the "input signal" the "feature" of octree_property and accordingly you can set it to be the result of a convolution? and **when we apply a convolution and call octree_property with this i will get a new result in each training step?**
-
+**Q3.4.** is label always of zero rows because in the classification and shape completion dataset we don't have label for each voxel ? i.e. in a segmentation dataset where we should have a label for each voxel the label would have channel=1?!
 
 Q4. I'm confused with the use of 'points' vs 'octree'. In the classification code, using 'octree' calls the DatasetFactory that reads from octree tfrecords, and using 'points' calls the DatasetFactory that reads from point tfrecords , transforms them and merges them to octrees. So is 'merge octree' a function that can run either on ".octree" or on ".points" and can generate either merged ".octrees" or merged ".points" accordingly? Both formats are in bytes and i can't see their difference and i see that is possible to call 
  the octree_property function on either data loaded from ".points" file or ".octree" files...
