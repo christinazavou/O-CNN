@@ -2,9 +2,11 @@ Hello again,
 
 I'm trying to run the Tensorflow implementation for the autoencoder and I have a few questions (excuse me it got too long but i tried to be detailed).
 
-In the repo you have a config file (ae_resnet.yaml) for running a resnet with ".points" tfrecords. I have run this and using the decode_shape gives me pretty good results! However, this is not the case when I try to run an autoencoder with ocnn and ".octree" tfrecords. Below I specify the steps I followed:
+In the repo you have a config file (ae_resnet.yaml) for running a resnet with ".points" tfrecords. I have run this and using the decode_shape gives me pretty good results! However, this is not the case when I try to run an autoencoder with ocnn and ".octree" tfrecords. 
+ 
+####Here are the steps I followed:
 
-1. i used ```python data/completion.py --run generate_dataset``` which downloaded the ".points" files of the completion dataset and generated:
+**Step 1.** i used ```python data/completion.py --run generate_dataset``` which downloaded the ".points" files of the completion dataset and generated:
 ```
 shape.ply
 shape.points
@@ -19,18 +21,18 @@ filelist_test_scans.txt
 filelist_train.txt
 ```
  
-2. under each category folder in shape.points i generated a list.txt that includes the paths of its points and run ```octree --filenames category/list.txt --output_path shape.octrees/category --depth 6 --split_label 1 --rot_num 6```
+**Step 2.** under each category folder in shape.points i generated a list.txt that includes the paths of its points and run ```octree --filenames category/list.txt --output_path shape.octrees/category --depth 6 --split_label 1 --rot_num 6```
 
 Here, I used --depth 6 and --split_label 1 because I saw these parameters in ae_resnet.yaml.
 
-3. similarly to filelist_test.txt and filelist_train.txt I generated files that include paths of the corresponding octrees (for each .points file path i included the 6 .octree file paths) and then I made octree tfrecords. Specifically these corresponding files:
+**Step 3.** similarly to filelist_test.txt and filelist_train.txt I generated files that include paths of the corresponding octrees (for each .points file path i included the 6 .octree file paths) and then I made octree tfrecords. Specifically these corresponding files:
 ```
 completion_test_octrees.tfrecords
 completion_test_scans_octrees.tfrecords
 completion_train_octrees.tfrecords
 ```
 
-4. i run the autoencoder with ae_ocnn.yaml:
+**Step 4.** i run the autoencoder with ae_ocnn.yaml:
 ```
 SOLVER:
   gpu: 0,
@@ -73,16 +75,21 @@ LOSS:
   weight_decay: 0.0005
 ```
 
-Q1. What I noticed is that the resnet with points is taking more time to do the same amount of batch iterations (1 hour equals to 2800 iterations in resnet and 12000 iterations in ocnn) and the accuracy and loss of resnet are much smoother than the ones in ocnn. e.g.
+#### Results I got
+
+What I noticed is that the resnet with points is taking more time to do the same amount of batch iterations (1 hour equals to 2800 iterations in resnet and 12000 iterations in ocnn) and the accuracy and loss of resnet are much smoother than the ones in ocnn. e.g.
 ![image](https://user-images.githubusercontent.com/15656466/90230817-cbf05100-de22-11ea-9852-32a255e66f74.png) vs. ![image](https://user-images.githubusercontent.com/15656466/90230846-d6124f80-de22-11ea-9d79-c563295561ca.png)
+
 Also, the decoded octrees from resnet are much better than the ones from ocnn: e.g.
 ![image](https://user-images.githubusercontent.com/15656466/90230991-1e317200-de23-11ea-9d22-2f5bd2318a4a.png) at 6K batch iterations of resnet vs. ![image](https://user-images.githubusercontent.com/15656466/90231021-2a1d3400-de23-11ea-8cd3-af85358dd625.png) at 20K batch iterations of ocnn.
 
-Q2. I also have a question regarding the input signal. In classification both cls_octree.yaml and cls_points.yaml have input channel 3, which as I understand it represents the normals at the leaf octants, i.e. nx,ny,nz. In the autoencoder however,  ae_resnet.yaml specifies input channel as 4, but using my ae_ocnn.yaml I get error if I don't set input channel to 3. This made me think that I have to generate adaptive octrees, so I repeated step 2. with "--adaptive 4". However, running the ocnn autoencoder showed again the same error i.e. ```F octree_property_op.cc:101] Check failed: channel_ == channel (4 vs. 3)The specified channel_ is wrong.``` I'm also wondering why the cls_points.yaml has model channel 3.
+#### Below I list my questions:
 
-Q3. I'm also wondering what does the output of check_octree means:
+**Q1.** I guess my configuration for ocnn autoencoder is wrong and I have a question regarding the input signal. In classification both cls_octree.yaml and cls_points.yaml have input channel 3, which as I understand it represents the normals at the leaf octants, i.e. nx,ny,nz. In the autoencoder however,  ae_resnet.yaml specifies input channel as 4, but using my ae_ocnn.yaml I get error if I don't set input channel to 3. Specifically I get the error ```F octree_property_op.cc:101] Check failed: channel_ == channel (4 vs. 3)The specified channel_ is wrong.```. I thought I might have to generate adaptive octrees, so I repeated **step 2** with an additional argument ```--adaptive 4```. However, running the ocnn autoencoder showed again the same error. I dont understant why I get the error, and I'm also wondering why the cls_points.yaml has model channel 3.
 
-example of an octree generated with "octree ... --depth 6 --split_label 1 --rot_num 6":
+**Q2.** What does the output of check_octree means:
+
+example of an octree generated with ```octree ... --depth 6 --split_label 1 --rot_num 6```:
 ```
 ===============
 ../ocnn_completion/.../02691156/1a04e3eab45ca15dd86060f189eb133_6_2_000.octree infomation:
@@ -109,7 +116,7 @@ key2xyz: 0
 sizeof_octree: 483992
 ===============
 ```
-example of an octree generated with "octree ... --depth 6 --split_label 1 --rot_num 6 --adaptive true":
+example of an octree generated with ```octree ... --depth 6 --split_label 1 --rot_num 6 --adaptive 4```:
 ```
 ===============
 .../ocnn_completion/.../02691156/10aa040f470500c6a66ef8df4909ded9_6_2_000.octree infomation:
@@ -137,10 +144,11 @@ sizeof_octree: 66404
 ===============
 ```
 
-Q4. i guess adaptive_layer:4 is dummy in the first example because of is_adaptive: 0 ?!
-Q5. what is the channel parameter and the locations parameter showing?
+**Q2.1.** i guess adaptive_layer:4 is dummy in the first example because of is_adaptive: 0 ?!
 
-Lastly, trying to understand the octree_property function, I run the following code:
+**Q2.2.** what is the channel parameter and the locations parameter showing?
+
+**Q3.** Lastly, trying to understand the octree_property function, I run the following code:
 
 ```
 import sys
@@ -151,122 +159,151 @@ from libs import *
 
 
 class DatasetDebug:
+    classification_channels = {'split': 0, 'label': 0, 'feature': 3, 'index': 1, 'xyz': 1}
+    shape_completion_channels = {'split': 1, 'label': 1, 'feature': 3, 'index': 1, 'xyz': 1}
 
     @staticmethod
     def check_properties():
+        # filename = 'resources/ModelNetOnly4Samples3/m40_5_2_12_test_octree.tfrecords'
+        # octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
+        # octree, label, filename = octrees(filename, 32, shuffle_size=False, return_iterator=False, take=10)
+        # filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
+        # octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
+        # octree, label, filename = octrees(filename, 32, shuffle_size=False, return_iterator=False, take=10)
 
-        filename = 'resources/ModelNetOnly4Samples3/m40_train_points.tfrecords'
+        # filename = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_test_points.tfrecords'
+        # depth = 5
+        filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
+        depth = 6
         octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
-                                      TransformPoints(distort=False, depth=5, offset=0.55, axis='z', scale=0.0,
+                                      TransformPoints(distort=False, depth=depth, offset=0.55, axis='z', scale=0.0,
                                                       jitter=0.0, angle=[180, 180, 180],
                                                       bounding_sphere=bounding_sphere),
-                                      Points2Octree(depth=5))
-        octree, label = octrees(filename, 32, shuffle_size=False, return_iterator=False, take=10)
+                                      Points2Octree(depth=depth))
+        octree, label = octrees(filename, batch_size=1, shuffle_size=False, return_iterator=False, take=10)
+        channels_dict = DatasetDebug.classification_channels
 
         with tf.Session() as sess:
-            # it only lets me use channel=0
+            # gives error if channel!=0
             for d in range(-10, 10):
-                res = sess.run(octree_property(octree, property_name="split", dtype=tf.float32, depth=d, channel=0))
-                print("d ", d, " split ", res.shape)
-                res = sess.run(octree_property(octree, property_name="label", depth=d, channel=0, dtype=tf.float32))
-                print("d ", d, " label ", res.shape)
+                property_name = 'split'
+                result = sess.run(octree_property(octree, property_name=property_name, depth=d,
+                                                  channel=channels_dict[property_name], dtype=tf.float32))
+                print("depth {} {} {}".format(d, property_name, result.shape))
+                property_name = 'label'
+                result = sess.run(octree_property(octree, property_name=property_name, depth=d,
+                                                  channel=channels_dict[property_name], dtype=tf.float32))
+                print("depth {} {} {}".format(d, property_name, result.shape))
 
-            # it only lets me use channel=3
-            for d in range(1, 6):
-                res = sess.run(octree_property(octree, property_name="feature", depth=d, channel=3, dtype=tf.float32))
-                print("d ", d, " feature ", res.shape)
+            # gives error if channel!=3
+            property_name = 'feature'
+            for d in range(1, depth + 1):
+                result = sess.run(octree_property(octree, property_name=property_name, depth=d,
+                                                  channel=channels_dict[property_name], dtype=tf.float32))
+                print("depth {} {} {}".format(d, property_name, result.shape))
 
-            res = sess.run(octree_property(octree, property_name="feature", depth=-6, channel=3, dtype=tf.float32))
-            print("d ", -6, " feature ", res.shape)
+            result = sess.run(octree_property(octree, property_name=property_name, depth=-6,
+                                              channel=channels_dict[property_name], dtype=tf.float32))
+            print("depth {} {} {}".format(d, property_name, result.shape))
 
-            # it only lets me use channel=1
+            # gives error if channel!=1
+            property_name = 'index'
             for d in range(-1, 8):
-                res = sess.run(octree_property(octree, property_name="index", depth=d, channel=1, dtype=tf.int32))
-                print("d ", d, " index ", res.shape)
+                result = sess.run(octree_property(octree, property_name=property_name, depth=d,
+                                                  channel=channels_dict[property_name], dtype=tf.int32))
+                print("depth {} {} {}".format(d, property_name, result.shape))
 
-            # it only lets me use channel=1
-            for d in range(-2, 8):
-                res = sess.run(octree_property(octree, property_name="xyz", depth=4, channel=1, dtype=tf.uint32))
-                print("d ", d, " xyz ", res.shape)
+            # gives error if channel!=1
+            property_name = 'xyz'
+            for d in range(-1, 8):
+                result = sess.run(octree_property(octree, property_name=property_name, depth=d,
+                                                  channel=channels_dict[property_name], dtype=tf.uint32))
+                print("depth {} {} {}".format(d, property_name, result.shape))
+
 
 DatasetDebug.check_properties()
 ```
 
 which gives:
 ```
-d  -10  split  (0, 1596993073)
-d  -10  label  (0, 1596993073)
-d  -9  split  (0, 0)
-d  -9  label  (0, 0)
-d  -8  split  (0, 32)
-d  -8  label  (0, 32)
-d  -7  split  (0, 5)
-d  -7  label  (0, 5)
-d  -6  split  (0, 2)
-d  -6  label  (0, 2)
-d  -5  split  (0, 4)
-d  -5  label  (0, 4)
-d  -4  split  (0, 0)
-d  -4  label  (0, 0)
-d  -3  split  (0, 1073741824)
-d  -3  label  (0, 1073741824)
-d  -2  split  (0, 1036831949)
-d  -2  label  (0, 1036831949)
-d  -1  split  (0, 0)
-d  -1  label  (0, 0)
-d  0  split  (0, 32)
-d  0  label  (0, 32)
-d  1  split  (0, 256)
-d  1  label  (0, 256)
-d  2  split  (0, 2048)
-d  2  label  (0, 2048)
-d  3  split  (0, 5872)
-d  3  label  (0, 6176)
-d  4  split  (0, 23600)
-d  4  label  (0, 22944)
-d  5  split  (0, 107952)
-d  5  label  (0, 100984)
-d  6  split  (0, 0)
-d  6  label  (0, 0)
-d  7  split  (0, 0)
-d  7  label  (0, 0)
-d  8  split  (0, 0)
-d  8  label  (0, 0)
-d  9  split  (0, 0)
-d  9  label  (0, 0)
-d  1  feature  (3, 256)
-d  2  feature  (3, 2048)
-d  3  feature  (3, 5904)
-d  4  feature  (3, 23536)
-d  5  feature  (3, 105568)
-d  -6  feature  (3, 2)
-d  -1  index  (1, 0)
-d  0  index  (1, 32)
-d  1  index  (1, 256)
-d  2  index  (1, 2048)
-d  3  index  (1, 6160)
-d  4  index  (1, 23040)
-d  5  index  (1, 105248)
-d  6  index  (1, 0)
-d  7  index  (1, 0)
-d  -2  xyz  (1, 23600)
-d  -1  xyz  (1, 22944)
-d  0  xyz  (1, 23664)
-d  1  xyz  (1, 22976)
-d  2  xyz  (1, 24048)
-d  3  xyz  (1, 23040)
-d  4  xyz  (1, 23536)
-d  5  xyz  (1, 23296)
-d  6  xyz  (1, 23328)
-d  7  xyz  (1, 23600)
+depth -10 split (0, 1596993073)
+depth -10 label (0, 1596993073)
+depth -9 split (0, 0)
+depth -9 label (0, 0)
+depth -8 split (0, 1)
+depth -8 label (0, 1)
+depth -7 split (0, 6)
+depth -7 label (0, 6)
+depth -6 split (0, 2)
+depth -6 label (0, 2)
+depth -5 split (0, 4)
+depth -5 label (0, 4)
+depth -4 split (0, 0)
+depth -4 label (0, 0)
+depth -3 split (0, 1073741824)
+depth -3 label (0, 1073741824)
+depth -2 split (0, 1036831949)
+depth -2 label (0, 1036831949)
+depth -1 split (0, 0)
+depth -1 label (0, 0)
+depth 0 split (0, 1)
+depth 0 label (0, 1)
+depth 1 split (0, 8)
+depth 1 label (0, 8)
+depth 2 split (0, 64)
+depth 2 label (0, 64)
+depth 3 split (0, 160)
+depth 3 label (0, 160)
+depth 4 split (0, 568)
+depth 4 label (0, 688)
+depth 5 split (0, 1696)
+depth 5 label (0, 1952)
+depth 6 split (0, 7472)
+depth 6 label (0, 7016)
+depth 7 split (0, 0)
+depth 7 label (0, 0)
+depth 8 split (0, 0)
+depth 8 label (0, 0)
+depth 9 split (0, 0)
+depth 9 label (0, 0)
+depth 1 feature (3, 8)
+depth 2 feature (3, 64)
+depth 3 feature (3, 176)
+depth 4 feature (3, 464)
+depth 5 feature (3, 1768)
+depth 6 feature (3, 5080)
+depth 6 feature (3, 2)
+depth -1 index (1, 0)
+depth 0 index (1, 1)
+depth 1 index (1, 8)
+depth 2 index (1, 64)
+depth 3 index (1, 192)
+depth 4 index (1, 552)
+depth 5 index (1, 1704)
+depth 6 index (1, 6784)
+depth 7 index (1, 0)
+depth -1 xyz (1, 0)
+depth 0 xyz (1, 1)
+depth 1 xyz (1, 8)
+depth 2 xyz (1, 64)
+depth 3 xyz (1, 192)
+depth 4 xyz (1, 576)
+depth 5 xyz (1, 1968)
+depth 6 xyz (1, 7016)
+depth 7 xyz (1, 0)
 ```
 
-Q6. I'm confused with the use of 'points' vs 'octree'. In the classification code, using 'octree' calls the DatasetFactory that reads from octree tfrecords, and using 'points' calls the DatasetFactory that reads from point tfrecords , transforms them and merges them to octrees. So is 'merge octree' a function that can run either on ".octree" or on ".points" and generate either merged ".octrees" or merged ".points"? Both formats are in bytes and i can't see their difference and i see that is possible to call 
- the octree_property function on either data loaded from ".points" file or ".octree" files...
+**Q3.1.** what is split ?
 
-Q7. is the "shuffle key" the "index" or "xyz" of octree_property ?
-Q8. is "label" in "octree_property" giving the "which indicates that it is the p-th non-empty octant in the sorted octant list of the l-th depth." ?
-Q9. is the "input signal" the "xyz" property or the "feature" property ? can i get "cnn features" from octree_property? if i apply a convolution and call again octree_property with this i will get a new result in each training step?
+**Q3.2.** i guess in all properties i should ignore anything that is called with a non existing depth.
+
+for classification we don't have label for each voxel that's why channel = 0 and result arrays have zero rows. (in SHAPE COMPLETION / partnet segmentation DATA CHANNEL SHOULD BE 1!?)
+
+Q8. is the "input signal" the "feature" of octree_property and accordingly you can set it to be the result of a convolution? and **when we apply a convolution and call octree_property with this i will get a new result in each training step?**
+
+
+Q4. I'm confused with the use of 'points' vs 'octree'. In the classification code, using 'octree' calls the DatasetFactory that reads from octree tfrecords, and using 'points' calls the DatasetFactory that reads from point tfrecords , transforms them and merges them to octrees. So is 'merge octree' a function that can run either on ".octree" or on ".points" and can generate either merged ".octrees" or merged ".points" accordingly? Both formats are in bytes and i can't see their difference and i see that is possible to call 
+ the octree_property function on either data loaded from ".points" file or ".octree" files...
 
 the octree2mesh ... if i have a predicted octree from OCNN i will see equal size patches and if i predicted octree from AOCNN i will see different-size patches?!
 

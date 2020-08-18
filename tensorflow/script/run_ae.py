@@ -42,7 +42,7 @@ class AeTFSolver(TFSolver):
     # build graph
     octree, label =  DatasetFactory(FLAGS.DATA.test)()
     code, _ = autoencoder.octree_encoder(octree, training=False, reuse=False)
-    octree_pred = autoencoder.octree_decode_shape(code, training=False, reuse=False)
+    octree_pred, decoder_debug_dict = autoencoder.octree_decode_shape(code, training=False, reuse=False)
 
     # checkpoint
     assert(self.flags.ckpt)   # the self.flags.ckpt should be provided
