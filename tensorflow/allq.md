@@ -89,7 +89,109 @@ Also, the decoded octrees from resnet are much better than the ones from ocnn: e
 
 **Q1.2** Regarding the input signal, in ae_resnet.yaml the input channel is 4 and I realized after some time that this is due to node_dis: True. Can you explain what this is? 
 
-**Q2.** What does the output of check_octree means:
+**Q2.** When I tried to run autoencoder with adaptive points or octrees it happened that loss4 was extremely big resulting in total loss of nan and then training was stuck? Do you have a hint what the problem is?  (note: for adaptive octrees i used the **step 2** mentioned above with extra argument ```--adaptive 4```)
+
+##### Adaptive resnet:
+
+test summaries:
+
+![image](https://user-images.githubusercontent.com/15656466/90603304-c66c7f80-e203-11ea-8dd3-6af0b8ec1986.png)
+
+config:
+```
+SOLVER:
+  gpu: 0,
+  logdir: /media/christina/Data/ANFASS_data/O-CNN/output/ocnn_completion/ae/aresnet_b16
+  run: train
+  max_iter: 20000
+  test_iter: 336
+  test_every_iter: 400
+  step_size: (80000,)
+  ckpt_num: 20
+
+DATA:
+  train:
+    dtype: points
+    depth: 6
+    location: /media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_train_points.tfrecords
+    batch_size: 16
+    distort: False
+    offset: 0.0
+    node_dis: True
+    split_label: True
+    adaptive: True
+
+  test: 
+    dtype: points
+    depth: 6
+    location: /media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords
+    batch_size: 16
+    distort: False
+    offset: 0.0
+    node_dis: True
+    split_label: True
+    adaptive: True
+
+MODEL:
+  name: resnet
+  channel: 4
+  nout: 32   # The channel of the hidden code, the code length is 4*4*4*32 (2048)
+  depth: 6
+
+LOSS:
+  weight_decay: 0.0005
+```
+
+##### Adaptive ocnn:
+
+test summaries:
+
+![image](https://user-images.githubusercontent.com/15656466/90603413-f0be3d00-e203-11ea-8edc-f53eec39a98f.png)
+
+config:
+```
+SOLVER:
+  gpu: 0,
+  logdir: /media/christina/Data/ANFASS_data/O-CNN/output/ocnn_completion/ae/aocnn_b16
+  run: train
+  max_iter: 20000
+  test_iter: 336
+  test_every_iter: 400
+  step_size: (80000,)
+  ckpt_num: 20
+
+DATA:
+  train:
+    dtype: octree
+    depth: 6
+    location: /media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_train_aoctrees.tfrecords
+    batch_size: 16
+    distort: False
+    offset: 0.0
+    node_dis: True
+    split_label: True
+
+  test: 
+    dtype: octree
+    depth: 6
+    location: /media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_aoctrees.tfrecords
+    batch_size: 16
+    distort: False
+    offset: 0.0
+    node_dis: True
+    split_label: True
+
+MODEL:
+  name: ocnn
+  channel: 3
+  nout: 32   # The channel of the hidden code, the code length is 4*4*4*32 (2048)
+  depth: 6
+
+LOSS:
+  weight_decay: 0.0005
+```
+
+**Q3.** What does the output of check_octree means:
 
 example of an octree generated with ```octree ... --depth 6 --split_label 1 --rot_num 6```:
 ```
@@ -146,11 +248,11 @@ sizeof_octree: 66404
 ===============
 ```
 
-**Q2.1.** i guess adaptive_layer:4 is dummy in the first example because of is_adaptive: 0 ?!
+**Q3.1.** i guess adaptive_layer:4 is dummy in the first example because of is_adaptive: 0 ?!
 
-**Q2.2.** what is the channel parameter and the locations parameter showing?
+**Q3.2.** what is the channel parameter and the locations parameter showing?
 
-**Q3.** Trying to understand the octree_property function, I run the following code:
+**Q4.** Trying to understand the octree_property function, I run the following code:
 
 ```
 import sys
@@ -368,20 +470,18 @@ depth 5 xyz (1, 1856)
 depth 0 xyz (1, 5)
 ```
 
-**Q3.1.** what is split ?
+**Q4.1.** what is split ?
 
-**Q3.2.** i guess octree_property function shouldn't be possible  to be called with a non existing depth however it is sometimes possible like in the line with 'feature' property and 'depth=-6'
+**Q4.2.** i guess octree_property function shouldn't be possible  to be called with a non existing depth however it is sometimes possible like in the line with 'feature' property and 'depth=-6'
 
-**Q3.3.** does the property_name='feature' correspond to the "Input Signal" except if we specifically do some CNN calculations and call octree_set_property with that result - when it will correspond to the "CNN features"?
+**Q4.3.** does the property_name='feature' correspond to the "Input Signal" except if we specifically do some CNN calculations and call octree_set_property with that result - when it will correspond to the "CNN features"?
 
-**Q3.4.** is label always of zero rows because in the classification and shape completion dataset we don't have label for each voxel(octant) ? i.e. in a segmentation dataset where we should have a label for each voxel the label would have channel=1?!
+**Q4.4.** is label always of zero rows because in the classification and shape completion dataset we don't have label for each voxel(octant) ? i.e. in a segmentation dataset where we should have a label for each voxel the label would have channel=1?!
 
-Q4. I'm confused with the use of 'points' vs 'octree'. In the classification code, using 'octree' calls the DatasetFactory that reads from octree tfrecords, and using 'points' calls the DatasetFactory that reads from point tfrecords , transforms them and merges them to octrees. I saw that ```octree_property``` function can be called either on data loaded from ".points" tfrecords or from ".octree" tfrecords, and I thought that either way we will have octrees as data, but then why do we care to use resnet instead of ocnn? This makes me wonder if ```octree_batch``` function and ```octree_property``` function can run either on ".octree" or on ".points" and generate either merged ".octrees" or merged ".points" accordingly? Both formats are in bytes and i can't see their difference...
+**Q5.** I'm confused with the use of 'points' vs 'octree'. In the classification code, using 'octree' calls the DatasetFactory that reads from octree tfrecords, and using 'points' calls the DatasetFactory that reads from point tfrecords , transforms them and merges them to octrees. I saw that ```octree_property``` function can be called either on data loaded from ".points" tfrecords or from ".octree" tfrecords, and I thought that either way we will have octrees as data, but then why do we care to use resnet instead of ocnn? This makes me wonder if ```octree_batch``` function and ```octree_property``` function can run either on ".octree" or on ".points" and generate either merged ".octrees" or merged ".points" accordingly? Both formats are in bytes and i can't see their difference...Also when I run run_ae.py with ```SOLVER.run: decode_shape``` it gives me the original and reconstructed octrees and writes their bytes in ".octree" file, which if I convert them into mesh with ```octree2mesh``` the original shape i get from ae_resnet.yaml and ae_ocnn.yaml are slightly different. Is this because I used 6 rotations in the octree generation thus octree with suffix "_6_2_000.octree" is not entirely same as octree created from point-cloud? 
 
-the octree2mesh ... if i have a predicted octree from OCNN i will see equal size patches and if i predicted octree from AOCNN i will see different-size patches?!
+original image in resnet:
+![image](https://user-images.githubusercontent.com/15656466/90602586-ad170380-e202-11ea-950b-b0579434ef5d.png)
 
-the autoencoder results are both input and output saved as ".octree" even if we use resnet or ocnn ... why/how
-why input of ocnn vs resnet are slightly different?
-
-
-if one of the losses is nan then total loss is nan!?
+original image in ocnn:
+![image](https://user-images.githubusercontent.com/15656466/90602620-b7d19880-e202-11ea-8022-8cf70100c55b.png)
