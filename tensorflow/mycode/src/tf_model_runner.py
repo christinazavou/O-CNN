@@ -12,7 +12,7 @@ from libs import octree_property
 from src.config import CLASS_TO_LABEL
 from src.data_parsing import DatasetFactoryDebug
 from src.learning_rate import LRFactory
-from src.tf_utils import SummaryDAO, SessionDAO, MisclassifiedOctrees
+from src.tf_utils import SummaryDAO, SessionDAO, MisclassifiedOctrees, GraphAccess
 from src.visualization import Visualizer
 
 
@@ -205,6 +205,18 @@ class TFRunner:
             open_mode = 'w'
         with open(output_path, open_mode) as f:
             f.write(str(self.result_table))
+
+    def amount_of_params(self):
+        self.build_train_graph()
+
+        config = tf.ConfigProto(allow_soft_placement=True)
+        config.gpu_options.allow_growth = True
+
+        with tf.Session(config=config) as sess:
+            session_dao = SessionDAO(sess, self.flags.logdir, keep_max=self.flags.ckpt_num,
+                                     load_iter=self.flags.ckpt)
+
+        GraphAccess.get_total_params(tf.trainable_variables(), verbose=True)
 
     def run(self):
         eval('self.{}()'.format(self.flags.run))
