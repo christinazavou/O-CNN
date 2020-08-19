@@ -5,19 +5,25 @@ from src.data_parsing import *
 from libs import *
 
 
-def config1():
+def config_octrees_1():
     octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
     filename, depth, task = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_test_octree.tfrecords', 5, 'cls'
     return octrees, filename, depth, task
 
 
-def config2():
+def config_octrees_2():
     octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
     filename, depth, task = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_octrees.tfrecords', 6, 'ae'
     return octrees, filename, depth, task
 
 
-def config3():
+def config_octrees_3():
+    octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
+    filename, depth, task = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_aoctrees.tfrecords', 6, 'ae'
+    return octrees, filename, depth, task
+
+
+def config_points_1():
     filename, depth, task = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_test_points.tfrecords', 5, 'cls'
     split_label = False
     octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
@@ -28,7 +34,7 @@ def config3():
     return octrees, filename, depth, task
 
 
-def config4():
+def config_points_2():
     filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
     depth = 6
     split_label = True
@@ -41,7 +47,7 @@ def config4():
     return octrees, filename, depth, task
 
 
-def config5():
+def config_points_3():
     filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
     depth = 6
     split_label = True
@@ -55,6 +61,20 @@ def config5():
     return octrees, filename, depth, task
 
 
+def config_points_4():
+    filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
+    depth = 6
+    split_label = True
+    task = 'ae_points_adaptive'
+    adaptive = True
+    octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
+                                  TransformPoints(distort=False, depth=depth, offset=0.55, axis='z', scale=0.0,
+                                                  jitter=0.0, angle=[180, 180, 180],
+                                                  bounding_sphere=bounding_sphere),
+                                  Points2Octree(depth=depth, split_label=split_label, adaptive=adaptive))
+    return octrees, filename, depth, task
+
+
 class DatasetDebug:
     channels = {
         'cls': {
@@ -65,6 +85,9 @@ class DatasetDebug:
         },
         'ae_points_node_dis': {
             'split': 1, 'label': 0, 'feature': 4, 'index': 1, 'xyz': 1
+        },
+        'ae_points_adaptive': {
+            'split': 1, 'label': 0, 'feature': 3, 'index': 1, 'xyz': 1
         }
     }
 
@@ -115,30 +138,40 @@ class DatasetDebug:
 
 
 def check_properties():
-    octrees, filename, depth, task = config1()
-    octree, label, filenames = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
-    octree5, label5, filenames5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
-    DatasetDebug.check_config(octree, octree5, depth, task)
+    # octrees, filename, depth, task = config_octrees_1()
+    # octree, label, filenames = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    # octree5, label5, filenames5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # DatasetDebug.check_config(octree, octree5, depth, task)
+    #
+    # octrees, filename, depth, task = config_octrees_2()
+    # octree, label, filenames = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    # octree5, label5, filenames5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # DatasetDebug.check_config(octree, octree5, depth, task)
+    #
+    # octrees, filename, depth, task = config_octrees_3()
+    # octree, label, filenames = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    # octree5, label5, filenames5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # DatasetDebug.check_config(octree, octree5, depth, task)
 
-    octrees, filename, depth, task = config2()
-    octree, label, filenames = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
-    octree5, label5, filenames5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
-    DatasetDebug.check_config(octree, octree5, depth, task)
-
-    octrees, filename, depth, task = config3()
+    octrees, filename, depth, task = config_points_1()
     octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
     octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
     DatasetDebug.check_config(octree, octree5, depth, task)
 
-    octrees, filename, depth, task = config4()
-    octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
-    octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
-    DatasetDebug.check_config(octree, octree5, depth, task)
-
-    octrees, filename, depth, task = config5()
-    octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
-    octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
-    DatasetDebug.check_config(octree, octree5, depth, task)
+    # octrees, filename, depth, task = config_points_2()
+    # octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    # octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # DatasetDebug.check_config(octree, octree5, depth, task)
+    #
+    # octrees, filename, depth, task = config_points_3()
+    # octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    # octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # DatasetDebug.check_config(octree, octree5, depth, task)
+    #
+    # octrees, filename, depth, task = config_points_4()
+    # octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    # octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # DatasetDebug.check_config(octree, octree5, depth, task)
 
 
 check_properties()

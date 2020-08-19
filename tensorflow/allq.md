@@ -4,7 +4,7 @@ I'm trying to run the Tensorflow implementation for the autoencoder and I have a
 
 In the repo you have a config file (ae_resnet.yaml) for running a resnet with ".points" tfrecords. I have run this and using the decode_shape gives me pretty good results! However, this is not the case when I try to run an autoencoder with ocnn and ".octree" tfrecords. 
  
-####Here are the steps I followed:
+### Here are the steps I followed:
 
 **Step 1.** i used ```python data/completion.py --run generate_dataset``` which downloaded the ".points" files of the completion dataset and generated:
 ```
@@ -75,7 +75,7 @@ LOSS:
   weight_decay: 0.0005
 ```
 
-#### Results I got
+### Results I got
 
 What I noticed is that the resnet with points is taking more time to do the same amount of batch iterations (1 hour equals to 2800 iterations in resnet and 12000 iterations in ocnn) and the accuracy and loss of resnet are much smoother than the ones in ocnn. e.g.
 ![image](https://user-images.githubusercontent.com/15656466/90230817-cbf05100-de22-11ea-9852-32a255e66f74.png) vs. ![image](https://user-images.githubusercontent.com/15656466/90230846-d6124f80-de22-11ea-9d79-c563295561ca.png)
@@ -83,9 +83,11 @@ What I noticed is that the resnet with points is taking more time to do the same
 Also, the decoded octrees from resnet are much better than the ones from ocnn: e.g.
 ![image](https://user-images.githubusercontent.com/15656466/90230991-1e317200-de23-11ea-9d22-2f5bd2318a4a.png) at 6K batch iterations of resnet vs. ![image](https://user-images.githubusercontent.com/15656466/90231021-2a1d3400-de23-11ea-8cd3-af85358dd625.png) at 20K batch iterations of ocnn.
 
-#### Below I list my questions:
+### Below I list my questions:
 
-**Q1.** I guess my configuration for ocnn autoencoder is wrong and I have a question regarding the input signal. In classification both cls_octree.yaml and cls_points.yaml have input channel 3, which as I understand it represents the normals at the leaf octants, i.e. nx,ny,nz. In the autoencoder however,  ae_resnet.yaml specifies input channel as 4, but using my ae_ocnn.yaml I get error if I don't set input channel to 3. Specifically I get the error ```F octree_property_op.cc:101] Check failed: channel_ == channel (4 vs. 3)The specified channel_ is wrong.```. I thought I might have to generate adaptive octrees, so I repeated **step 2** with an additional argument ```--adaptive 4```. However, running the ocnn autoencoder showed again the same error. I dont understant why I get the error, and I'm also wondering why the cls_points.yaml has model channel 3.
+**Q1.1** Is my configuration for ocnn autoencoder wrong? Is it expected that ocnn runs much faster because its more efficient than resnet? Do i have to train it for much longer time in order to get as good results as with resnet?
+
+**Q1.2** Regarding the input signal, in ae_resnet.yaml the input channel is 4 and I realized after some time that this is due to node_dis: True. Can you explain what this is? 
 
 **Q2.** What does the output of check_octree means:
 
@@ -148,7 +150,7 @@ sizeof_octree: 66404
 
 **Q2.2.** what is the channel parameter and the locations parameter showing?
 
-**Q3.** Lastly, trying to understand the octree_property function, I run the following code:
+**Q3.** Trying to understand the octree_property function, I run the following code:
 
 ```
 import sys
@@ -158,94 +160,191 @@ from src.data_parsing import *
 from libs import *
 
 
+def config_octrees_1():
+    octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
+    filename, depth, task = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_test_octree.tfrecords', 5, 'cls'
+    return octrees, filename, depth, task
+
+
+def config_octrees_2():
+    octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
+    filename, depth, task = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_octrees.tfrecords', 6, 'ae'
+    return octrees, filename, depth, task
+
+
+def config_octrees_3():
+    octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
+    filename, depth, task = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_aoctrees.tfrecords', 6, 'ae'
+    return octrees, filename, depth, task
+
+
+def config_points_1():
+    filename, depth, task = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_test_points.tfrecords', 5, 'cls'
+    split_label = False
+    octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
+                                  TransformPoints(distort=False, depth=depth, offset=0.55, axis='z', scale=0.0,
+                                                  jitter=0.0, angle=[180, 180, 180],
+                                                  bounding_sphere=bounding_sphere),
+                                  Points2Octree(depth=depth, split_label=split_label))
+    return octrees, filename, depth, task
+
+
+def config_points_2():
+    filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
+    depth = 6
+    split_label = True
+    task = 'ae'
+    octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
+                                  TransformPoints(distort=False, depth=depth, offset=0.55, axis='z', scale=0.0,
+                                                  jitter=0.0, angle=[180, 180, 180],
+                                                  bounding_sphere=bounding_sphere),
+                                  Points2Octree(depth=depth, split_label=split_label))
+    return octrees, filename, depth, task
+
+
+def config_points_3():
+    filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
+    depth = 6
+    split_label = True
+    node_dis = True
+    task = 'ae_points_node_dis'
+    octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
+                                  TransformPoints(distort=False, depth=depth, offset=0.55, axis='z', scale=0.0,
+                                                  jitter=0.0, angle=[180, 180, 180],
+                                                  bounding_sphere=bounding_sphere),
+                                  Points2Octree(depth=depth, split_label=split_label, node_dis=node_dis))
+    return octrees, filename, depth, task
+
+
+def config_points_4():
+    filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
+    depth = 6
+    split_label = True
+    task = 'ae_points_adaptive'
+    adaptive = True
+    octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
+                                  TransformPoints(distort=False, depth=depth, offset=0.55, axis='z', scale=0.0,
+                                                  jitter=0.0, angle=[180, 180, 180],
+                                                  bounding_sphere=bounding_sphere),
+                                  Points2Octree(depth=depth, split_label=split_label, adaptive=adaptive))
+    return octrees, filename, depth, task
+
+
 class DatasetDebug:
-    classification_channels = {'split': 0, 'label': 0, 'feature': 3, 'index': 1, 'xyz': 1}
-    shape_completion_channels = {'split': 1, 'label': 0, 'feature': 3, 'index': 1, 'xyz': 1}
+    channels = {
+        'cls': {
+            'split': 0, 'label': 0, 'feature': 3, 'index': 1, 'xyz': 1
+        },
+        'ae': {
+            'split': 1, 'label': 0, 'feature': 3, 'index': 1, 'xyz': 1
+        },
+        'ae_points_node_dis': {
+            'split': 1, 'label': 0, 'feature': 4, 'index': 1, 'xyz': 1
+        },
+        'ae_points_adaptive': {
+            'split': 1, 'label': 0, 'feature': 3, 'index': 1, 'xyz': 1
+        }
+    }
+
+    dtypes = {
+        'split': tf.float32,
+        'label': tf.float32,
+        'feature': tf.float32,
+        'index': tf.int32,
+        'xyz': tf.uint32
+    }
 
     @staticmethod
-    def check_properties():
-        # # filename = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_5_2_12_test_octree.tfrecords'
-        # # depth = 5
-        # # channels_dict = DatasetDebug.classification_channels
-        # filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_octrees.tfrecords'
-        # depth = 6
-        # channels_dict = DatasetDebug.shape_completion_channels
-        # octrees = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
-        # octree, label, filenames = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
-        # octreesN = OctreeDatasetDebug(ParseExampleDebug(x_alias='data', y_alias='label'))
-        # octree5, label5, filenames5 = octreesN(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    def check(octree, property_name, max_depth, task, session):
+        for d in range(0, max_depth + 1):
+            DatasetDebug.check_d(octree, property_name, d, task, session)
 
-        filename = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_test_points.tfrecords'
-        depth = 5
-        split_label = False
-        channels_dict = DatasetDebug.classification_channels
-        # filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
-        # depth = 6
-        # split_label = True
-        # channels_dict = DatasetDebug.shape_completion_channels
-        octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
-                                      TransformPoints(distort=False, depth=depth, offset=0.55, axis='z', scale=0.0,
-                                                      jitter=0.0, angle=[180, 180, 180],
-                                                      bounding_sphere=bounding_sphere),
-                                      Points2Octree(depth=depth, split_label=split_label))
-        octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
-        octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    @staticmethod
+    def check_d(octree, property_name, d, task, session):
+        result = session.run(octree_property(octree, property_name=property_name, depth=d,
+                                             dtype=DatasetDebug.dtypes[property_name],
+                                             channel=DatasetDebug.channels[task][property_name]))
+        print("depth {} {} {}".format(d, property_name, result.shape))
+        assert result.shape[0] == DatasetDebug.channels[task][property_name]
+        assert result.shape[1] <= 8 ** d
 
+    @staticmethod
+    def check_config(octree, octree5, depth, task):
         with tf.Session() as sess:
-            for d in range(0, depth + 1):
-                property_name = 'split'
-                result = sess.run(octree_property(octree, property_name=property_name, depth=d,
-                                                  channel=channels_dict[property_name], dtype=tf.float32))
-                print("depth {} {} {}".format(d, property_name, result.shape))
-                property_name = 'label'
-                result = sess.run(octree_property(octree, property_name=property_name, depth=d,
-                                                  channel=channels_dict[property_name], dtype=tf.float32))
-                print("depth {} {} {}".format(d, property_name, result.shape))
+            DatasetDebug.check(octree, 'split', depth, task, sess)
+            DatasetDebug.check(octree, 'label', depth, task, sess)
 
-            property_name = 'feature'  # this must be the input signal..i.e. in last depth is the nx,ny,nz and then
-            # in each preceding depth is the average of its children nodes
-            for d in range(0, depth + 1):
-                result = sess.run(octree_property(octree, property_name=property_name, depth=d,
-                                                  channel=channels_dict[property_name], dtype=tf.float32))
-                print("depth {} {} {}".format(d, property_name, result.shape))
+            # "feature" must be the input signal..i.e. in last depth is the nx,ny,nz and then in each preceding
+            # depth is the average of its children nodes
+            DatasetDebug.check(octree, 'feature', depth, task, sess)
+            try:
+                DatasetDebug.check_d(octree, 'feature', -6, task, sess)
+            except:
+                pass  # not meaningful depth
+            DatasetDebug.check(octree, 'index', depth, task, sess)
 
-            result = sess.run(octree_property(octree, property_name=property_name, depth=-6,
-                                              channel=channels_dict[property_name], dtype=tf.float32))
-            print("depth {} {} {}".format(-6, property_name, result.shape))
+            # "xyz" is the shuffle key
+            DatasetDebug.check(octree, "xyz", depth, task, sess)
 
-            property_name = 'index'
-            for d in range(0, depth + 1):
-                result = sess.run(octree_property(octree, property_name=property_name, depth=d,
-                                                  channel=channels_dict[property_name], dtype=tf.int32))
-                print("depth {} {} {}".format(d, property_name, result.shape))
-
-            property_name = 'xyz'  # this is the shuffle key
-            for d in range(0, depth + 1):
-                result = sess.run(octree_property(octree, property_name=property_name, depth=d,
-                                                  channel=channels_dict[property_name], dtype=tf.uint32))
-                print("depth {} {} {}".format(d, property_name, result.shape))
-
-            result = sess.run(octree_property(octree5, property_name=property_name, depth=0,
-                                              channel=channels_dict[property_name], dtype=tf.uint32))
-            print("octree5: depth {} {} {}".format(0, property_name, result.shape))
+            try:
+                DatasetDebug.check_d(octree5, "xyz", 0, task, sess)
+            except:
+                pass  # more than one octrees merged thus more output rows in the result
 
 
-DatasetDebug.check_properties()
+def check_properties():
+    # octrees, filename, depth, task = config_octrees_1()
+    # octree, label, filenames = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    # octree5, label5, filenames5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # DatasetDebug.check_config(octree, octree5, depth, task)
+    #
+    # octrees, filename, depth, task = config_octrees_2()
+    # octree, label, filenames = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    # octree5, label5, filenames5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # DatasetDebug.check_config(octree, octree5, depth, task)
+    #
+    # octrees, filename, depth, task = config_octrees_3()
+    # octree, label, filenames = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    # octree5, label5, filenames5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # DatasetDebug.check_config(octree, octree5, depth, task)
+
+    octrees, filename, depth, task = config_points_1()
+    octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    DatasetDebug.check_config(octree, octree5, depth, task)
+
+    # octrees, filename, depth, task = config_points_2()
+    # octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    # octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # DatasetDebug.check_config(octree, octree5, depth, task)
+    #
+    # octrees, filename, depth, task = config_points_3()
+    # octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    # octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # DatasetDebug.check_config(octree, octree5, depth, task)
+    #
+    # octrees, filename, depth, task = config_points_4()
+    # octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    # octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # DatasetDebug.check_config(octree, octree5, depth, task)
+
+
+check_properties()
 ```
 
 which gives:
 ```
 depth 0 split (0, 1)
-depth 0 label (0, 1)
 depth 1 split (0, 8)
-depth 1 label (0, 8)
 depth 2 split (0, 64)
-depth 2 label (0, 64)
-depth 3 split (0, 160)
-depth 3 label (0, 112)
+depth 3 split (0, 96)
 depth 4 split (0, 512)
-depth 4 label (0, 512)
-depth 5 split (0, 1856)
+depth 5 split (0, 1680)
+depth 0 label (0, 1)
+depth 1 label (0, 8)
+depth 2 label (0, 64)
+depth 3 label (0, 176)
+depth 4 label (0, 480)
 depth 5 label (0, 1656)
 depth 0 feature (3, 1)
 depth 1 feature (3, 8)
@@ -266,7 +365,7 @@ depth 2 xyz (1, 64)
 depth 3 xyz (1, 176)
 depth 4 xyz (1, 512)
 depth 5 xyz (1, 1856)
-octree5: depth 0 xyz (1, 5)
+depth 0 xyz (1, 5)
 ```
 
 **Q3.1.** what is split ?
@@ -275,12 +374,14 @@ octree5: depth 0 xyz (1, 5)
 
 **Q3.3.** does the property_name='feature' correspond to the "Input Signal" except if we specifically do some CNN calculations and call octree_set_property with that result - when it will correspond to the "CNN features"?
 
-**Q3.4.** is label always of zero rows because in the classification and shape completion dataset we don't have label for each voxel ? i.e. in a segmentation dataset where we should have a label for each voxel the label would have channel=1?!
+**Q3.4.** is label always of zero rows because in the classification and shape completion dataset we don't have label for each voxel(octant) ? i.e. in a segmentation dataset where we should have a label for each voxel the label would have channel=1?!
 
-Q4. I'm confused with the use of 'points' vs 'octree'. In the classification code, using 'octree' calls the DatasetFactory that reads from octree tfrecords, and using 'points' calls the DatasetFactory that reads from point tfrecords , transforms them and merges them to octrees. So is 'merge octree' a function that can run either on ".octree" or on ".points" and can generate either merged ".octrees" or merged ".points" accordingly? Both formats are in bytes and i can't see their difference and i see that is possible to call 
- the octree_property function on either data loaded from ".points" file or ".octree" files...
+Q4. I'm confused with the use of 'points' vs 'octree'. In the classification code, using 'octree' calls the DatasetFactory that reads from octree tfrecords, and using 'points' calls the DatasetFactory that reads from point tfrecords , transforms them and merges them to octrees. I saw that ```octree_property``` function can be called either on data loaded from ".points" tfrecords or from ".octree" tfrecords, and I thought that either way we will have octrees as data, but then why do we care to use resnet instead of ocnn? This makes me wonder if ```octree_batch``` function and ```octree_property``` function can run either on ".octree" or on ".points" and generate either merged ".octrees" or merged ".points" accordingly? Both formats are in bytes and i can't see their difference...
 
 the octree2mesh ... if i have a predicted octree from OCNN i will see equal size patches and if i predicted octree from AOCNN i will see different-size patches?!
 
 the autoencoder results are both input and output saved as ".octree" even if we use resnet or ocnn ... why/how
 why input of ocnn vs resnet are slightly different?
+
+
+if one of the losses is nan then total loss is nan!?

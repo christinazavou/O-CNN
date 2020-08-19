@@ -22,7 +22,9 @@ def compute_graph(dataset='train', training=True, reuse=False):
   octree, label = DatasetFactory(flags_data)()
   code, dbe = autoencoder.octree_encoder(octree, training, reuse)
   loss, accu, dbd = autoencoder.octree_decoder(code, octree, training, reuse)
-  debug_checks = {'encoder': dbe, 'decoder': dbd}
+  debug_checks = {}
+  debug_checks.update(dbe)
+  debug_checks.update(dbd)
 
   with tf.name_scope('total_loss'):
     reg = l2_regularizer('ocnn', FLAGS.LOSS.weight_decay)

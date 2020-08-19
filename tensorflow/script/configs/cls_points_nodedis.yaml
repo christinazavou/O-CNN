@@ -1,0 +1,55 @@
+# Resent with small rotations with testing accuarcy 92.5%
+
+SOLVER:
+  gpu: 0,
+  logdir: /media/christina/Data/ANFASS_data/O-CNN/output/ModelNet40/m40/aresnet_b32
+  run: train
+  max_iter: 160000
+#  max_iter: 10
+  test_iter: 77
+  test_every_iter: 1000
+#  test_every_iter: 4
+  step_size: (40000,)
+  ckpt_num: 20
+
+DATA:
+  train:
+    dtype: points
+    distort: True
+    depth: 5
+    axis: z
+    angle: (5, 5, 5)
+    interval: (1, 1, 1)   # small rotation
+    scale: 0.25
+    jitter: 0.125
+    location: /media/christina/Data/ANFASS_data/O-CNN/ModelNetOnly4/m40_train_points.tfrecords
+    batch_size: 32
+#    batch_size: 4
+    x_alias: data
+    node_dis: True
+  test:
+    dtype: points
+    distort: False
+    depth: 5
+    axis: z
+    angle: (5, 5, 5)
+    interval: (1, 1, 1)
+    scale: 0.25
+    jitter: 0.125
+    location: /media/christina/Data/ANFASS_data/O-CNN/ModelNetOnly4/m40_test_points.tfrecords
+    shuffle: 0
+    batch_size: 32
+#    batch_size: 4
+    x_alias: data
+    node_dis: True
+
+MODEL:
+  name: resnet
+  channel: 4
+  nout: 40
+  depth: 5
+  resblock_num: 3
+
+LOSS:
+  num_class: 40
+  weight_decay: 0.0005

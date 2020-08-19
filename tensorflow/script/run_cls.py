@@ -20,7 +20,7 @@ def compute_graph(dataset='train', training=True, reuse=False):
       FLAGS.LOSS.weight_decay, 'ocnn', FLAGS.LOSS.label_smoothing)
   losses.append(losses[0] + losses[2]) # total loss
   names  = ['loss', 'accu', 'regularizer', 'total_loss']
-  return losses, names
+  return losses, names, None, None, None
 
 # run the experiments
 if __name__ == '__main__':
