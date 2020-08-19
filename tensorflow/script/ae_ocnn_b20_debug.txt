@@ -26,7 +26,7 @@ DECODER:
 For each depth we have a label_gt that is the split of that depth.
 What is split here ? i.e. what is label_gt ?
 'ocnn_decoder/label_gt/split' = {Tensor} Tensor("ocnn_decoder/label_gt/OctreeProperty_4:0", shape=(1, ?), dtype=float32) e.g. shape (1, 194160)
-'ocnn_decoder/label_gt/split_reshaped' = {list: 10} [None, None, <tf.Tensor 'ocnn_decoder/label_gt/Reshape:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_1:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_2:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_3:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_4:0' shape=(?,) dtype=int32>, None, None, None] e.g. shape [None, None, 1024, 3552, 11848, 47160, 194160
+'ocnn_decoder/label_gt/split_reshaped' = {list: 10} [None, None, <tf.Tensor 'ocnn_decoder/label_gt/Reshape:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_1:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_2:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_3:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_4:0' shape=(?,) dtype=int32>, None, None, None] e.g. shape [None, None, 1024, 3552, 11848, 47160, 194160, None, None, None]
 
 Ground truth signal is the feature at max depth (i.e. nx,ny,nz at lowest octants) (same as in encoder)
 'ocnn_decoder/signal_gt/feature' = {Tensor} Tensor("ocnn_decoder/signal_gt/OctreeProperty:0", shape=(3, ?), dtype=float32) e.g. shape (3, 194160)
