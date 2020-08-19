@@ -23,8 +23,8 @@ For our encoded representation we apply convolution that keeps same shape and ba
 
 DECODER:
 -------------------------------
-For each depth we have a label_gt that is the split of that depth.
-What is split here ? i.e. what is label_gt ?
+For each depth we have a label_gt that is the split of that depth. (see fig2b of paper)
+Note: split is always an array of size multiple of 8 and contains 0 and 1 i.e. probably denotes for each octree node which of its children are split or not in the next depth..
 'ocnn_decoder/label_gt/split' = {Tensor} Tensor("ocnn_decoder/label_gt/OctreeProperty_4:0", shape=(1, ?), dtype=float32) e.g. shape (1, 194160)
 'ocnn_decoder/label_gt/split_reshaped' = {list: 10} [None, None, <tf.Tensor 'ocnn_decoder/label_gt/Reshape:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_1:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_2:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_3:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_4:0' shape=(?,) dtype=int32>, None, None, None] e.g. shape [None, None, 1024, 3552, 11848, 47160, 194160, None, None, None]
 
@@ -32,7 +32,7 @@ Ground truth signal is the feature at max depth (i.e. nx,ny,nz at lowest octants
 'ocnn_decoder/signal_gt/feature' = {Tensor} Tensor("ocnn_decoder/signal_gt/OctreeProperty:0", shape=(3, ?), dtype=float32) e.g. shape (3, 194160)
 Again (like in the encoder) we add two dimensions.
 'ocnn_decoder/signal_gt/feature_reshaped' = {Tensor} Tensor("ocnn_decoder/signal_gt/Reshape:0", shape=(1, 3, ?, 1), dtype=float32) e.g. shape (1, 3, 194160, 1)
-We get the encoded data and upsample them (how?) (by 8) from (1,32,?,1) we want to have channel[1]=256 channels now
+We get the encoded data and upsample them (by 8, based on kept pooling flags) from (1,32,?,1) we want to have channel[1]=256 channels now
 'ocnn_decoder/depth_1' = {Tensor} Tensor("ocnn_decoder/depth_1/Relu:0", shape=(1, 256, ?, 1), dtype=float32) e.g. shape (1, 256, 128, 1)
 
 From depth 2 up to max depth:

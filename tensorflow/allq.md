@@ -220,37 +220,12 @@ key2xyz: 0
 sizeof_octree: 483992
 ===============
 ```
-example of an octree generated with ```octree ... --depth 6 --split_label 1 --rot_num 6 --adaptive 4```:
-```
-===============
-.../ocnn_completion/.../02691156/10aa040f470500c6a66ef8df4909ded9_6_2_000.octree infomation:
-This is a valid octree!
-magic_str:_OCTREE_1.0_
-batch_size: 1
-depth: 6
-full_layer: 2
-adaptive_layer: 4
-threshold_distance: 2
-threshold_normal: 0.1
-is_adaptive: 1
-has_displace: 0
-nnum: 1 8 64 192 528 744 1200 0 0 0 0 0 0 0 0 0 
-nnum_cum: 0 1 9 73 265 793 1537 2737 2737 0 0 0 0 0 0 0 
-nnum_nempty: 1 8 24 66 93 150 720 0 0 0 0 0 0 0 0 0 
-total_nnum: 2737
-total_nnum_capacity: 2737
-channel: 1 1 0 3 0 1 
-locations: -1 -1 0 -1 0 -1 
-bbox_max: 112.246 113.762 118.937 
-bbox_min: 3.37262 4.88874 10.0632 
-key2xyz: 0
-sizeof_octree: 66404
-===============
-```
 
-**Q3.1.** i guess adaptive_layer:4 is dummy in the first example because of is_adaptive: 0 ?!
+**Q3.1.** i guess adaptive_layer:4 is dummy because of is_adaptive: 0 ?!
 
-**Q3.2.** what is the channel parameter and the locations parameter showing?
+**Q3.2.** what is the locations parameter showing?
+
+**Q3.3** what is the channel parameter showing? I understood it corresponds to split, label, feature, xyz, index and one more property...which is this property and what is their order?
 
 **Q4.** Trying to understand the octree_property function, I run the following code:
 
@@ -470,13 +445,11 @@ depth 5 xyz (1, 1856)
 depth 0 xyz (1, 5)
 ```
 
-**Q4.1.** what is split ?
+**Q4.1.** i guess octree_property function shouldn't be possible  to be called with a non existing depth however it is sometimes possible like in the line with 'feature' property and 'depth=-6'
 
-**Q4.2.** i guess octree_property function shouldn't be possible  to be called with a non existing depth however it is sometimes possible like in the line with 'feature' property and 'depth=-6'
+**Q4.2.** does the property_name='feature' correspond to the "Input Signal" except if we specifically do some CNN calculations and call octree_set_property with that result - when it will correspond to the "CNN features"?
 
-**Q4.3.** does the property_name='feature' correspond to the "Input Signal" except if we specifically do some CNN calculations and call octree_set_property with that result - when it will correspond to the "CNN features"?
-
-**Q4.4.** is label always of zero rows because in the classification and shape completion dataset we don't have label for each voxel(octant) ? i.e. in a segmentation dataset where we should have a label for each voxel the label would have channel=1?!
+**Q4.3.** is label always of zero rows because in the classification and shape completion dataset we don't have label for each voxel(octant) ? i.e. in a segmentation dataset where we should have a label for each voxel the label would have channel=1?!
 
 **Q5.** I'm confused with the use of 'points' vs 'octree'. In the classification code, using 'octree' calls the DatasetFactory that reads from octree tfrecords, and using 'points' calls the DatasetFactory that reads from point tfrecords , transforms them and merges them to octrees. I saw that ```octree_property``` function can be called either on data loaded from ".points" tfrecords or from ".octree" tfrecords, and I thought that either way we will have octrees as data, but then why do we care to use resnet instead of ocnn? This makes me wonder if ```octree_batch``` function and ```octree_property``` function can run either on ".octree" or on ".points" and generate either merged ".octrees" or merged ".points" accordingly? Both formats are in bytes and i can't see their difference...Also when I run run_ae.py with ```SOLVER.run: decode_shape``` it gives me the original and reconstructed octrees and writes their bytes in ".octree" file, which if I convert them into mesh with ```octree2mesh``` the original shape i get from ae_resnet.yaml and ae_ocnn.yaml are slightly different. Is this because I used 6 rotations in the octree generation thus octree with suffix "_6_2_000.octree" is not entirely same as octree created from point-cloud? 
 
