@@ -1,0 +1,45 @@
+SOLVER:
+  gpu: 0,
+  logdir: /media/christina/Data/ANFASS_data/O-CNN/output/ModelNet40/m40/cls_points_ocnn
+  run: train
+  max_iter: 160000
+  test_iter: 925
+  test_every_iter: 2000
+  step_size: (40000,)
+
+DATA:
+  train:
+    dtype: points
+    distort: True
+    depth: 5
+    axis: z
+    angle: (5, 5, 5)
+    interval: (1, 1, 1)   # small rotation
+    scale: 0.25
+    jitter: 0.125
+    location: /media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_train_points.tfrecords
+    batch_size: 32
+    x_alias: data
+  test:
+    dtype: points
+    distort: False
+    depth: 5
+    axis: z
+    angle: (5, 5, 5)
+    interval: (1, 1, 1)
+    scale: 0.25
+    jitter: 0.125
+    location: /media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_test_points.tfrecords
+    shuffle: 0
+    batch_size: 32
+    x_alias: data
+
+MODEL:
+  name: ocnn
+  channel: 3
+  nout: 40
+  depth: 5
+
+LOSS:
+  num_class: 40
+  weight_decay: 0.0005
