@@ -1,73 +1,73 @@
 ENCODER:
 -------------------------------
 We start with a merged octree of 3 channels (nx,ny,nz) by using octree_property "feature" at max depth.
-'ocnn_encoder/signal_gt/fd' = {Tensor} Tensor("ocnn_encoder/signal_gt/OctreeProperty:0", shape=(3, ?), dtype=float32)
+'ocnn_encoder/signal_gt/fd' = {Tensor} Tensor("ocnn_encoder/signal_gt/OctreeProperty:0", shape=(3, ?), dtype=float32) e.g. shape (3, 194160)
 We reshape it to have two extra dimensions.
-'ocnn_encoder/signal_gt/fdreshaped' = {Tensor} Tensor("ocnn_encoder/signal_gt/Reshape:0", shape=(1, 3, ?, 1), dtype=float32)
+'ocnn_encoder/signal_gt/fdreshaped' = {Tensor} Tensor("ocnn_encoder/signal_gt/Reshape:0", shape=(1, 3, ?, 1), dtype=float32) e.g. shape (1, 3, 194160, 1)
 We start with the convolution at max depth. Since channel[6] = 8 the output channels will be 8. Pooling is also used so the octree vector dimension (i.e. third dimension) will be reduced.
-'ocnn_encoder/depth_6/convolved_data' = {Tensor} Tensor("ocnn_encoder/depth_6/conv_bn_relu/Relu:0", shape=(1, 8, ?, 1), dtype=float32)
-'ocnn_encoder/depth_6/convolved_data_pooled' = {Tensor} Tensor("ocnn_encoder/depth_6/octree_max_pool/OctreePad:0", shape=(1, 8, ?, 1), dtype=float32)
-'ocnn_encoder/depth_5/convolved_data' = {Tensor} Tensor("ocnn_encoder/depth_5/conv_bn_relu/Relu:0", shape=(1, 16, ?, 1), dtype=float32)
-'ocnn_encoder/depth_5/convolved_data_pooled' = {Tensor} Tensor("ocnn_encoder/depth_5/octree_max_pool/OctreePad:0", shape=(1, 16, ?, 1), dtype=float32)
-'ocnn_encoder/depth_4/convolved_data' = {Tensor} Tensor("ocnn_encoder/depth_4/conv_bn_relu/Relu:0", shape=(1, 32, ?, 1), dtype=float32)
-'ocnn_encoder/depth_4/convolved_data_pooled' = {Tensor} Tensor("ocnn_encoder/depth_4/octree_max_pool/OctreePad:0", shape=(1, 32, ?, 1), dtype=float32)
-'ocnn_encoder/depth_3/convolved_data' = {Tensor} Tensor("ocnn_encoder/depth_3/conv_bn_relu/Relu:0", shape=(1, 64, ?, 1), dtype=float32)
-'ocnn_encoder/depth_3/convolved_data_pooled' = {Tensor} Tensor("ocnn_encoder/depth_3/octree_max_pool/OctreePad:0", shape=(1, 64, ?, 1), dtype=float32)
+'ocnn_encoder/depth_6/convolved_data' = {Tensor} Tensor("ocnn_encoder/depth_6/conv_bn_relu/Relu:0", shape=(1, 8, ?, 1), dtype=float32) e.g. shape (1, 8, 194160, 1)
+'ocnn_encoder/depth_6/convolved_data_pooled' = {Tensor} Tensor("ocnn_encoder/depth_6/octree_max_pool/OctreePad:0", shape=(1, 8, ?, 1), dtype=float32) e.g. shape (1, 8, 47160, 1)
+'ocnn_encoder/depth_5/convolved_data' = {Tensor} Tensor("ocnn_encoder/depth_5/conv_bn_relu/Relu:0", shape=(1, 16, ?, 1), dtype=float32) e.g. shape (1, 16, 47160, 1)
+'ocnn_encoder/depth_5/convolved_data_pooled' = {Tensor} Tensor("ocnn_encoder/depth_5/octree_max_pool/OctreePad:0", shape=(1, 16, ?, 1), dtype=float32) e.g. shape (1, 16, 11848, 1)
+'ocnn_encoder/depth_4/convolved_data' = {Tensor} Tensor("ocnn_encoder/depth_4/conv_bn_relu/Relu:0", shape=(1, 32, ?, 1), dtype=float32) e.g. shape (1, 32, 11848, 1)
+'ocnn_encoder/depth_4/convolved_data_pooled' = {Tensor} Tensor("ocnn_encoder/depth_4/octree_max_pool/OctreePad:0", shape=(1, 32, ?, 1), dtype=float32) e.g. shape (1, 32, 3552, 1)
+'ocnn_encoder/depth_3/convolved_data' = {Tensor} Tensor("ocnn_encoder/depth_3/conv_bn_relu/Relu:0", shape=(1, 64, ?, 1), dtype=float32) e.g. shape (1, 64, 3552, 1)
+'ocnn_encoder/depth_3/convolved_data_pooled' = {Tensor} Tensor("ocnn_encoder/depth_3/octree_max_pool/OctreePad:0", shape=(1, 64, ?, 1), dtype=float32) e.g. shape (1, 64, 1024, 1)
 Last convolution happens on depth 2.
-'ocnn_encoder/depth_2/convolved_data' = {Tensor} Tensor("ocnn_encoder/depth_2/conv_bn_relu/Relu:0", shape=(1, 128, ?, 1), dtype=float32)
-'ocnn_encoder/depth_2/convolved_data_pooled' = {Tensor} Tensor("ocnn_encoder/depth_2/octree_max_pool/OctreePad:0", shape=(1, 128, ?, 1), dtype=float32)
+'ocnn_encoder/depth_2/convolved_data' = {Tensor} Tensor("ocnn_encoder/depth_2/conv_bn_relu/Relu:0", shape=(1, 128, 1024, 1), dtype=float32) e.g. shape (1, 128, 1024, 1)
+'ocnn_encoder/depth_2/convolved_data_pooled' = {Tensor} Tensor("ocnn_encoder/depth_2/octree_max_pool/OctreePad:0", shape=(1, 128, ?, 1), dtype=float32) e.g. shape (1, 128, 128, 1)
 Here we will get out encoded representation. We are in depth 1. Since channel[1] is 32 we want out representation to have 32 channels. We do convolution that will leave us with 32 channels and will downsample out octree dimension by 8.
-'ocnn_encoder/depth_1/downsampled_data' = {Tensor} Tensor("ocnn_encoder/depth_1/Relu:0", shape=(1, 32, ?, 1), dtype=float32)
+'ocnn_encoder/depth_1/downsampled_data' = {Tensor} Tensor("ocnn_encoder/depth_1/Relu:0", shape=(1, 32, ?, 1), dtype=float32) e.g. shape (1, 32, 16, 1)
 For our encoded representation we apply convolution that keeps same shape and batch normalization.
-'ocnn_encoder/code' = {Tensor} Tensor("ocnn_encoder/code/Tanh:0", shape=(1, 32, ?, 1), dtype=float32)
+'ocnn_encoder/code' = {Tensor} Tensor("ocnn_encoder/code/Tanh:0", shape=(1, 32, ?, 1), dtype=float32) e.g. shape (1, 32, 16, 1)
 
 DECODER:
 -------------------------------
 For each depth we have a label_gt that is the split of that depth.
 What is split here ? i.e. what is label_gt ?
-'ocnn_decoder/label_gt/split' = {Tensor} Tensor("ocnn_decoder/label_gt/OctreeProperty_4:0", shape=(1, ?), dtype=float32)
-'ocnn_decoder/label_gt/split_reshaped' = {list: 10} [None, None, <tf.Tensor 'ocnn_decoder/label_gt/Reshape:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_1:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_2:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_3:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_4:0' shape=(?,) dtype=int32>, None, None, None]
+'ocnn_decoder/label_gt/split' = {Tensor} Tensor("ocnn_decoder/label_gt/OctreeProperty_4:0", shape=(1, ?), dtype=float32) e.g. shape (1, 194160)
+'ocnn_decoder/label_gt/split_reshaped' = {list: 10} [None, None, <tf.Tensor 'ocnn_decoder/label_gt/Reshape:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_1:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_2:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_3:0' shape=(?,) dtype=int32>, <tf.Tensor 'ocnn_decoder/label_gt/Reshape_4:0' shape=(?,) dtype=int32>, None, None, None] e.g. shape [None, None, 1024, 3552, 11848, 47160, 194160
 
 Ground truth signal is the feature at max depth (i.e. nx,ny,nz at lowest octants) (same as in encoder)
-'ocnn_decoder/signal_gt/feature' = {Tensor} Tensor("ocnn_decoder/signal_gt/OctreeProperty:0", shape=(3, ?), dtype=float32)
+'ocnn_decoder/signal_gt/feature' = {Tensor} Tensor("ocnn_decoder/signal_gt/OctreeProperty:0", shape=(3, ?), dtype=float32) e.g. shape (3, 194160)
 Again (like in the encoder) we add two dimensions.
-'ocnn_decoder/signal_gt/feature_reshaped' = {Tensor} Tensor("ocnn_decoder/signal_gt/Reshape:0", shape=(1, 3, ?, 1), dtype=float32)
-We get the encoded data and upsample them from (1,32,?,1) we want to have channel[1]=256 channels now
-'ocnn_decoder/depth_1' = {Tensor} Tensor("ocnn_decoder/depth_1/Relu:0", shape=(1, 256, ?, 1), dtype=float32)
+'ocnn_decoder/signal_gt/feature_reshaped' = {Tensor} Tensor("ocnn_decoder/signal_gt/Reshape:0", shape=(1, 3, ?, 1), dtype=float32) e.g. shape (1, 3, 194160, 1)
+We get the encoded data and upsample them (how?) (by 8) from (1,32,?,1) we want to have channel[1]=256 channels now
+'ocnn_decoder/depth_1' = {Tensor} Tensor("ocnn_decoder/depth_1/Relu:0", shape=(1, 256, ?, 1), dtype=float32) e.g. shape (1, 256, 128, 1)
 
 From depth 2 up to max depth:
     We apply upsampling and convolution
-'ocnn_decoder/depth_2/upsampled' = {Tensor} Tensor("ocnn_decoder/depth_2/deconv_bn_relu/Relu:0", shape=(1, 128, ?, 1), dtype=float32)
-'ocnn_decoder/depth_2/upsampled_convolved' = {Tensor} Tensor("ocnn_decoder/depth_2/conv_bn_relu/Relu:0", shape=(1, 128, ?, 1), dtype=float32)
+'ocnn_decoder/depth_2/upsampled' = {Tensor} Tensor("ocnn_decoder/depth_2/deconv_bn_relu/Relu:0", shape=(1, 128, ?, 1), dtype=float32) e.g. shape (1, 128, 1024, 1)
+'ocnn_decoder/depth_2/upsampled_convolved' = {Tensor} Tensor("ocnn_decoder/depth_2/conv_bn_relu/Relu:0", shape=(1, 128, ?, 1), dtype=float32) e.g. shape (1, 128, 1024, 1)
     We do prediction
 
     Is this prediction of num_output 2 a probability of existing data in octant vs non existing data in octant?! The prediction label is a one dimension array that is trained to be equal to the split property of that depth ..
 
     We add a loss term
 
-'ocnn_decoder/predict_2/logit' = {Tensor} Tensor("ocnn_decoder/predict_2/conv2/conv2d_1x1/ExpandDims_1:0", shape=(1, 2, ?, 1), dtype=float32)
-'ocnn_decoder/predict_2/label' = {Tensor} Tensor("ocnn_decoder/predict_2/Reshape:0", shape=(?,), dtype=int32)
-'ocnn_decoder/loss_2/logit' = {Tensor} Tensor("ocnn_decoder/loss_2/transpose:0", shape=(?, 2), dtype=float32)
-'ocnn_decoder/depth_3/upsampled' = {Tensor} Tensor("ocnn_decoder/depth_3/deconv_bn_relu/Relu:0", shape=(1, 64, ?, 1), dtype=float32)
-'ocnn_decoder/depth_3/upsampled_convolved' = {Tensor} Tensor("ocnn_decoder/depth_3/conv_bn_relu/Relu:0", shape=(1, 64, ?, 1), dtype=float32)
-'ocnn_decoder/predict_3/logit' = {Tensor} Tensor("ocnn_decoder/predict_3/conv2/conv2d_1x1/ExpandDims_1:0", shape=(1, 2, ?, 1), dtype=float32)
-'ocnn_decoder/predict_3/label' = {Tensor} Tensor("ocnn_decoder/predict_3/Reshape:0", shape=(?,), dtype=int32)
-'ocnn_decoder/loss_3/logit' = {Tensor} Tensor("ocnn_decoder/loss_3/transpose:0", shape=(?, 2), dtype=float32)
-'ocnn_decoder/depth_4/upsampled' = {Tensor} Tensor("ocnn_decoder/depth_4/deconv_bn_relu/Relu:0", shape=(1, 32, ?, 1), dtype=float32)
-'ocnn_decoder/depth_4/upsampled_convolved' = {Tensor} Tensor("ocnn_decoder/depth_4/conv_bn_relu/Relu:0", shape=(1, 32, ?, 1), dtype=float32)
-'ocnn_decoder/predict_4/logit' = {Tensor} Tensor("ocnn_decoder/predict_4/conv2/conv2d_1x1/ExpandDims_1:0", shape=(1, 2, ?, 1), dtype=float32)
-'ocnn_decoder/predict_4/label' = {Tensor} Tensor("ocnn_decoder/predict_4/Reshape:0", shape=(?,), dtype=int32)
-'ocnn_decoder/loss_4/logit' = {Tensor} Tensor("ocnn_decoder/loss_4/transpose:0", shape=(?, 2), dtype=float32)
-'ocnn_decoder/depth_5/upsampled' = {Tensor} Tensor("ocnn_decoder/depth_5/deconv_bn_relu/Relu:0", shape=(1, 16, ?, 1), dtype=float32)
-'ocnn_decoder/depth_5/upsampled_convolved' = {Tensor} Tensor("ocnn_decoder/depth_5/conv_bn_relu/Relu:0", shape=(1, 16, ?, 1), dtype=float32)
-'ocnn_decoder/predict_5/logit' = {Tensor} Tensor("ocnn_decoder/predict_5/conv2/conv2d_1x1/ExpandDims_1:0", shape=(1, 2, ?, 1), dtype=float32)
-'ocnn_decoder/predict_5/label' = {Tensor} Tensor("ocnn_decoder/predict_5/Reshape:0", shape=(?,), dtype=int32)
-'ocnn_decoder/loss_5/logit' = {Tensor} Tensor("ocnn_decoder/loss_5/transpose:0", shape=(?, 2), dtype=float32)
-'ocnn_decoder/depth_6/upsampled' = {Tensor} Tensor("ocnn_decoder/depth_6/deconv_bn_relu/Relu:0", shape=(1, 8, ?, 1), dtype=float32)
-'ocnn_decoder/depth_6/upsampled_convolved' = {Tensor} Tensor("ocnn_decoder/depth_6/conv_bn_relu/Relu:0", shape=(1, 8, ?, 1), dtype=float32)
-'ocnn_decoder/predict_6/logit' = {Tensor} Tensor("ocnn_decoder/predict_6/conv2/conv2d_1x1/ExpandDims_1:0", shape=(1, 2, ?, 1), dtype=float32)
-'ocnn_decoder/predict_6/label' = {Tensor} Tensor("ocnn_decoder/predict_6/Reshape:0", shape=(?,), dtype=int32)
-'ocnn_decoder/loss_6/logit' = {Tensor} Tensor("ocnn_decoder/loss_6/transpose:0", shape=(?, 2), dtype=float32)
+'ocnn_decoder/predict_2/logit' = {Tensor} Tensor("ocnn_decoder/predict_2/conv2/conv2d_1x1/ExpandDims_1:0", shape=(1, 2, ?, 1), dtype=float32) e.g. shape (1, 2, 1024, 1)
+'ocnn_decoder/predict_2/label' = {Tensor} Tensor("ocnn_decoder/predict_2/Reshape:0", shape=(?,), dtype=int32) e.g. shape 1024
+'ocnn_decoder/loss_2/logit' = {Tensor} Tensor("ocnn_decoder/loss_2/transpose:0", shape=(?, 2), dtype=float32) e.g. shape (1024, 2)
+'ocnn_decoder/depth_3/upsampled' = {Tensor} Tensor("ocnn_decoder/depth_3/deconv_bn_relu/Relu:0", shape=(1, 64, ?, 1), dtype=float32) e.g. shape (1, 64, 3552, 1)
+'ocnn_decoder/depth_3/upsampled_convolved' = {Tensor} Tensor("ocnn_decoder/depth_3/conv_bn_relu/Relu:0", shape=(1, 64, ?, 1), dtype=float32) e.g. shape (1, 64, 3552, 1)
+'ocnn_decoder/predict_3/logit' = {Tensor} Tensor("ocnn_decoder/predict_3/conv2/conv2d_1x1/ExpandDims_1:0", shape=(1, 2, ?, 1), dtype=float32) e.g. shape (1, 2, 3552, 1)
+'ocnn_decoder/predict_3/label' = {Tensor} Tensor("ocnn_decoder/predict_3/Reshape:0", shape=(?,), dtype=int32) e.g. shape 3552
+'ocnn_decoder/loss_3/logit' = {Tensor} Tensor("ocnn_decoder/loss_3/transpose:0", shape=(?, 2), dtype=float32) e.g. shape (3552, 2)
+'ocnn_decoder/depth_4/upsampled' = {Tensor} Tensor("ocnn_decoder/depth_4/deconv_bn_relu/Relu:0", shape=(1, 32, ?, 1), dtype=float32) e.g. shape (1, 32, 11848, 1)
+'ocnn_decoder/depth_4/upsampled_convolved' = {Tensor} Tensor("ocnn_decoder/depth_4/conv_bn_relu/Relu:0", shape=(1, 32, ?, 1), dtype=float32) e.g. shape (1, 32, 11848, 1)
+'ocnn_decoder/predict_4/logit' = {Tensor} Tensor("ocnn_decoder/predict_4/conv2/conv2d_1x1/ExpandDims_1:0", shape=(1, 2, ?, 1), dtype=float32) e.g. shape (1, 2, 11848, 1)
+'ocnn_decoder/predict_4/label' = {Tensor} Tensor("ocnn_decoder/predict_4/Reshape:0", shape=(?,), dtype=int32) e.g. shape 11848
+'ocnn_decoder/loss_4/logit' = {Tensor} Tensor("ocnn_decoder/loss_4/transpose:0", shape=(?, 2), dtype=float32) e.g. shape (11848, 2)
+'ocnn_decoder/depth_5/upsampled' = {Tensor} Tensor("ocnn_decoder/depth_5/deconv_bn_relu/Relu:0", shape=(1, 16, ?, 1), dtype=float32) e.g. shape (1, 16, 47160, 1)
+'ocnn_decoder/depth_5/upsampled_convolved' = {Tensor} Tensor("ocnn_decoder/depth_5/conv_bn_relu/Relu:0", shape=(1, 16, ?, 1), dtype=float32) e.g. shape (1, 16, 47160, 1)
+'ocnn_decoder/predict_5/logit' = {Tensor} Tensor("ocnn_decoder/predict_5/conv2/conv2d_1x1/ExpandDims_1:0", shape=(1, 2, ?, 1), dtype=float32) e.g. shape (1, 2, 47160, 1)
+'ocnn_decoder/predict_5/label' = {Tensor} Tensor("ocnn_decoder/predict_5/Reshape:0", shape=(?,), dtype=int32) e.g. shape 47160
+'ocnn_decoder/loss_5/logit' = {Tensor} Tensor("ocnn_decoder/loss_5/transpose:0", shape=(?, 2), dtype=float32) e.g. shape (47160, 2)
+'ocnn_decoder/depth_6/upsampled' = {Tensor} Tensor("ocnn_decoder/depth_6/deconv_bn_relu/Relu:0", shape=(1, 8, ?, 1), dtype=float32) e.g. shape (1, 8, 194160, 1)
+'ocnn_decoder/depth_6/upsampled_convolved' = {Tensor} Tensor("ocnn_decoder/depth_6/conv_bn_relu/Relu:0", shape=(1, 8, ?, 1), dtype=float32) e.g. shape (1, 8, 194160, 1)
+'ocnn_decoder/predict_6/logit' = {Tensor} Tensor("ocnn_decoder/predict_6/conv2/conv2d_1x1/ExpandDims_1:0", shape=(1, 2, ?, 1), dtype=float32) e.g. shape (1, 2, 194160, 1)
+'ocnn_decoder/predict_6/label' = {Tensor} Tensor("ocnn_decoder/predict_6/Reshape:0", shape=(?,), dtype=int32) e.g. shape 194160
+'ocnn_decoder/loss_6/logit' = {Tensor} Tensor("ocnn_decoder/loss_6/transpose:0", shape=(?, 2), dtype=float32) e.g. shape (194160, 2)
 
 In the max depth we add a regression loss term...i.e. we predict a shape equal to signal_gt...
-'ocnn_decoder/regress_6/signal' = {Tensor} Tensor("ocnn_decoder/regress_6/Tanh:0", shape=(1, 3, ?, 1), dtype=float32)
+'ocnn_decoder/regress_6/signal' = {Tensor} Tensor("ocnn_decoder/regress_6/Tanh:0", shape=(1, 3, ?, 1), dtype=float32) e.g. shape (1, 3, 194160, 1)

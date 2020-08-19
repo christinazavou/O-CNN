@@ -114,6 +114,7 @@ class TFSolver:
     run_metadata = tf.RunMetadata()
     timeline_skip, timeline_iter = 10, 2
     with tf.Session(config=config) as sess:
+      summary_writer = tf.summary.FileWriter(os.path.join(self.flags.logdir, "timeline"), sess.graph)
       print('Initialize ...')
       self.initialize(sess)
 
