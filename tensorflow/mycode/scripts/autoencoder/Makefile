@@ -43,6 +43,11 @@ visualize-ocnn:
 	./visualize_generated_octrees.sh ${logs_path}/ocnn${model_prefix}
 
 visualize-ocnn: visualize-resnet visualize-ocnn
+
+visualize-ae_points_ocnn:
+	chmod 777 visualize_generated_octrees.sh
+	./visualize_generated_octrees.sh /media/christina/Data/ANFASS_data/O-CNN/output/ocnn_completion/ae/ae_points_ocnn_f_decode_shape
+
 #----------------------------------------------------------------------------------------------------------------------#
 
 

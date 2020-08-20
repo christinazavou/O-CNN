@@ -1,6 +1,6 @@
 SOLVER:
   gpu: 0,
-  logdir: logs/completion/skip_connectinos
+  logdir: /media/christina/Data/ANFASS_data/O-CNN/output/completion/skip_connectinos
   run: train
   max_iter: 320000
   test_iter: 100
@@ -14,8 +14,8 @@ DATA:
     dtype: points
     depth: 6
     distort: False
-    location: dataset/ocnn_completion/completion_train_points.tfrecords
-    camera: dataset/ocnn_completion/completion_train_points.camera_path.dict
+    location: /media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_train_points.tfrecords
+    camera: /media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_train_points.camera_path.dict
     batch_size: 16
     depth: 6
     offset: 0.0
@@ -26,7 +26,7 @@ DATA:
     dtype: points
     depth: 6
     distort: False
-    location: dataset/ocnn_completion/completion_train_points.tfrecords
+    location: /media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_train_points.tfrecords
     batch_size: 16
     depth: 6
     offset: 0.0

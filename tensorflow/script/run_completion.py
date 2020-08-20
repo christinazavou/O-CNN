@@ -66,8 +66,10 @@ class PointDataset:
       if shuffle_size > 1:
         dataset = dataset.shuffle(shuffle_size)
       itr = dataset.map(preprocess, num_parallel_calls=8) \
-                   .batch(batch_size).map(merge_octrees, num_parallel_calls=8) \
-                   .prefetch(8).make_one_shot_iterator()
+                   .batch(batch_size)\
+                   .map(merge_octrees, num_parallel_calls=8) \
+                   .prefetch(8)\
+                   .make_one_shot_iterator()
     return itr if return_iter else itr.get_next()
 
 

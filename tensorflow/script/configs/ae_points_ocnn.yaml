@@ -1,6 +1,6 @@
 SOLVER:
   gpu: 0,
-  logdir: /media/christina/Data/ANFASS_data/O-CNN/output/ocnn_completion/ae/ae_points_ocnn
+  logdir: /media/christina/Data/ANFASS_data/O-CNN/output/ocnn_completion/ae/ae_points_ocnn_f
   run: train
   max_iter: 320000
   test_iter: 336
