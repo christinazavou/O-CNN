@@ -32,3 +32,6 @@ params-ae-octree:
 		&& source activate OCNN \
 		&& cd ${utils} \
 		&& python parse_ckpt.py --ckpt /media/christina/Data/ANFASS_data/O-CNN/output/ocnn_completion/ae/ocnn_b16/model/iter_020000.ckpt
+
+count-data:
+	/bin/bash count_data.sh > partnetdata.txt

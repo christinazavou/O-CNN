@@ -1,0 +1,17 @@
+Bed_train_level3.txt   132
+Bottle_train_level3.txt   314
+Chair_train_level3.txt   4488
+Clock_train_level3.txt   405
+Dishwasher_train_level3.txt   110
+Display_train_level3.txt   632
+Door_train_level3.txt   148
+Earphone_train_level3.txt   146
+Faucet_train_level3.txt   434
+Knife_train_level3.txt   220
+Lamp_train_level3.txt   1553
+Microwave_train_level3.txt   132
+Refrigerator_train_level3.txt   135
+StorageFurniture_train_level3.txt   1587
+Table_train_level3.txt   5706
+TrashCan_train_level3.txt   220
+Vase_train_level3.txt   740

@@ -5,7 +5,8 @@ import numpy as np
 
 
 current_path = os.path.dirname(os.path.realpath(__file__))
-root_folder = os.path.join(current_path, '../script/dataset/partnet_segmentation')
+# root_folder = os.path.join(current_path, '../script/dataset/partnet_segmentation')
+root_folder = '/media/christina/Data/ANFASS_data/partnet_data'
 convert_tfrecords = os.path.join(current_path, '../util/convert_tfrecords.py')
 
 all_categoty = ['Bag', 'Bed', 'Bottle', 'Bowl', 'Chair', 'Clock', 'Dishwasher',
@@ -66,7 +67,7 @@ def convert_points():
   with open(list_filename, 'w') as fid:
     fid.write('\n'.join(filenames))
 
-  cmds = ['ply2points',
+  cmds = ['/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/octree/build/./ply2points',
           '--filenames', list_filename,
           '--output_path', output_folder,
           '--verbose', '0']

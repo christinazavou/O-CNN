@@ -1,9 +1,9 @@
-from libs import *
 import os
 import sys
 import numpy as np
 import tensorflow as tf
 sys.path.append('..')
+from libs import *
 
 
 class PointsPropertyTest(tf.test.TestCase):
