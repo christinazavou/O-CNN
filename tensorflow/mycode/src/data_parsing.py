@@ -362,6 +362,37 @@ class ClassificationDatasetStatistics:
         return test_samples, train_samples
 
 
+class SegmentationDatasetStatistics:
+
+    def __init__(self, tfrecords_folder):
+        self.folder = tfrecords_folder
+        self.categories = set()
+        self.test_samples, self.train_samples = self.samples_per_class()
+        self.train_n = sum(self.train_samples)
+        self.test_n = sum(self.test_samples)
+
+    def samples_per_class(self):
+        test_samples = []
+        train_samples = []
+        for filename in os.listdir(self.folder):
+            if "shuffle" in filename or "tfrecords" in filename:
+                continue
+            category = filename \
+                .replace("_train", "") \
+                .replace("_test", "") \
+                .replace("_val", "") \
+                .replace("_level3.txt", "")
+            self.categories = self.categories | {category}
+            with open(os.path.join(self.folder, filename), "r") as fin:
+                samples = len(fin.readlines())
+            if "train" in filename or "val" in filename:
+                train_samples.append(samples)
+            else:
+                test_samples.append(samples)
+
+        return test_samples, train_samples
+
+
 class FileManipulator:
 
     @staticmethod

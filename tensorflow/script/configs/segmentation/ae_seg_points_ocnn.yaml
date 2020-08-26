@@ -1,0 +1,39 @@
+SOLVER:
+  gpu: 0,
+  logdir: /media/christina/Data/ANFASS_data/O-CNN/output/ae_seg/useshapenet
+  run: train
+  max_iter: 320000
+  test_iter: 336
+  test_every_iter: 400
+  step_size: (80000,)
+  ckpt_num: 20
+
+DATA:
+  train:
+    dtype: points
+    depth: 6
+    location: /media/christina/Data/ANFASS_data/O-CNN/shapenet_segmentation/datasets/02691156_train_val.tfrecords
+    batch_size: 16
+    distort: False
+    offset: 0.0
+    node_dis: True
+    split_label: True
+
+  test:
+    dtype: points
+    depth: 6
+    location: /media/christina/Data/ANFASS_data/O-CNN/shapenet_segmentation/datasets/02691156_test.tfrecords
+    batch_size: 16
+    distort: False
+    offset: 0.0
+    node_dis: True
+    split_label: True
+
+MODEL:
+  name: ocnn
+  channel: 4
+  nout: 32   # The channel of the hidden code, the code length is 4*4*4*32 (2048)
+  depth: 6
+
+LOSS:
+  weight_decay: 0.0005

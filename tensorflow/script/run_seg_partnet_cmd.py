@@ -23,8 +23,8 @@ factor = 2
 batch_size = 32
 ckpt = args.ckpt if finetune else '\'\''
 module = 'run_seg_partnet_finetune.py' if finetune else 'run_seg_partnet.py'
-script = 'python %s --config configs/seg_hrnet_partnet_pts.yaml' % module
-data = 'dataset/partnet_segmentation/dataset'
+script = 'python %s --config configs/segmentation/seg_hrnet_partnet_pts.yaml' % module
+data = '/media/christina/Data/ANFASS_data/partnet_data/dataset'
 
 
 names     = ['Bed', 'Bottle', 'Chair', 'Clock', 'Dishwasher', 'Display', 'Door', 

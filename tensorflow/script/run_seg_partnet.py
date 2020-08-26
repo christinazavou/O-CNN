@@ -90,7 +90,7 @@ class ComputeGraphSeg:
 # define the solver
 class PartNetSolver(TFSolver):
   def __init__(self, flags, compute_graph,  build_solver=build_solver):
-    super(PartNetSolver, self).__init__(flags, compute_graph, build_solver)
+    super(PartNetSolver, self).__init__(flags.SOLVER, compute_graph, build_solver)
     self.num_class = flags.LOSS.num_class # used to calculate the IoU
 
   def result_callback(self, avg_results):
