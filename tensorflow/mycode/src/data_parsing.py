@@ -367,13 +367,15 @@ class SegmentationDatasetStatistics:
     def __init__(self, tfrecords_folder):
         self.folder = tfrecords_folder
         self.categories = set()
-        self.test_samples, self.train_samples = self.samples_per_class()
+        self.test_samples, self.train_samples, self.val_samples = self.samples_per_class()
         self.train_n = sum(self.train_samples)
+        self.val_n = sum(self.val_samples)
         self.test_n = sum(self.test_samples)
 
     def samples_per_class(self):
         test_samples = []
         train_samples = []
+        val_samples = []
         for filename in os.listdir(self.folder):
             if "shuffle" in filename or "tfrecords" in filename:
                 continue
@@ -385,12 +387,14 @@ class SegmentationDatasetStatistics:
             self.categories = self.categories | {category}
             with open(os.path.join(self.folder, filename), "r") as fin:
                 samples = len(fin.readlines())
-            if "train" in filename or "val" in filename:
+            if "train" in filename:
                 train_samples.append(samples)
+            elif "val" in filename:
+                val_samples.append(samples)
             else:
                 test_samples.append(samples)
 
-        return test_samples, train_samples
+        return test_samples, train_samples, val_samples
 
 
 class FileManipulator:

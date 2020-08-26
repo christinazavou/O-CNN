@@ -1,10 +1,19 @@
 cd /media/christina/Data/ANFASS_data/partnet_data/dataset
 
-myfiles=$(ls | grep train | grep txt | grep -v shuffle)
+function count {
+  dataset=$1
+  myfiles=$(ls | grep $dataset | grep txt | grep -v shuffle)
 
-myarrayfiles=($myfiles)
+  myarrayfiles=($myfiles)
 
-for filename in "${myarrayfiles[@]}"; do
-  linecount=$(cat $filename | wc -l)
-  echo "${filename}   ${linecount}"
-done
+  for filename in "${myarrayfiles[@]}"; do
+    linecount=$(cat $filename | wc -l)
+    echo "${filename}   ${linecount}"
+  done
+}
+
+count train
+echo
+count test
+echo
+count val

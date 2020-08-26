@@ -19,6 +19,16 @@ class ClassificationDatasetStatisticsTest(TestCase):
         print("Test data:", cds.test_n)
         print("Training data:", cds.train_n)
 
+        sds = SegmentationDatasetStatistics("/media/christina/Data/ANFASS_data/partnet_data/dataset")
+        # train_samples, test_samples, categories = zip(
+        #     *sorted(zip(sds.train_samples, sds.test_samples, sds.categories), reverse=True))
+        # Visualizer.bar_plot(train_samples, test_samples, categories, 'Train samples', 'Test samples')
+        self.assertEqual(len(sds.categories), 17)
+        self.assertAlmostEqual(sds.train_n + sds.test_n + sds.val_n, 24506, delta=0)
+        print("Test data:", sds.test_n)
+        print("Val data:", sds.val_n)
+        print("Training data:", sds.train_n)
+
 
 class TFRecordsConverterTest(TestCase):
 
