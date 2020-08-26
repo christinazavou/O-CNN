@@ -25,67 +25,71 @@ def config_octrees_3():
 
 def config_points_1():
     filename, depth, task = '/media/christina/Data/ANFASS_data/O-CNN/ModelNet40/m40_test_points.tfrecords', 5, 'cls'
-    split_label = False
     octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
                                   TransformPoints(distort=False, depth=depth, offset=0.55, axis='z', scale=0.0,
                                                   jitter=0.0, angle=[180, 180, 180],
                                                   bounding_sphere=bounding_sphere),
-                                  Points2Octree(depth=depth, split_label=split_label))
+                                  Points2Octree(depth=depth))
     return octrees, filename, depth, task
 
 
 def config_points_2():
     filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
     depth = 6
-    split_label = True
     task = 'ae'
     octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
                                   TransformPoints(distort=False, depth=depth, offset=0.55, axis='z', scale=0.0,
                                                   jitter=0.0, angle=[180, 180, 180],
                                                   bounding_sphere=bounding_sphere),
-                                  Points2Octree(depth=depth, split_label=split_label))
+                                  Points2Octree(depth=depth, split_label=True))
     return octrees, filename, depth, task
 
 
 def config_points_3():
     filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
     depth = 6
-    split_label = True
-    node_dis = True
     task = 'ae_points_node_dis'
     octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
                                   TransformPoints(distort=False, depth=depth, offset=0.55, axis='z', scale=0.0,
                                                   jitter=0.0, angle=[180, 180, 180],
                                                   bounding_sphere=bounding_sphere),
-                                  Points2Octree(depth=depth, split_label=split_label, node_dis=node_dis))
+                                  Points2Octree(depth=depth, split_label=True, node_dis=True))
     return octrees, filename, depth, task
 
 
 def config_points_4():
     filename = '/media/christina/Data/ANFASS_data/O-CNN/ocnn_completion/completion_test_points.tfrecords'
     depth = 6
-    split_label = True
     task = 'ae_points_adaptive'
-    adaptive = True
     octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
                                   TransformPoints(distort=False, depth=depth, offset=0.55, axis='z', scale=0.0,
                                                   jitter=0.0, angle=[180, 180, 180],
                                                   bounding_sphere=bounding_sphere),
-                                  Points2Octree(depth=depth, split_label=split_label, adaptive=adaptive))
+                                  Points2Octree(depth=depth, split_label=True, adaptive=True))
     return octrees, filename, depth, task
 
 
 def config_points_5():
     filename = '/media/christina/Data/ANFASS_data/O-CNN/shapenet_segmentation/datasets/02691156_test.tfrecords'
     depth = 6
-    split_label = True
-    node_dis = True
     task = 'seg_points_node_dis'
     octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
                                   TransformPoints(distort=False, depth=depth, offset=0.55, axis='z', scale=0.0,
                                                   jitter=0.0, angle=[180, 180, 180],
                                                   bounding_sphere=bounding_sphere),
-                                  Points2Octree(depth=depth, split_label=split_label, node_dis=node_dis))
+                                  Points2Octree(depth=depth, split_label=True, node_dis=True))
+    return octrees, filename, depth, task
+
+
+def config_points_6():
+    filename = '/media/christina/Data/ANFASS_data/partnet_data/dataset/Bottle_train_level3.tfrecords'
+    depth = 6
+    task = 'seg_points_partnet'
+    octrees = Point2OctreeDataset(ParseExampleDebug(x_alias='data', y_alias='label'),
+                                  TransformPoints(distort=True, depth=depth, offset=0, axis='y', scale=0.25,
+                                                  jitter=0.125, angle=[5, 5, 5], uniform=True,
+                                                  bounding_sphere=bounding_sphere),
+                                  Points2Octree(depth=depth, node_dis=True))
     return octrees, filename, depth, task
 
 
@@ -105,6 +109,9 @@ class DatasetDebug:
         },
         'seg_points_node_dis': {
             'split': 1, 'label': 1, 'feature': 4, 'index': 1, 'xyz': 1
+        },
+        'seg_points_partnet': {
+            'split': 0, 'label': 1, 'feature': 4, 'index': 1, 'xyz': 1
         }
     }
 
@@ -190,9 +197,16 @@ def check_properties():
     # octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
     # DatasetDebug.check_config(octree, octree5, depth, task)
     #
-    octrees, filename, depth, task = config_points_5()
-    octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
-    octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # octrees, filename, depth, task = config_points_5()
+    # octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    # octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    # DatasetDebug.check_config(octree, octree5, depth, task)
+
+    octrees, filename, depth, task = config_points_6()
+    octree, label, points = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10,
+                                    return_pts=True)
+    octree5, label5, points5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10,
+                                       return_pts=True)
     DatasetDebug.check_config(octree, octree5, depth, task)
 
 
