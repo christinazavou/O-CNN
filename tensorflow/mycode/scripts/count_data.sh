@@ -1,6 +1,4 @@
-cd /media/christina/Data/ANFASS_data/partnet_data/dataset
-
-function count {
+function count_samples() {
   dataset=$1
   myfiles=$(ls | grep $dataset | grep txt | grep -v shuffle)
 
@@ -12,8 +10,26 @@ function count {
   done
 }
 
-count train
+function count_labels() {
+  myfiles=$(ls | grep level-3)
+
+  myarrayfiles=($myfiles)
+
+  for filename in "${myarrayfiles[@]}"; do
+    linecount=$(cat $filename | wc -l)
+    echo "${filename}   ${linecount}"
+  done
+}
+
+cd /media/christina/Data/ANFASS_data/partnet_data/dataset
+
+count_samples train
 echo
-count test
+count_samples test
 echo
-count val
+count_samples val
+echo
+
+cd /media/christina/Data/ANFASS_data/partnet_data/partnet_dataset_master/stats/after_merging_label_ids
+
+count_labels

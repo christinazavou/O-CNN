@@ -126,39 +126,42 @@ class DatasetDebug:
     @staticmethod
     def check(octree, property_name, max_depth, task, session):
         for d in range(0, max_depth + 1):
-            DatasetDebug.check_d(octree, property_name, d, task, session)
+            DatasetDebug.check_d(octree, property_name, d, max_depth, task, session)
+        # if property_name == "label":
+        #     labels_max_depth = DatasetDebug.check_d(octree, property_name, max_depth, max_depth, task, session)
+        #     labels_minus_depth = DatasetDebug.check_d(octree, property_name, -1, max_depth, task, session)
 
     @staticmethod
-    def check_d(octree, property_name, d, task, session):
+    def check_d(octree, property_name, d, max_depth, task, session):
         result = session.run(octree_property(octree, property_name=property_name, depth=d,
                                              dtype=DatasetDebug.dtypes[property_name],
                                              channel=DatasetDebug.channels[task][property_name]))
         print("depth {} {} {}".format(d, property_name, result.shape))
         assert result.shape[0] == DatasetDebug.channels[task][property_name]
-        assert result.shape[1] <= 8 ** d
+        assert d == -1 or result.shape[1] <= 8 ** d
+        # if property_name == "label" and 0 < d < max_depth and task == 'seg_points_partnet':
+        #     assert set(result.reshape((-1))) <= {-1, 1}  # if d=max_depth then we have label in (-1, #categories)
+        # return result
 
     @staticmethod
-    def check_config(octree, octree5, depth, task):
-        with tf.Session() as sess:
-            DatasetDebug.check(octree, 'split', depth, task, sess)
-            DatasetDebug.check(octree, 'label', depth, task, sess)
+    def check_config(octree, octree5, depth, task, sess=None):
+        if sess is None:
+            sess = tf.Session()
+        DatasetDebug.check(octree, 'split', depth, task, sess)
+        DatasetDebug.check(octree, 'label', depth, task, sess)
 
-            # "feature" must be the input signal..i.e. in last depth is the nx,ny,nz and then in each preceding
-            # depth is the average of its children nodes
-            DatasetDebug.check(octree, 'feature', depth, task, sess)
-            try:
-                DatasetDebug.check_d(octree, 'feature', -6, task, sess)
-            except:
-                pass  # not meaningful depth
-            DatasetDebug.check(octree, 'index', depth, task, sess)
+        # "feature" must be the input signal..i.e. in last depth is the nx,ny,nz and then in each preceding
+        # depth is the average of its children nodes
+        DatasetDebug.check(octree, 'feature', depth, task, sess)
+        DatasetDebug.check(octree, 'index', depth, task, sess)
 
-            # "xyz" is the shuffle key
-            DatasetDebug.check(octree, "xyz", depth, task, sess)
+        # "xyz" is the shuffle key
+        DatasetDebug.check(octree, "xyz", depth, task, sess)
 
-            try:
-                DatasetDebug.check_d(octree5, "xyz", 0, task, sess)
-            except:
-                pass  # more than one octrees merged thus more output rows in the result
+        try:
+            DatasetDebug.check_d(octree5, "xyz", 0, depth, task, sess)
+        except:
+            pass  # more than one octrees merged thus more output rows in the result
 
 
 def check_properties():
@@ -197,17 +200,23 @@ def check_properties():
     # octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
     # DatasetDebug.check_config(octree, octree5, depth, task)
     #
-    # octrees, filename, depth, task = config_points_5()
-    # octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
-    # octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
-    # DatasetDebug.check_config(octree, octree5, depth, task)
+    octrees, filename, depth, task = config_points_5()
+    octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
+    octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
+    DatasetDebug.check_config(octree, octree5, depth, task)
 
     octrees, filename, depth, task = config_points_6()
-    octree, label, points = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10,
-                                    return_pts=True)
-    octree5, label5, points5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10,
-                                       return_pts=True)
-    DatasetDebug.check_config(octree, octree5, depth, task)
+    with tf.Session() as sess:
+        octree, _, points = sess.run(octrees(filename, batch_size=1, shuffle_size=0, return_iterator=True, take=10,
+                                             return_pts=True).get_next())
+        octree5, _, _ = sess.run(octrees(filename, batch_size=5, shuffle_size=0, return_iterator=True, take=10,
+                                         return_pts=True).get_next())
+        DatasetDebug.check_config(octree, octree5, depth, task, sess)
+        points_xyz = points_property(points, property_name='xyz', channel=4)
+        points_label = points_property(points, property_name='label', channel=1)
+        octree_xyz = octree_property(octree, property_name="xyz", depth=6, dtype=tf.uint32, channel=1)
+        octree_label = octree_property(octree, property_name="label", depth=6, dtype=tf.float32, channel=1)
+        sess.run([points_xyz, points_label, octree_xyz, octree_label])
 
 
 check_properties()
