@@ -214,6 +214,8 @@ def check_properties():
         DatasetDebug.check_config(octree, octree5, depth, task, sess)
         points_xyz = points_property(points, property_name='xyz', channel=4)
         points_label = points_property(points, property_name='label', channel=1)
+        points_normal = points_property(points, property_name='normal', channel=3)
+        points_feature = points_property(points, property_name='feature', channel=0)
         octree_xyz = octree_property(octree, property_name="xyz", depth=6, dtype=tf.uint32, channel=1)
         octree_label = octree_property(octree, property_name="label", depth=6, dtype=tf.float32, channel=1)
         sess.run([points_xyz, points_label, octree_xyz, octree_label])

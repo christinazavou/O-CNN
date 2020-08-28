@@ -3,7 +3,7 @@ import numpy as np
 np.random.seed(100)
 
 
-PARTNET_LABELS_LEVEL3 = {
+LEVEL3_LABELS = {
     'Bed': [
         'undefined',
         'bed/bed_unit/bed_sleep_area/pillow',
@@ -309,15 +309,16 @@ PARTNET_LABELS_LEVEL3 = {
 }
 
 
-COLORS = {}
+LEVEL3_COLORS = {}
 
-for key, value in PARTNET_LABELS_LEVEL3.items():
-    COLORS[key] = np.random.randint(0, 16777215, len(value))
+for key, value in LEVEL3_LABELS.items():
+    LEVEL3_COLORS[key] = np.random.randint(0, 16777215, len(value))
+    LEVEL3_COLORS[key][0] = 8355711  # grey for 'undefined'
 
 
 def find_category(model_path):
     dirs = model_path.split(os.sep)
-    categories = PARTNET_LABELS_LEVEL3.keys()
+    categories = LEVEL3_LABELS.keys()
     for d in dirs:
         if d in categories:
             return d
@@ -331,9 +332,9 @@ def decimal_to_rgb(decimal):
 
 if __name__ == '__main__':
 
-    for key, value in PARTNET_LABELS_LEVEL3.items():
+    for key, value in LEVEL3_LABELS.items():
         print(key, len(value))
-        print("colors ", [decimal_to_rgb(col) for col in COLORS[key]])
+        print("colors ", [decimal_to_rgb(col) for col in LEVEL3_COLORS[key]])
 
     cat = find_category('/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/logs/seg/0811_partnet_randinit/Bottle/ratio_1.00/model/iter_000150.ckpt')
     print("category ", cat)

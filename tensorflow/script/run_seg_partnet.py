@@ -1,6 +1,10 @@
+import os
+
 import tensorflow as tf
+import numpy as np
 
 from config import parse_args, FLAGS
+from partnet_labels import find_category, LEVEL3_LABELS, LEVEL3_COLORS, decimal_to_rgb
 from tfsolver import TFSolver
 from network_factory import seg_network
 from dataset import DatasetFactory
@@ -72,6 +76,8 @@ class ComputeGraphSeg:
           print("mask ratio for {} is {}".format(dataset, flags_data.mask_ratio))
           debug_checks["{}/input_point_info/points".format(dataset)] = pts
           debug_checks["{}/input_point_info/labels".format(dataset)] = label
+          debug_checks["{}/input_point_info/normals".format(dataset)] = points_property(
+            points, property_name='normal', channel=3)
           if not FLAGS.LOSS.point_wise:
             pts, label = None, get_seg_label(octree, FLAGS.MODEL.depth_out)
             debug_checks["{}/input_seg_label/points"] = pts
@@ -118,6 +124,101 @@ class PartNetSolver(TFSolver):
     iou_avg = iou_avg / (self.num_class - 1)
     avg_results[self.test_names.index('iou')] = iou_avg
     return avg_results
+
+  def test(self):
+    # build graph
+    self.build_test_graph()
+
+    # checkpoint
+    assert(self.flags.ckpt)   # the self.flags.ckpt should be provided
+    tf_saver = tf.train.Saver(max_to_keep=10)
+
+    # start
+    num_tensors = len(self.test_tensors)
+    avg_test = [0] * num_tensors
+    config = tf.ConfigProto(allow_soft_placement=True)
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config) as sess:
+      summary_writer = tf.summary.FileWriter(self.flags.logdir, sess.graph)
+      self.summ2txt(self.test_names, 'batch')
+
+      # restore and initialize
+      self.initialize(sess)
+      print('Restore from checkpoint: %s' % self.flags.ckpt)
+      tf_saver.restore(sess, self.flags.ckpt)
+
+      category = find_category(self.flags.ckpt)
+      assert category is not None
+      predicted_ply_dir = os.path.join(self.flags.logdir, "predicted_ply_{}".format(category))
+      if not os.path.exists(predicted_ply_dir):
+        os.makedirs(predicted_ply_dir)
+
+      print('Start testing ...')
+      for i in range(0, self.flags.test_iter):
+        iter_test_result, iter_test_dc = sess.run([self.test_tensors, self.debug_test_checks])
+
+        points, labels, predictions, normals = iter_test_dc['test/input_point_info/points'], \
+                                               iter_test_dc['test/input_point_info/labels'], \
+                                               iter_test_dc['softmax_loss/prediction'], \
+                                               iter_test_dc["test/input_point_info/normals"]
+
+        if predictions.shape[0] != points.shape[0]:
+          continue
+
+        iter_test_result = self.result_callback(iter_test_result)
+
+        dec_colors = LEVEL3_COLORS[category]
+        cp = np.array([decimal_to_rgb(dec_colors[p]) for p in predictions])
+        save_ply(os.path.join(predicted_ply_dir, "{}.ply".format(i)), points[:, 0:3], normals, cp)
+
+        # run testing average
+        for j in range(num_tensors):
+          avg_test[j] += iter_test_result[j]
+        # print the results
+        reports = 'batch: %04d; ' % i
+        for j in range(num_tensors):
+          reports += '%s: %0.4f; ' % (self.test_names[j], iter_test_result[j])
+        print(reports)
+        self.summ2txt(iter_test_result, i)
+
+    # Final testing results
+    for j in range(num_tensors):
+      avg_test[j] /= self.flags.test_iter
+    avg_test = self.result_callback(avg_test)
+    # print the results
+    print('Testing done!\n')
+    reports = 'ALL: %04d; ' % self.flags.test_iter
+    for j in range(num_tensors):
+      reports += '%s: %0.4f; ' % (self.test_names[j], avg_test[j])
+    print(reports)
+    self.summ2txt(avg_test, 'ALL')
+
+
+def save_ply(filename, points, normals, colors, pts_num=10000):
+  points = points.reshape((pts_num, 3))
+  normals = normals.reshape((pts_num, 3))
+  colors = colors.reshape((pts_num, 3))
+  data = np.concatenate([points, normals, colors], axis=1)
+  assert data.shape[0] == pts_num
+
+  header = "ply\n" \
+           "format ascii 1.0\n" \
+           "element vertex %d\n" \
+           "property float x\n" \
+           "property float y\n" \
+           "property float z\n" \
+           "property float nx\n" \
+           "property float ny\n" \
+           "property float nz\n" \
+           "property float r\n" \
+           "property float g\n" \
+           "property float b\n" \
+           "element face 0\n" \
+           "property list uchar int vertex_indices\n" \
+           "end_header\n"
+  with open(filename, 'w') as fid:
+    fid.write(header % pts_num)
+    np.savetxt(fid, data, fmt='%.6f')
 
 
 # run the experiments
