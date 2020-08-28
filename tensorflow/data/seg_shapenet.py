@@ -2,8 +2,8 @@ import os
 import json
 
 current_path   = os.path.dirname(os.path.realpath(__file__))
-root_folder = os.path.join(current_path, '../script/dataset/shapenet_segmentation')
-ply2points = 'ply2points'
+root_folder = os.path.join(current_path, '/media/christina/Data/ANFASS_data/O-CNN/shapenet_segmentation')
+ply2points = '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/octree/build/./ply2points'
 convert_tfrecords = os.path.join(current_path, '../util/convert_tfrecords.py')
 zip_name = 'shapenetcore_partanno_segmentation_benchmark_v0_normal'
 
@@ -27,7 +27,7 @@ def download_and_unzip():
   print('Downloading and unzipping ...')
   if not os.path.exists(root_folder): os.makedirs(root_folder)
   url = 'https://shapenet.cs.stanford.edu/media/%s.zip' % zip_name
-  os.system('wget %s -P %s' % (url, root_folder))
+  os.system('wget --no-check-certificate %s -P %s' % (url, root_folder))
   os.system('unzip %s.zip -d %s' % (os.path.join(root_folder, zip_name), root_folder))
 
 def txt_to_ply():

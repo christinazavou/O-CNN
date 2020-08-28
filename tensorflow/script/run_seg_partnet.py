@@ -52,6 +52,9 @@ class ComputeGraphSeg:
     return DatasetFactory(flags_data)(return_iter=True)
 
   def __call__(self, dataset='train', training=True, reuse=False, gpu_num=1):
+
+    debug_checks = {}
+
     FLAGS = self.flags
     with tf.device('/cpu:0'):
       flags_data = FLAGS.DATA.train if dataset == 'train' else FLAGS.DATA.test
@@ -61,11 +64,20 @@ class ComputeGraphSeg:
     for i in range(gpu_num):
       with tf.device('/gpu:%d' % i):
         with tf.name_scope('device_%d' % i):
-          octree, _, points = data_iter.get_next()
+          octree, _labels, points = data_iter.get_next()
+          debug_checks["{}/input_octree".format(dataset)] = octree
+          debug_checks["{}/input_points".format(dataset)] = points
+          debug_checks["{}/input_labels".format(dataset)] = _labels
           pts, label = get_point_info(points, flags_data.mask_ratio)
+          print("mask ratio for {} is {}".format(dataset, flags_data.mask_ratio))
+          debug_checks["{}/input_point_info/points".format(dataset)] = pts
+          debug_checks["{}/input_point_info/labels".format(dataset)] = label
           if not FLAGS.LOSS.point_wise:
             pts, label = None, get_seg_label(octree, FLAGS.MODEL.depth_out)
+            debug_checks["{}/input_seg_label/points"] = pts
+            debug_checks["{}/input_seg_label/label"] = label
           logit = seg_network(octree, FLAGS.MODEL, training, reuse, pts=pts)
+          debug_checks["{}/logit".format(dataset)] = logit
           losses = loss_functions_seg(logit, label, FLAGS.LOSS.num_class,
                                       FLAGS.LOSS.weight_decay, 'ocnn', mask=0)
           tensors = losses + [losses[0] + losses[2]]  # total loss
@@ -84,7 +96,7 @@ class ComputeGraphSeg:
           reuse = True
 
     tensors = tower_tensors[0] if gpu_num == 1 else list(zip(*tower_tensors))
-    return tensors, names
+    return tensors, names, debug_checks
 
 
 # define the solver
