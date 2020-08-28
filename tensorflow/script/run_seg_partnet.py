@@ -4,7 +4,7 @@ from config import parse_args, FLAGS
 from tfsolver import TFSolver
 from network_factory import seg_network
 from dataset import DatasetFactory
-from ocnn import loss_functions_seg, build_solver, get_seg_label
+from ocnn import loss_functions_seg, build_solver, get_seg_label, loss_functions_seg_debug_checks
 from libs import points_property, octree_property, octree_decode_key
 
 # Add config
@@ -78,8 +78,9 @@ class ComputeGraphSeg:
             debug_checks["{}/input_seg_label/label"] = label
           logit = seg_network(octree, FLAGS.MODEL, training, reuse, pts=pts)
           debug_checks["{}/logit".format(dataset)] = logit
-          losses = loss_functions_seg(logit, label, FLAGS.LOSS.num_class,
+          losses, dc = loss_functions_seg_debug_checks(logit, label, FLAGS.LOSS.num_class,
                                       FLAGS.LOSS.weight_decay, 'ocnn', mask=0)
+          debug_checks.update(dc)
           tensors = losses + [losses[0] + losses[2]]  # total loss
           names = ['loss', 'accu', 'regularizer', 'total_loss']
 

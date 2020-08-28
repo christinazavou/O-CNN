@@ -4,6 +4,7 @@ from tqdm import tqdm
 import tensorflow as tf
 from learning_rate import LRFactory
 from tensorflow.python.client import timeline
+from partnet_labels import PARTNET_LABELS_LEVEL3, find_category
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
@@ -58,7 +59,7 @@ class TFSolver:
     gpu_num = len(self.flags.gpu)
     test_params  = {'dataset': 'test',  'training': False, 'reuse': False}
     if gpu_num > 1: test_params['gpu_num'] = gpu_num
-    self.test_tensors, self.test_names = self.graph(**test_params)
+    self.test_tensors, self.test_names, self.debug_test_checks = self.graph(**test_params)
     if gpu_num > 1: # average the tensors from different gpus
       with tf.device('/cpu:0'):
         self.test_tensors = average_tensors(self.test_tensors)
@@ -204,10 +205,17 @@ class TFSolver:
       print('Restore from checkpoint: %s' % self.flags.ckpt)
       tf_saver.restore(sess, self.flags.ckpt)
 
+      category = find_category(self.flags.ckpt)
+      assert category is not None
+
       print('Start testing ...')
       for i in range(0, self.flags.test_iter):
-        iter_test_result = sess.run(self.test_tensors)
+        iter_test_result, iter_test_prediction = sess.run(
+          [self.test_tensors, self.debug_test_checks['softmax_loss/prediction']])
         iter_test_result = self.result_callback(iter_test_result)
+
+        PARTNET_LABELS_LEVEL3[category]
+
         # run testing average
         for j in range(num_tensors):
           avg_test[j] += iter_test_result[j]

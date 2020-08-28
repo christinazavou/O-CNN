@@ -44,3 +44,6 @@ run-seg-clock:
 
 run-seg-finetune-bed:
 	python run_seg_partnet_finetune.py --config configs/segmentation/seg_hrnet_partnet_pts.yaml SOLVER.gpu 0, SOLVER.logdir logs/seg/partnet_finetune/Bed/ratio_1.00 SOLVER.max_iter 3000 SOLVER.step_size 1500,750 SOLVER.test_every_iter 100 SOLVER.test_iter 37 SOLVER.ckpt dataset/midnet_data/mid_d6_o6/model/iter_800000.ckpt DATA.train.location /media/christina/Data/ANFASS_data/partnet_data/dataset/Bed_train_level3.tfrecords DATA.train.take 133 DATA.train.batch_size 8 DATA.test.location /media/christina/Data/ANFASS_data/partnet_data/dataset/Bed_test_level3.tfrecords MODEL.nout 15 MODEL.factor 2 LOSS.num_class 15
+
+run-seg-unet-test-bottle:
+	--config configs/segmentation/seg_unet_partnet_pts.yaml SOLVER.run test SOLVER.gpu 0, SOLVER.logdir logs/seg/unet_partnet_randinit/Bottle/ratio_1.00 SOLVER.max_iter 3000 SOLVER.step_size 1500,750 SOLVER.test_every_iter 200 SOLVER.test_iter 84 SOLVER.ckpt '' DATA.train.location /media/christina/Data/ANFASS_data/partnet_data/dataset/Bottle_train_level3.tfrecords DATA.train.take 315 DATA.train.batch_size 8 DATA.test.location /media/christina/Data/ANFASS_data/partnet_data/dataset/Bottle_test_level3.tfrecords MODEL.nout 9 MODEL.factor 2 LOSS.num_class 9

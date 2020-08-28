@@ -247,6 +247,21 @@ def softmax_loss(logit, label_gt, num_class, label_smoothing=0.0):
   return loss
 
 
+def softmax_loss_debug_checks(logit, label_gt, num_class, label_smoothing=0.0):
+  debug_checks = {}
+  with tf.name_scope('softmax_loss'):
+    label_gt = tf.cast(label_gt, tf.int32)
+    onehot = tf.one_hot(label_gt, depth=num_class)
+    debug_checks['softmax_loss/onehot'] = onehot
+
+    prediction = tf.argmax(logit, axis=1, output_type=tf.int32)
+    debug_checks['softmax_loss/prediction'] = prediction
+
+    loss = tf.losses.softmax_cross_entropy(
+        onehot, logit, label_smoothing=label_smoothing)
+  return loss, debug_checks
+
+
 def l2_regularizer(name, weight_decay):
   with tf.name_scope('l2_regularizer'):
     var = get_variables_with_name(name)
@@ -382,6 +397,22 @@ def loss_functions_seg(logit, label_gt, num_class, weight_decay, var_name, mask=
     accu = softmax_accuracy(masked_logit, masked_label)
     regularizer = l2_regularizer(var_name, weight_decay)
   return [loss, accu, regularizer]
+
+
+def loss_functions_seg_debug_checks(logit, label_gt, num_class, weight_decay, var_name, mask=-1):
+  debug_checks = {}
+  with tf.name_scope('loss_seg'):
+    label_mask = label_gt > mask  # filter label -1
+    masked_logit = tf.boolean_mask(logit, label_mask)
+    masked_label = tf.boolean_mask(label_gt, label_mask)
+    debug_checks['loss_seg/masked_logit'] = masked_logit
+    debug_checks['loss_seg/masked_label'] = masked_label
+    loss, dc = softmax_loss_debug_checks(masked_logit, masked_label, num_class)
+    debug_checks.update(dc)
+
+    accu = softmax_accuracy(masked_logit, masked_label)
+    regularizer = l2_regularizer(var_name, weight_decay)
+  return [loss, accu, regularizer], debug_checks
 
 
 def get_seg_label(octree, depth):

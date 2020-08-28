@@ -1,3 +1,7 @@
+import os
+import numpy as np
+np.random.seed(100)
+
 
 PARTNET_LABELS_LEVEL3 = {
     'Bed': [
@@ -304,7 +308,32 @@ PARTNET_LABELS_LEVEL3 = {
     ]
 }
 
+
+COLORS = {}
+
+for key, value in PARTNET_LABELS_LEVEL3.items():
+    COLORS[key] = np.random.randint(0, 16777215, len(value))
+
+
+def find_category(model_path):
+    dirs = model_path.split(os.sep)
+    categories = PARTNET_LABELS_LEVEL3.keys()
+    for d in dirs:
+        if d in categories:
+            return d
+    return None
+
+
+def decimal_to_rgb(decimal):
+    hexadecimal_str = '{:06x}'.format(decimal)
+    return tuple(int(hexadecimal_str[i:i + 2], 16) for i in (0, 2, 4))
+
+
 if __name__ == '__main__':
 
     for key, value in PARTNET_LABELS_LEVEL3.items():
         print(key, len(value))
+        print("colors ", [decimal_to_rgb(col) for col in COLORS[key]])
+
+    cat = find_category('/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/logs/seg/0811_partnet_randinit/Bottle/ratio_1.00/model/iter_000150.ckpt')
+    print("category ", cat)
