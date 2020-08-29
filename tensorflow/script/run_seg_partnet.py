@@ -143,7 +143,7 @@ class PartNetSolver(TFSolver):
     tf_saver = tf.train.Saver(max_to_keep=10)
 
     # start
-    avg_test_dict = {}
+    avg_test_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
     config = tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
@@ -173,8 +173,6 @@ class PartNetSolver(TFSolver):
         if predictions.shape[0] != points.shape[0]:
           continue
 
-        iter_test_result = self.result_callback(iter_test_result)
-
         dec_colors = LEVEL3_COLORS[category]
         cp = np.array([decimal_to_rgb(dec_colors[p]) for p in predictions])
         save_ply(os.path.join(predicted_ply_dir, "{}.ply".format(i)), points[:, 0:3], normals, cp)
@@ -185,7 +183,7 @@ class PartNetSolver(TFSolver):
           avg_test_dict[key] += value
           # print the results
           reports += '%s: %0.4f; ' % (key, avg_test_dict[key])
-          print(reports)
+        print(reports)
 
         iter_test_result_sorted = []
         for key in test_keys:

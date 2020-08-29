@@ -66,7 +66,7 @@ class TFSolver:
     gpu_num = len(self.flags.gpu)
     test_params  = {'dataset': 'test',  'training': False, 'reuse': False}
     if gpu_num > 1: test_params['gpu_num'] = gpu_num
-    self.test_tensors_dict = self.graph(**test_params)
+    self.test_tensors_dict, self.test_debug_checks = self.graph(**test_params)
     if gpu_num > 1: # average the tensors from different gpus
       with tf.device('/cpu:0'):
         self.test_tensors_dict = average_tensors(self.test_tensors_dict)
@@ -209,7 +209,7 @@ class TFSolver:
     tf_saver = tf.train.Saver(max_to_keep=10)
 
     # start
-    avg_test_dict = {}
+    avg_test_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
     config = tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
@@ -232,7 +232,7 @@ class TFSolver:
           avg_test_dict[key] += value
           # print the results
           reports += '%s: %0.4f; ' % (key, avg_test_dict[key])
-          print(reports)
+        print(reports)
 
         iter_test_result_sorted = []
         for key in test_keys:
