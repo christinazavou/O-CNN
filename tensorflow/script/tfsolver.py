@@ -2,6 +2,7 @@ import os
 from ocnn import *
 from tqdm import tqdm
 import tensorflow as tf
+import numpy as np
 from learning_rate import LRFactory
 from tensorflow.python.client import timeline
 
@@ -22,14 +23,10 @@ class TFSolver:
       train_params['gpu_num'] = gpu_num
       test_params['gpu_num']  = gpu_num
 
-    # self.train_tensors, train_names, self.mytroctree, self.mytrlabel, self.tr_debug_checks = self.graph(**train_params)
-    # self.test_tensors, self.test_names, _, _, _ = self.graph(**test_params)
-    # self.train_tensors, train_names = self.graph(**train_params)
-    # self.test_tensors, self.test_names = self.graph(**test_params)
-    self.train_tensors, train_names, self.debug_train_checks = self.graph(**train_params)
-    self.test_tensors, self.test_names, self.debug_test_checks = self.graph(**test_params)
+    self.train_tensors_dict, _ = self.graph(**train_params)
+    self.test_tensors_dict, self.test_debug_checks = self.graph(**test_params)
 
-    total_loss = self.train_tensors[train_names.index('total_loss')]
+    total_loss = self.train_tensors_dict['total_loss']
     solver_param = [total_loss, LRFactory(self.flags)]
     if gpu_num > 1:
       solver_param.append(gpu_num)
@@ -37,14 +34,25 @@ class TFSolver:
 
     if gpu_num > 1: # average the tensors from different gpus for summaries
       with tf.device('/cpu:0'):
-        self.train_tensors = average_tensors(self.train_tensors)
-        self.test_tensors = average_tensors(self.test_tensors)
-    self.summaries(train_names + ['lr'], self.train_tensors + [lr,], self.test_names)
+        self.train_tensors_dict = average_tensors(self.train_tensors_dict)
+        self.test_tensors_dict = average_tensors(self.test_tensors_dict)
 
-  def summaries(self, train_names, train_tensors, test_names):
-    self.summ_train = summary_train(train_names, train_tensors)
-    self.summ_test, self.summ_holder = summary_test(test_names)
-    self.summ2txt(test_names, 'step', 'w')
+    tensor_dict_for_train_summary = {}
+    tensor_dict_for_train_summary.update(self.train_tensors_dict)
+    tensor_dict_for_train_summary.update({'lr': lr})
+    tensor_dict_for_test_summary = {}
+    tensor_dict_for_test_summary.update(self.test_tensors_dict)
+    self.summaries(tensor_dict_for_train_summary, tensor_dict_for_test_summary)
+
+  def summaries(self, train_tensor_dict, test_tensor_dict):
+    self.summ_train_occ = None
+    if 'confusion_matrix' in train_tensor_dict:
+      self.summ_train_occ = summary_train({'confusion_matrix': train_tensor_dict['confusion_matrix']})
+      del train_tensor_dict['confusion_matrix']
+    self.summ_train_alw = summary_train(train_tensor_dict)
+    self.summ_test, self.summ_holder_dict = summary_test(test_tensor_dict)
+    self.summ_test_keys = self.summ_holder_dict.keys()
+    self.summ2txt(self.summ_test_keys, 'step', 'w')
 
   def summ2txt(self, values, step, flag='a'):
     test_summ = os.path.join(self.flags.logdir, 'test_summaries.csv')
@@ -58,10 +66,10 @@ class TFSolver:
     gpu_num = len(self.flags.gpu)
     test_params  = {'dataset': 'test',  'training': False, 'reuse': False}
     if gpu_num > 1: test_params['gpu_num'] = gpu_num
-    self.test_tensors, self.test_names, self.debug_test_checks = self.graph(**test_params)
+    self.test_tensors_dict = self.graph(**test_params)
     if gpu_num > 1: # average the tensors from different gpus
       with tf.device('/cpu:0'):
-        self.test_tensors = average_tensors(self.test_tensors)
+        self.test_tensors_dict = average_tensors(self.test_tensors_dict)
 
   def restore(self, sess, ckpt):
     print('Load checkpoint: ' + ckpt)
@@ -70,21 +78,19 @@ class TFSolver:
   def initialize(self, sess):
     sess.run(tf.global_variables_initializer())
 
-  def run_k_iterations(self, sess, k, tensors):
-    num = len(tensors)
-    avg_results = [0] * num
-    for _ in range(k):
-      iter_results = sess.run(tensors)
-      for j in range(num):
-        avg_results[j] += iter_results[j]
+  def run_k_iterations(self, sess, k, tensors_dict):
+    avg_results_dict = {key: np.zeros(value.get_shape()) for key, value in tensors_dict.items()}
+    iter_results_dict = sess.run(tensors_dict)
+    for key, value in iter_results_dict.items():
+      avg_results_dict[key] += value
     
-    for j in range(num):
-      avg_results[j] /= k
-    avg_results = self.result_callback(avg_results)
+    for key in avg_results_dict.keys():
+      avg_results_dict[key] /= k
+    avg_results = self.result_callback(avg_results_dict)
     return avg_results
 
-  def result_callback(self, avg_results):
-    return avg_results # calc some metrics, such as IoU, based on the graph output
+  def result_callback(self, avg_results_dict):
+    return avg_results_dict  # calc some metrics, such as IoU, based on the graph output
 
   def train(self):
     # build the computation graph
@@ -113,19 +119,31 @@ class TFSolver:
       print('Start training ...')
       for i in tqdm(range(start_iter, self.flags.max_iter + 1), ncols=80):
         # training
-        summary, _ = sess.run([self.summ_train, self.train_op])
-        summary_writer.add_summary(summary, i)
+        if self.summ_train_occ != None:
+          summary_alw, summary_occ, _ = sess.run([self.summ_train_alw,
+                                                  self.summ_train_occ,
+                                                  self.train_op])
+          summary_writer.add_summary(summary_occ, i)
+          summary_writer.add_summary(summary_alw, i)
+        else:
+          summary_alw, _ = sess.run([self.summ_train_alw,
+                                                  self.train_op])
+          summary_writer.add_summary(summary_alw, i)
 
         # testing
         if i % self.flags.test_every_iter == 0:
           # run testing average
-          avg_test = self.run_k_iterations(sess, self.flags.test_iter, self.test_tensors)
+          avg_test_dict = self.run_k_iterations(sess, self.flags.test_iter, self.test_tensors_dict)
 
           # run testing summary
-          summary = sess.run(self.summ_test, 
-                             feed_dict=dict(zip(self.summ_holder, avg_test)))
+          summary = sess.run(self.summ_test,
+                             feed_dict={pl: avg_test_dict[m]
+                                        for m, pl in self.summ_holder_dict.items()})
           summary_writer.add_summary(summary, i)
-          self.summ2txt(avg_test, i)
+          avg_test_ordered = []
+          for key in self.summ_test_keys:
+            avg_test_ordered.append(avg_test_dict[key])
+          self.summ2txt(avg_test_ordered, i)
 
           # save session
           ckpt_name = os.path.join(ckpt_path, 'iter_%06d.ckpt' % i)
@@ -151,9 +169,9 @@ class TFSolver:
       print('Start profiling ...')
       for i in tqdm(range(0, timeline_skip + timeline_iter), ncols=80):
         if i < timeline_skip:
-          summary, _ = sess.run([self.summ_train, self.train_op])
+          summary_alw, _ = sess.run([self.summ_train_alw, self.train_op])
         else:
-          summary, _ = sess.run([self.summ_train, self.train_op], 
+          summary, _ = sess.run([self.summ_train_alw, self.train_op],
                                 options=options, run_metadata=run_metadata)
           if (i == timeline_skip + timeline_iter - 1):
             # summary_writer.add_run_metadata(run_metadata, 'step_%d'%i, i)
@@ -191,13 +209,13 @@ class TFSolver:
     tf_saver = tf.train.Saver(max_to_keep=10)
 
     # start
-    num_tensors = len(self.test_tensors)
-    avg_test = [0] * num_tensors
+    avg_test_dict = {}
     config = tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
-      summary_writer = tf.summary.FileWriter(self.flags.logdir, sess.graph)
-      self.summ2txt(self.test_names, 'batch')
+
+      test_keys = self.test_tensors_dict.keys()
+      self.summ2txt(test_keys, 'batch')
 
       # restore and initialize
       self.initialize(sess)
@@ -206,29 +224,35 @@ class TFSolver:
 
       print('Start testing ...')
       for i in range(0, self.flags.test_iter):
-        iter_test_result = sess.run(self.test_tensors)
+        iter_test_result_dict = sess.run(self.test_tensors_dict)
 
-        # run testing average
-        for j in range(num_tensors):
-          avg_test[j] += iter_test_result[j]
-        # print the results
         reports = 'batch: %04d; ' % i
-        for j in range(num_tensors):
-          reports += '%s: %0.4f; ' % (self.test_names[j], iter_test_result[j])
-        print(reports)
-        self.summ2txt(iter_test_result, i)
+        # run testing average
+        for key, value in iter_test_result_dict.items():
+          avg_test_dict[key] += value
+          # print the results
+          reports += '%s: %0.4f; ' % (key, avg_test_dict[key])
+          print(reports)
+
+        iter_test_result_sorted = []
+        for key in test_keys:
+          iter_test_result_sorted.append(iter_test_result_dict[key])
+        self.summ2txt(iter_test_result_sorted, i)
 
     # Final testing results
-    for j in range(num_tensors):
-      avg_test[j] /= self.flags.test_iter
-    avg_test = self.result_callback(avg_test)
+    for key, vlaue in avg_test_dict.items():
+      avg_test_dict[key] /= self.flags.test_iter
+    avg_test_dict = self.result_callback(avg_test_dict)
+
     # print the results
     print('Testing done!\n')
     reports = 'ALL: %04d; ' % self.flags.test_iter
-    for j in range(num_tensors):
-      reports += '%s: %0.4f; ' % (self.test_names[j], avg_test[j])
+    avg_test_sorted = []
+    for key in test_keys:
+      avg_test_sorted.append(avg_test_dict[key])
+      reports += '%s: %0.4f; ' % (key, avg_test_dict[key])
     print(reports)
-    self.summ2txt(avg_test, 'ALL')
+    self.summ2txt(avg_test_sorted, 'ALL')
 
   def run(self):
     eval('self.{}()'.format(self.flags.run))

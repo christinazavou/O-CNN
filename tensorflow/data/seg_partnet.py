@@ -5,8 +5,7 @@ import numpy as np
 
 
 current_path = os.path.dirname(os.path.realpath(__file__))
-# root_folder = os.path.join(current_path, '../script/dataset/partnet_segmentation')
-root_folder = '/media/christina/Data/ANFASS_data/partnet_data'
+root_folder = '/media/christina/Data/ANFASS_data/partnet_data_sample'
 convert_tfrecords = os.path.join(current_path, '../util/convert_tfrecords.py')
 
 all_categoty = ['Bag', 'Bed', 'Bottle', 'Bowl', 'Chair', 'Clock', 'Dishwasher',

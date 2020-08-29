@@ -66,53 +66,53 @@ class ComputeGraphSeg:
 
   def __call__(self, dataset='train', training=True, reuse=False, gpu_num=1):
 
+    if gpu_num != 1:
+      raise Exception('Since I made a dict there is no implementation for multi gpu support')
+
     debug_checks = {}
+    tensors_dict = {}
 
     FLAGS = self.flags
     with tf.device('/cpu:0'):
       flags_data = FLAGS.DATA.train if dataset == 'train' else FLAGS.DATA.test
       data_iter = self.create_dataset(flags_data)
 
-    tower_tensors = []
-    for i in range(gpu_num):
-      with tf.device('/gpu:%d' % i):
-        with tf.name_scope('device_%d' % i):
-          octree, _labels, points = data_iter.get_next()
-          debug_checks["{}/input_octree".format(dataset)] = octree
-          debug_checks["{}/input_points".format(dataset)] = points
-          debug_checks["{}/input_labels".format(dataset)] = _labels
-          pts, label = get_point_info(points, flags_data.mask_ratio)
-          print("mask ratio for {} is {}".format(dataset, flags_data.mask_ratio))
-          debug_checks["{}/input_point_info/points".format(dataset)] = pts
-          debug_checks["{}/input_point_info/labels".format(dataset)] = label
-          debug_checks["{}/input_point_info/normals".format(dataset)] = points_property(
-            points, property_name='normal', channel=3)
-          if not FLAGS.LOSS.point_wise:
-            pts, label = None, get_seg_label(octree, FLAGS.MODEL.depth_out)
-            debug_checks["{}/input_seg_label/points"] = pts
-            debug_checks["{}/input_seg_label/label"] = label
-          logit = seg_network(octree, FLAGS.MODEL, training, reuse, pts=pts)
-          debug_checks["{}/logit".format(dataset)] = logit
-          losses, dc = loss_functions_seg_debug_checks(logit, label, FLAGS.LOSS.num_class,
-                                      FLAGS.LOSS.weight_decay, 'ocnn', mask=0)
-          debug_checks.update(dc)
-          tensors = losses + [losses[0] + losses[2]]  # total loss
-          names = ['loss', 'accu', 'regularizer', 'total_loss']
+    with tf.device('/gpu:0'):
+      with tf.name_scope('device_0'):
+        octree, _labels, points = data_iter.get_next()
+        debug_checks["{}/input_octree".format(dataset)] = octree
+        debug_checks["{}/input_points".format(dataset)] = points
+        debug_checks["{}/input_labels".format(dataset)] = _labels
+        pts, label = get_point_info(points, flags_data.mask_ratio)
+        print("mask ratio for {} is {}".format(dataset, flags_data.mask_ratio))
+        debug_checks["{}/input_point_info/points".format(dataset)] = pts
+        debug_checks["{}/input_point_info/labels".format(dataset)] = label
+        debug_checks["{}/input_point_info/normals".format(dataset)] = points_property(
+          points, property_name='normal', channel=3)
+        if not FLAGS.LOSS.point_wise:
+          pts, label = None, get_seg_label(octree, FLAGS.MODEL.depth_out)
+          debug_checks["{}/input_seg_label/points"] = pts
+          debug_checks["{}/input_seg_label/label"] = label
+        logit = seg_network(octree, FLAGS.MODEL, training, reuse, pts=pts)
+        debug_checks["{}/logit".format(dataset)] = logit
+        [loss, accu, regularizer], dc = loss_functions_seg_debug_checks(
+          logit, label, FLAGS.LOSS.num_class, FLAGS.LOSS.weight_decay, 'ocnn', mask=0)
+        debug_checks.update(dc)
+        tensors_dict['loss'] = loss
+        tensors_dict['accu'] = accu
+        tensors_dict['regularizer'] = regularizer
+        tensors_dict['total_loss'] = loss + regularizer
 
-          if flags_data.batch_size == 1:
-            num_class = FLAGS.LOSS.num_class
-            intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=0)
-            iou = tf.constant(0.0)     # placeholder, calc its value later
-            tensors = [iou] + tensors + intsc + union
-            names = ['iou'] + names + \
-                    ['intsc_%d' % i for i in range(num_class)] + \
-                    ['union_%d' % i for i in range(num_class)]
+        if flags_data.batch_size == 1:
+          num_class = FLAGS.LOSS.num_class
+          intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=0)
+          iou = tf.constant(0.0)     # placeholder, calc its value later
+          tensors_dict['iou'] = iou
+          for i in range(num_class):
+            tensors_dict['intsc_%d' % i] = intsc[i]
+            tensors_dict['union_%d' % i] = union[i]
 
-          tower_tensors.append(tensors)
-          reuse = True
-
-    tensors = tower_tensors[0] if gpu_num == 1 else list(zip(*tower_tensors))
-    return tensors, names, debug_checks
+    return tensors_dict, debug_checks
 
 
 # define the solver
@@ -121,18 +121,18 @@ class PartNetSolver(TFSolver):
     super(PartNetSolver, self).__init__(flags.SOLVER, compute_graph, build_solver)
     self.num_class = flags.LOSS.num_class # used to calculate the IoU
 
-  def result_callback(self, avg_results):
+  def result_callback(self, avg_results_dict):
     # calc part-IoU, update `iou`, this is in correspondence with Line 77
     iou_avg = 0.0
     ious = [0] * self.num_class
     for i in range(1, self.num_class):  # !!! Ignore the first label
-      instc_i = avg_results[self.test_names.index('intsc_%d' % i)]
-      union_i = avg_results[self.test_names.index('union_%d' % i)]
+      instc_i = avg_results_dict['intsc_%d' % i]
+      union_i = avg_results_dict['union_%d' % i]
       ious[i] = instc_i / (union_i + 1.0e-10)
       iou_avg = iou_avg + ious[i]
     iou_avg = iou_avg / (self.num_class - 1)
-    avg_results[self.test_names.index('iou')] = iou_avg
-    return avg_results
+    avg_results_dict['iou'] = iou_avg
+    return avg_results_dict
 
   def test(self):
     # build graph
@@ -143,13 +143,12 @@ class PartNetSolver(TFSolver):
     tf_saver = tf.train.Saver(max_to_keep=10)
 
     # start
-    num_tensors = len(self.test_tensors)
-    avg_test = [0] * num_tensors
+    avg_test_dict = {}
     config = tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
-      summary_writer = tf.summary.FileWriter(self.flags.logdir, sess.graph)
-      self.summ2txt(self.test_names, 'batch')
+      test_keys = self.test_tensors_dict.keys()
+      self.summ2txt(test_keys, 'batch')
 
       # restore and initialize
       self.initialize(sess)
@@ -164,12 +163,12 @@ class PartNetSolver(TFSolver):
 
       print('Start testing ...')
       for i in range(0, self.flags.test_iter):
-        iter_test_result, iter_test_dc = sess.run([self.test_tensors, self.debug_test_checks])
+        iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks])
 
-        points, labels, predictions, normals = iter_test_dc['test/input_point_info/points'], \
-                                               iter_test_dc['test/input_point_info/labels'], \
-                                               iter_test_dc['softmax_loss/prediction'], \
-                                               iter_test_dc["test/input_point_info/normals"]
+        points, labels, predictions, normals = iter_tdc['test/input_point_info/points'], \
+                                               iter_tdc['test/input_point_info/labels'], \
+                                               iter_tdc['softmax_loss/prediction'], \
+                                               iter_tdc["test/input_point_info/normals"]
 
         if predictions.shape[0] != points.shape[0]:
           continue
@@ -180,27 +179,33 @@ class PartNetSolver(TFSolver):
         cp = np.array([decimal_to_rgb(dec_colors[p]) for p in predictions])
         save_ply(os.path.join(predicted_ply_dir, "{}.ply".format(i)), points[:, 0:3], normals, cp)
 
-        # run testing average
-        for j in range(num_tensors):
-          avg_test[j] += iter_test_result[j]
-        # print the results
         reports = 'batch: %04d; ' % i
-        for j in range(num_tensors):
-          reports += '%s: %0.4f; ' % (self.test_names[j], iter_test_result[j])
-        print(reports)
-        self.summ2txt(iter_test_result, i)
+        # run testing average
+        for key, value in iter_test_result_dict.items():
+          avg_test_dict[key] += value
+          # print the results
+          reports += '%s: %0.4f; ' % (key, avg_test_dict[key])
+          print(reports)
+
+        iter_test_result_sorted = []
+        for key in test_keys:
+          iter_test_result_sorted.append(iter_test_result_dict[key])
+        self.summ2txt(iter_test_result_sorted, i)
 
     # Final testing results
-    for j in range(num_tensors):
-      avg_test[j] /= self.flags.test_iter
-    avg_test = self.result_callback(avg_test)
+    for key, vlaue in avg_test_dict.items():
+      avg_test_dict[key] /= self.flags.test_iter
+    avg_test_dict = self.result_callback(avg_test_dict)
+
     # print the results
     print('Testing done!\n')
     reports = 'ALL: %04d; ' % self.flags.test_iter
-    for j in range(num_tensors):
-      reports += '%s: %0.4f; ' % (self.test_names[j], avg_test[j])
+    avg_test_sorted = []
+    for key in test_keys:
+      avg_test_sorted.append(avg_test_dict[key])
+      reports += '%s: %0.4f; ' % (key, avg_test_dict[key])
     print(reports)
-    self.summ2txt(avg_test, 'ALL')
+    self.summ2txt(avg_test_sorted, 'ALL')
 
 
 def save_ply(filename, points, normals, colors, pts_num=10000):

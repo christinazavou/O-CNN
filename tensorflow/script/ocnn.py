@@ -301,15 +301,15 @@ def normalize_signal(data):
   return output
 
     
-def average_tensors(tower_tensors):
-  avg_tensors = []
+def average_tensors(tensors_dict):
+  avg_tensors_dict = {}
   with tf.name_scope('avg_tensors'):
-    for tensors in tower_tensors:
+    for tensor_name, tensors in tensors_dict.items():
       tensors = [tf.expand_dims(tensor, 0) for tensor in tensors]
       avg_tensor = tf.concat(tensors, axis=0)
       avg_tensor = tf.reduce_mean(avg_tensor, 0)
-      avg_tensors.append(avg_tensor)
-  return avg_tensors
+      avg_tensors_dict[tensor_name] = avg_tensor
+  return avg_tensors_dict
 
 
 def solver_single_gpu(total_loss, learning_rate_handle, gpu_num=1):
@@ -359,24 +359,30 @@ def build_solver(total_loss, learning_rate_handle, gpu_num=1):
   return the_solver(total_loss, learning_rate_handle, gpu_num)
 
 
-def summary_train(names, tensors):
+def summary_train(tensor_dict):
   with tf.name_scope('summary_train'):
     summaries = []
-    for it in zip(names, tensors):
-      summaries.append(tf.summary.scalar(it[0], it[1]))
+    for key, value in tensor_dict.items():
+      if key == 'confusion_matrix':
+        summaries.append(tf.summary.image(key, value))
+      else:
+        summaries.append(tf.summary.scalar(key, value))
     summ = tf.summary.merge(summaries)
   return summ
 
 
-def summary_test(names):
+def summary_test(tensor_dict):
   with tf.name_scope('summary_test'):
     summaries = []
-    summ_placeholder = []
-    for name in names:
-      summ_placeholder.append(tf.placeholder(tf.float32))
-      summaries.append(tf.summary.scalar(name, summ_placeholder[-1]))
-    summ = tf.summary.merge(summaries)
-  return summ, summ_placeholder
+    summary_placeholder_dict = {}
+    for key, value in tensor_dict.items():
+      if key == 'confusion_matrix':
+        summary_placeholder_dict[key] = tf.placeholder(tf.float32, value.get_shape(), key)
+        summaries.append(tf.summary.image(key, summary_placeholder_dict[key]))
+      else:
+        summary_placeholder_dict[key] = tf.placeholder(tf.float32, name=key)
+        summaries.append(tf.summary.scalar(key, summary_placeholder_dict[key]))
+    return tf.summary.merge(summaries), summary_placeholder_dict
 
 
 def loss_functions(logit, label_gt, num_class, weight_decay, var_name, label_smoothing=0.0):
