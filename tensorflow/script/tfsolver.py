@@ -226,33 +226,33 @@ class TFSolver:
       for i in range(0, self.flags.test_iter):
         iter_test_result_dict = sess.run(self.test_tensors_dict)
 
+        # run testing average and print the results
         reports = 'batch: %04d; ' % i
-        # run testing average
         for key, value in iter_test_result_dict.items():
           avg_test_dict[key] += value
-          # print the results
-          reports += '%s: %0.4f; ' % (key, avg_test_dict[key])
+          reports += '%s: %0.4f; ' % (key, value)
         print(reports)
 
+        # make sure results are sorted before writing them
         iter_test_result_sorted = []
         for key in test_keys:
           iter_test_result_sorted.append(iter_test_result_dict[key])
         self.summ2txt(iter_test_result_sorted, i)
 
-    # Final testing results
-    for key, vlaue in avg_test_dict.items():
-      avg_test_dict[key] /= self.flags.test_iter
-    avg_test_dict = self.result_callback(avg_test_dict)
+      # Final testing results
+      for key, value in avg_test_dict.items():
+        avg_test_dict[key] /= self.flags.test_iter
+      avg_test_dict = self.result_callback(avg_test_dict)
 
-    # print the results
-    print('Testing done!\n')
-    reports = 'ALL: %04d; ' % self.flags.test_iter
-    avg_test_sorted = []
-    for key in test_keys:
-      avg_test_sorted.append(avg_test_dict[key])
-      reports += '%s: %0.4f; ' % (key, avg_test_dict[key])
-    print(reports)
-    self.summ2txt(avg_test_sorted, 'ALL')
+      # print the results
+      print('Testing done!\n')
+      reports = 'ALL: %04d; ' % self.flags.test_iter
+      avg_test_sorted = []
+      for key in test_keys:
+        avg_test_sorted.append(avg_test_dict[key])
+        reports += '%s: %0.4f; ' % (key, avg_test_dict[key])
+      print(reports)
+      self.summ2txt(avg_test_sorted, 'ALL')
 
   def run(self):
     eval('self.{}()'.format(self.flags.run))
