@@ -31,19 +31,28 @@ def get_point_info(points, mask_ratio=0, mask=-1):
 
 
 # IoU
-def tf_IoU_per_shape(pred, label, class_num, mask=-1):
+def tf_IoU_per_shape(pred, label, class_num, mask=-1, debug=False):
+  debug_checks = {}
   with tf.name_scope('IoU'):
     # Set mask to 0 to filter unlabeled points, whose label is 0
-    label_mask = label > mask  # mask out label
-    pred = tf.boolean_mask(pred, label_mask)
-    label = tf.boolean_mask(label, label_mask)
-    pred = tf.argmax(pred, axis=1, output_type=tf.int32)
+    debug_checks['label_mask'] = label > mask  # mask out label
+    debug_checks['prediction_masked'] = tf.boolean_mask(pred, debug_checks['label_mask'])
+    debug_checks['label_masked'] = tf.boolean_mask(label, debug_checks['label_mask'])
+    debug_checks['prediction_masked_argmax'] = tf.argmax(debug_checks['prediction_masked'],
+                                                         axis=1, output_type=tf.int32)
 
     intsc, union = [None] * class_num, [None] * class_num
     for k in range(class_num):
-      pk, lk = tf.equal(pred, k), tf.equal(label, k)
+      pk = tf.equal(debug_checks['prediction_masked_argmax'], k)
+      lk = tf.equal(debug_checks['label_masked'], k)
+      debug_checks['prediction_{}'.format(k)] = pk
+      debug_checks['label_{}'.format(k)] = lk
       intsc[k] = tf.reduce_sum(tf.cast(pk & lk, dtype=tf.float32))
       union[k] = tf.reduce_sum(tf.cast(pk | lk, dtype=tf.float32))
+    debug_checks['intsc'] = intsc
+    debug_checks['union'] = union
+  if debug:
+    return debug_checks
   return intsc, union
 
 
