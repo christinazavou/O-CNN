@@ -51,7 +51,10 @@ class TFSolver:
       del train_tensor_dict['confusion_matrix']
     self.summ_train_alw = summary_train(train_tensor_dict)
     self.summ_test, self.summ_holder_dict = summary_test(test_tensor_dict)
-    self.summ_test_keys = self.summ_holder_dict.keys()
+    self.summ_test_keys = list(self.summ_holder_dict.keys())
+    if 'confusion_matrix' in self.summ_test_keys:
+      idx = self.summ_test_keys.index('confusion_matrix')
+      del self.summ_test_keys[idx]
     self.summ2txt(self.summ_test_keys, 'step', 'w')
 
   def summ2txt(self, values, step, flag='a'):
@@ -78,14 +81,22 @@ class TFSolver:
   def initialize(self, sess):
     sess.run(tf.global_variables_initializer())
 
-  def run_k_iterations(self, sess, k, tensors_dict):
-    avg_results_dict = {key: np.zeros(value.get_shape()) for key, value in tensors_dict.items()}
-    iter_results_dict = sess.run(tensors_dict)
-    for key, value in iter_results_dict.items():
-      avg_results_dict[key] += value
+  def run_k_test_iterations(self, sess):
+    avg_results_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
+
+    for i in range(self.flags.test_iter):
+      iter_results_dict, iter_debug_checks = sess.run([self.test_tensors_dict, self.test_debug_checks])
+
+      # note: since we have used a mask of 0, in points_label we ignore all points with 0 label i.e. that are undefined
+      # so len(iter_debug_checks['softmax_loss/prediction']) != len(iter_debug_checks['test/input_point_info/points'])
+      # so predictions and labels of those patches are ignored ..
+      # but the metrics for all defined classes can still be calculated for this sample
+
+      for key, value in iter_results_dict.items():
+        avg_results_dict[key] += value
     
     for key in avg_results_dict.keys():
-      avg_results_dict[key] /= k
+      avg_results_dict[key] /= self.flags.test_iter
     avg_results = self.result_callback(avg_results_dict)
     return avg_results
 
@@ -120,20 +131,17 @@ class TFSolver:
       for i in tqdm(range(start_iter, self.flags.max_iter + 1), ncols=80):
         # training
         if self.summ_train_occ != None:
-          summary_alw, summary_occ, _ = sess.run([self.summ_train_alw,
-                                                  self.summ_train_occ,
-                                                  self.train_op])
+          summary_alw, summary_occ, _ = sess.run([self.summ_train_alw, self.summ_train_occ, self.train_op])
           summary_writer.add_summary(summary_occ, i)
           summary_writer.add_summary(summary_alw, i)
         else:
-          summary_alw, _ = sess.run([self.summ_train_alw,
-                                                  self.train_op])
+          summary_alw, _ = sess.run([self.summ_train_alw, self.train_op])
           summary_writer.add_summary(summary_alw, i)
 
         # testing
         if i % self.flags.test_every_iter == 0:
           # run testing average
-          avg_test_dict = self.run_k_iterations(sess, self.flags.test_iter, self.test_tensors_dict)
+          avg_test_dict = self.run_k_test_iterations(sess)
 
           # run testing summary
           summary = sess.run(self.summ_test,

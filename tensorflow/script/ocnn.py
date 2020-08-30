@@ -259,7 +259,17 @@ def softmax_loss_debug_checks(logit, label_gt, num_class, label_smoothing=0.0):
 
     loss = tf.losses.softmax_cross_entropy(
         onehot, logit, label_smoothing=label_smoothing)
-  return loss, debug_checks
+
+    conf_mat = confusion_matrix(prediction, label_gt, num_class, weights=None)
+
+  return loss, conf_mat, debug_checks
+
+
+def confusion_matrix(prediction, label, num_classes, weights=None):
+  matrix = tf.math.confusion_matrix(
+    label, prediction, num_classes=num_classes, weights=weights, dtype=tf.dtypes.float32, name=None
+  )
+  return tf.reshape(matrix, (1, num_classes, num_classes, 1))
 
 
 def l2_regularizer(name, weight_decay):
@@ -413,12 +423,13 @@ def loss_functions_seg_debug_checks(logit, label_gt, num_class, weight_decay, va
     masked_label = tf.boolean_mask(label_gt, label_mask)
     debug_checks['loss_seg/masked_logit'] = masked_logit
     debug_checks['loss_seg/masked_label'] = masked_label
-    loss, dc = softmax_loss_debug_checks(masked_logit, masked_label, num_class)
+    loss, conf_mat, dc = softmax_loss_debug_checks(masked_logit, masked_label, num_class)
     debug_checks.update(dc)
 
     accu = softmax_accuracy(masked_logit, masked_label)
     regularizer = l2_regularizer(var_name, weight_decay)
-  return [loss, accu, regularizer], debug_checks
+  return {'loss': loss, 'accu': accu, 'regularizer': regularizer, 'confusion_matrix': conf_mat},\
+         debug_checks
 
 
 def get_seg_label(octree, depth):
@@ -427,19 +438,6 @@ def get_seg_label(octree, depth):
                             depth=depth, channel=1)
     label = tf.reshape(tf.cast(label, tf.int32), [-1])
   return label
-
-
-def run_k_iterations(sess, k, tensors):
-  num = len(tensors)
-  avg_results = [0] * num
-  for _ in range(k):
-    iter_results = sess.run(tensors)
-    for j in range(num):
-      avg_results[j] += iter_results[j]
-
-  for j in range(num):
-    avg_results[j] /= k
-  return avg_results
 
 
 def tf_IoU_per_shape(pred, label, class_num, mask=-1):

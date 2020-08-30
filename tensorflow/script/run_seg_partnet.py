@@ -12,6 +12,8 @@ from ocnn import loss_functions_seg, build_solver, get_seg_label, loss_functions
 from libs import points_property, octree_property, octree_decode_key
 
 # Add config
+from visualize import vis_confusion_matrix
+
 FLAGS.LOSS.point_wise = True
 
 
@@ -95,13 +97,11 @@ class ComputeGraphSeg:
           debug_checks["{}/input_seg_label/label"] = label
         logit = seg_network(octree, FLAGS.MODEL, training, reuse, pts=pts)
         debug_checks["{}/logit".format(dataset)] = logit
-        [loss, accu, regularizer], dc = loss_functions_seg_debug_checks(
+        metrics_dict, dc = loss_functions_seg_debug_checks(
           logit, label, FLAGS.LOSS.num_class, FLAGS.LOSS.weight_decay, 'ocnn', mask=0)
         debug_checks.update(dc)
-        tensors_dict['loss'] = loss
-        tensors_dict['accu'] = accu
-        tensors_dict['regularizer'] = regularizer
-        tensors_dict['total_loss'] = loss + regularizer
+        tensors_dict.update(metrics_dict)
+        tensors_dict['total_loss'] = metrics_dict['loss'] + metrics_dict['regularizer']
 
         if flags_data.batch_size == 1:
           num_class = FLAGS.LOSS.num_class
@@ -147,7 +147,7 @@ class PartNetSolver(TFSolver):
     config = tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
-      test_keys = self.test_tensors_dict.keys()
+      test_keys = list(self.test_tensors_dict.keys())
       self.summ2txt(test_keys, 'batch')
 
       # restore and initialize
@@ -170,18 +170,28 @@ class PartNetSolver(TFSolver):
                                                iter_tdc['softmax_loss/prediction'], \
                                                iter_tdc["test/input_point_info/normals"]
 
-        if predictions.shape[0] != points.shape[0]:
-          continue
-
         dec_colors = LEVEL3_COLORS[category]
         cp = np.array([decimal_to_rgb(dec_colors[p]) for p in predictions])
+
+        # note: since we have used a mask of 0, in points_label we ignore all points with 0 label i.e. that are undefined
+        # so len(iter_debug_checks['softmax_loss/prediction']) != len(iter_debug_checks['test/input_point_info/points'])
+        # so predictions and labels of those patches are ignored ..
+        # but the metrics for all defined classes can still be calculated for this sample
+        if predictions.shape[0] != points.shape[0]:
+          label_mask = labels > 0
+          normals, points = sess.run([tf.boolean_mask(normals, label_mask), tf.boolean_mask(points, label_mask)])
+        points = points[:, 0: 3]
+
+        assert cp.shape[0] == points.shape[0] == normals.shape[0]
+        assert cp.shape[1] == points.shape[1] == normals.shape[1] == 3
         save_ply(os.path.join(predicted_ply_dir, "{}.ply".format(i)), points[:, 0:3], normals, cp)
 
         # run testing average and print the results
         reports = 'batch: %04d; ' % i
         for key, value in iter_test_result_dict.items():
           avg_test_dict[key] += value
-          reports += '%s: %0.4f; ' % (key, value)
+          if key != 'confusion_matrix':
+            reports += '%s: %0.4f; ' % (key, value)
         print(reports)
 
         # make sure results are sorted before writing them
@@ -201,17 +211,19 @@ class PartNetSolver(TFSolver):
     avg_test_sorted = []
     for key in test_keys:
       avg_test_sorted.append(avg_test_dict[key])
-      reports += '%s: %0.4f; ' % (key, avg_test_dict[key])
+      if key != 'confusion_matrix':
+        reports += '%s: %0.4f; ' % (key, avg_test_dict[key])
+      else:
+        vis_confusion_matrix(avg_test_dict[key].reshape(self.num_class, self.num_class),
+                             LEVEL3_LABELS[category],
+                             LEVEL3_COLORS[category])
     print(reports)
     self.summ2txt(avg_test_sorted, 'ALL')
 
 
-def save_ply(filename, points, normals, colors, pts_num=10000):
-  points = points.reshape((pts_num, 3))
-  normals = normals.reshape((pts_num, 3))
-  colors = colors.reshape((pts_num, 3))
+def save_ply(filename, points, normals, colors):
   data = np.concatenate([points, normals, colors], axis=1)
-  assert data.shape[0] == pts_num
+  pts_num = data.shape[0]
 
   header = "ply\n" \
            "format ascii 1.0\n" \
