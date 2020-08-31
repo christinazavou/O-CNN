@@ -4,7 +4,7 @@ import tensorflow as tf
 import numpy as np
 
 from config import parse_args, FLAGS
-from partnet_labels import find_category, LEVEL3_LABELS, LEVEL3_COLORS, decimal_to_rgb
+from partnet_labels import find_category, LEVEL3_LABELS, LEVEL3_COLORS, decimal_to_rgb, get_level3_category_labels
 from tfsolver import TFSolver
 from network_factory import seg_network
 from dataset import DatasetFactory
@@ -215,15 +215,14 @@ class PartNetSolver(TFSolver):
         reports += '%s: %0.4f; ' % (key, avg_test_dict[key])
       else:
         vis_confusion_matrix(avg_test_dict[key].reshape(self.num_class, self.num_class),
-                             LEVEL3_LABELS[category],
+                             get_level3_category_labels(category),
                              LEVEL3_COLORS[category])
     print(reports)
     self.summ2txt(avg_test_sorted, 'ALL')
 
 
 def save_ply(filename, points, normals, colors):
-  data = np.concatenate([points, normals, colors], axis=1)
-  pts_num = data.shape[0]
+  pts_num = points.shape[0]
 
   header = "ply\n" \
            "format ascii 1.0\n" \
@@ -234,16 +233,18 @@ def save_ply(filename, points, normals, colors):
            "property float nx\n" \
            "property float ny\n" \
            "property float nz\n" \
-           "property float r\n" \
-           "property float g\n" \
-           "property float b\n" \
+           "property uchar r\n" \
+           "property uchar g\n" \
+           "property uchar b\n" \
            "element face 0\n" \
            "property list uchar int vertex_indices\n" \
            "end_header\n"
   with open(filename, 'w') as fid:
     fid.write(header % pts_num)
-    np.savetxt(fid, data, fmt='%.6f')
-
+    for point, normal, color in zip(points, normals, colors):
+      fid.write(" ".join([str(i) for i in point]) + " " +
+                " ".join([str(i) for i in normal]) + " " +
+                " ".join([str(int(i)) for i in color])+"\n")
 
 # run the experiments
 if __name__ == '__main__':

@@ -330,6 +330,10 @@ def decimal_to_rgb(decimal):
     return tuple(int(hexadecimal_str[i:i + 2], 16) for i in (0, 2, 4))
 
 
+def get_level3_category_labels(cat):
+    return [l.split("/")[-1] for l in LEVEL3_LABELS[cat]]
+
+
 if __name__ == '__main__':
 
     for key, value in LEVEL3_LABELS.items():
