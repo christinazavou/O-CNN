@@ -143,7 +143,7 @@ class PartNetSolver(TFSolver):
     tf_saver = tf.train.Saver(max_to_keep=10)
 
     # start
-    avg_test_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
+    test_metrics_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
     config = tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
@@ -189,7 +189,7 @@ class PartNetSolver(TFSolver):
         # run testing average and print the results
         reports = 'batch: %04d; ' % i
         for key, value in iter_test_result_dict.items():
-          avg_test_dict[key] += value
+          test_metrics_dict[key] += value
           if key != 'confusion_matrix':
             reports += '%s: %0.4f; ' % (key, value)
         print(reports)
@@ -201,22 +201,24 @@ class PartNetSolver(TFSolver):
         self.summ2txt(iter_test_result_sorted, i)
 
     # Final testing results
-    for key, value in avg_test_dict.items():
-      avg_test_dict[key] /= self.flags.test_iter
-    avg_test_dict = self.result_callback(avg_test_dict)
+    for key, value in test_metrics_dict.items():
+      if key != 'confusion_matrix':
+        test_metrics_dict[key] /= self.flags.test_iter
+    test_metrics_dict = self.result_callback(test_metrics_dict)
 
     # print the results
     print('Testing done!\n')
     reports = 'ALL: %04d; ' % self.flags.test_iter
     avg_test_sorted = []
     for key in test_keys:
-      avg_test_sorted.append(avg_test_dict[key])
+      avg_test_sorted.append(test_metrics_dict[key])
       if key != 'confusion_matrix':
-        reports += '%s: %0.4f; ' % (key, avg_test_dict[key])
+        reports += '%s: %0.4f; ' % (key, test_metrics_dict[key])
       else:
-        vis_confusion_matrix(avg_test_dict[key].reshape(self.num_class, self.num_class),
+        vis_confusion_matrix(test_metrics_dict[key].reshape(self.num_class, self.num_class),
                              get_level3_category_labels(category),
-                             LEVEL3_COLORS[category])
+                             LEVEL3_COLORS[category],
+                             "Category: {}, Test samples: {}".format(category, self.flags.test_iter))
     print(reports)
     self.summ2txt(avg_test_sorted, 'ALL')
 
