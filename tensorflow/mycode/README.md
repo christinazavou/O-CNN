@@ -46,3 +46,8 @@ to MIDNet einai ousiastika ena diktio pou apoteleite apo ena encoder kai sto tel
 
     takes the folder of annotated sample which contains the labels in one file, the points in another, the ply with colors according to labels
 
+
+note:
+- https://stats.stackexchange.com/questions/273537/f1-dice-score-vs-iou
+(sto IoU ola ta points einai idiou importance)
+https://towardsdatascience.com/metrics-to-evaluate-your-semantic-segmentation-model-6bcb99639aa2

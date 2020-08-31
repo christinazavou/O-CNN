@@ -47,3 +47,12 @@ run-seg-finetune-bed:
 
 run-seg-unet-test-bottle:
 	--config configs/segmentation/seg_unet_partnet_pts.yaml SOLVER.run test SOLVER.gpu 0, SOLVER.logdir logs/seg/unet_partnet_randinit/Bottle/ratio_1.00 SOLVER.max_iter 3000 SOLVER.step_size 1500,750 SOLVER.test_every_iter 200 SOLVER.test_iter 84 SOLVER.ckpt '' DATA.train.location /media/christina/Data/ANFASS_data/partnet_data/dataset/Bottle_train_level3.tfrecords DATA.train.take 315 DATA.train.batch_size 8 DATA.test.location /media/christina/Data/ANFASS_data/partnet_data/dataset/Bottle_test_level3.tfrecords MODEL.nout 9 MODEL.factor 2 LOSS.num_class 9
+
+logit, label, FLAGS.LOSS.num_class, FLAGS.LOSS.weight_decay, 'ocnn', mask=1)
+MODEL.depth 7 MODEL.depth_out 7
+
+run-seg-hrnet-buildings:
+	--config configs/segmentation/seg_hrnet_partnet_pts.yaml SOLVER.run train SOLVER.gpu 0, SOLVER.logdir /media/christina/Data/ANFASS_data/O-CNN/output/segmentation/buildings_hrnet_randinit/BuildingBatch4 SOLVER.max_iter 300 SOLVER.step_size 150,75 SOLVER.test_every_iter 50 SOLVER.test_iter 200 SOLVER.ckpt '' DATA.train.location /media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset/train_octrees.tfrecords DATA.train.take 200 DATA.train.batch_size 4 DATA.test.location /media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset/test_octrees.tfrecords MODEL.nout 34 MODEL.factor 2 LOSS.num_class 34 MODEL.channel 8 DATA.train.depth 7 DATA.test.depth 7
+
+run-seg-hrnet-buildings:
+	--config configs/segmentation/seg_hrnet_partnet_octrees.yaml SOLVER.run train SOLVER.gpu 0, SOLVER.logdir /media/christina/Data/ANFASS_data/O-CNN/output/segmentation/buildings_hrnet_randinit/BuildingBatch4Octree SOLVER.max_iter 300 SOLVER.step_size 150,75 SOLVER.test_every_iter 50 SOLVER.test_iter 200 SOLVER.ckpt '' DATA.train.location /media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset/train_octrees.tfrecords DATA.train.take 200 DATA.train.batch_size 4 DATA.test.location /media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset/test_octrees.tfrecords MODEL.nout 34 MODEL.factor 2 LOSS.num_class 34 MODEL.channel 8 DATA.train.depth 7 DATA.test.depth 7 MODEL.depth 7 MODEL.depth_out 7

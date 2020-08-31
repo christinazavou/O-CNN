@@ -1,0 +1,44 @@
+# Parameters for the airplane
+
+SOLVER:
+  gpu: 0,
+  logdir: logs/seg/0505_partnet_bed_pts
+  max_iter: 3000
+  test_iter: 36
+  test_every_iter: 50
+  step_size: (1500, 750)
+
+DATA:
+  train:
+    dtype: octree
+    distort: True
+    depth: 7
+    location: dataset/partnet/Bed_train_level3.tfrecords
+    batch_size: 32
+    x_alias: data
+    mask_ratio: 0.5
+    return_pts: True
+
+  test: 
+    dtype: octree
+    distort: True
+    depth: 7
+    location: dataset/partnet/Bed_test_level3.tfrecords
+    shuffle: 0
+    batch_size: 1
+    x_alias: data
+    return_pts: True
+
+
+MODEL:
+  name: hrnet
+  channel: 4
+  nout: 15
+  depth: 7
+  factor: 2
+  signal_abs: True
+  depth_out: 7
+
+LOSS:
+  num_class: 15
+  weight_decay: 0.0005
