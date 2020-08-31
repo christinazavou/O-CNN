@@ -165,10 +165,12 @@ class PartNetSolver(TFSolver):
       for i in range(0, self.flags.test_iter):
         iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks])
 
-        points, labels, predictions, normals = iter_tdc['test/input_point_info/points'], \
-                                               iter_tdc['test/input_point_info/labels'], \
-                                               iter_tdc['softmax_loss/prediction'], \
-                                               iter_tdc["test/input_point_info/normals"]
+        points, labels, predictions, normals, masked_logit = \
+          iter_tdc['test/input_point_info/points'], \
+          iter_tdc['test/input_point_info/labels'], \
+          iter_tdc['softmax_loss/prediction'], \
+          iter_tdc["test/input_point_info/normals"], \
+          iter_tdc["loss_seg/masked_logit"]
 
         dec_colors = LEVEL3_COLORS[category]
         cp = np.array([decimal_to_rgb(dec_colors[p]) for p in predictions])
@@ -179,11 +181,16 @@ class PartNetSolver(TFSolver):
         # but the metrics for all defined classes can still be calculated for this sample
         if predictions.shape[0] != points.shape[0]:
           label_mask = labels > 0
-          normals, points = sess.run([tf.boolean_mask(normals, label_mask), tf.boolean_mask(points, label_mask)])
+          normals, points, labels = sess.run([tf.boolean_mask(normals, label_mask),
+                                              tf.boolean_mask(points, label_mask),
+                                              tf.boolean_mask(labels, label_mask)])
         points = points[:, 0: 3]
 
-        assert cp.shape[0] == points.shape[0] == normals.shape[0]
+        assert cp.shape[0] == points.shape[0] == normals.shape[0] == masked_logit.shape[0]
         assert cp.shape[1] == points.shape[1] == normals.shape[1] == 3
+
+        # np.where(labels != predictions)
+
         save_ply(os.path.join(predicted_ply_dir, "{}.ply".format(i)), points[:, 0:3], normals, cp)
 
         # run testing average and print the results
