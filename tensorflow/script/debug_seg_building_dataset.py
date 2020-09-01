@@ -50,21 +50,8 @@ def config_points_partnet(category="Bottle"):
 
 def config_points_buildings():
     # filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points/test_200points100000.tfrecords'
-    filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points/test_points.tfrecords'
-    depth = 7
-    task = 'seg_points_buildings'
-    octrees = PointDataset(ParseExample(x_alias='data', y_alias='label'),
-                           NormalizePoints(),
-                           TransformPoints(distort=True, depth=depth, offset=0, axis='y',
-                                           scale=0.25, jitter=0.125, angle=[5, 5, 5],
-                                           uniform=True,
-                                           bounding_sphere=bounding_sphere),
-                           Points2Octree(depth=depth, node_dis=True, ))
-    return octrees, filename, depth, task
-
-
-def config_points_buildings():
-    filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points/test_points.tfrecords'
+    # filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points/test_points.tfrecords'
+    filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points_sample/train_points1000.tfrecords'
     depth = 7
     task = 'seg_points_buildings'
     octrees = PointDataset(ParseExample(x_alias='data', y_alias='label'),
