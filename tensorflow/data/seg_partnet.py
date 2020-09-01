@@ -94,9 +94,13 @@ def convert_points_to_tfrecords():
       names = ['%s_%s_%s_level%d.points 0' % (
                category, record['model_id'], record['anno_id'], level_i)
                for record in name_json]
+      names = [name for name in names if os.path.exists(os.path.join(data_path, name.split(" ")[0]))]
+      if len(names) == 0:
+        continue
 
       filelist = "%s_%s_level%d.txt" % (category, phase, level_i)
       filelist = os.path.join(output_path, filelist)
+      print("filelist:", filelist)
       with open(filelist, 'w') as fid:
         fid.write('\n'.join(names))
 
@@ -225,7 +229,7 @@ def save_ply(filename, points, normals, labels, pts_num=10000):
 
 
 if __name__ == '__main__':
-  prepare_data()
-  convert_ply()
-  convert_points()
+  # prepare_data()
+  # convert_ply()
+  # convert_points()
   convert_points_to_tfrecords()

@@ -22,99 +22,33 @@ finest_level_dict = dict(zip(all_categoty, finest_level))
 level_list_dict = dict(zip(all_categoty, level_list_list))
 
 
-def from_colored_annotated_data_to_default_ply(sample_pts=None):
-  data_path = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/w_colour_norm_w_labels'
-  suffix = 'ply100000' if sample_pts is None else 'ply'+str(sample_pts)
-  output_path = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/'+suffix
-  print('Convert the raw data to ply files ...')
+def from_colored_annotated_data_to_default_ply(root_dir, data_dir, sample_pts=None):
+  ply_dir = 'ply100000' if sample_pts is None else 'ply'+str(sample_pts)
+  output_path = os.path.join(root_dir, ply_dir)
+  print('Convert the raw data to ply files in {}...'.format(output_path))
   if not os.path.exists(output_path):
     os.makedirs(output_path)
-  for annotated_file in os.listdir(data_path):
+  for annotated_file in os.listdir(os.path.join(root_dir, data_dir)):
     annotation_id = annotated_file.replace('_w_label.txt', '')
-    from_colored_single_data_to_default_ply(os.path.join(data_path, annotated_file),
+    from_colored_single_data_to_default_ply(os.path.join(root_dir, data_dir, annotated_file),
                                             os.path.join(output_path, annotation_id + ".ply"),
                                             sample_pts)
 
 
 def from_colored_single_data_to_default_ply(input_file, output_file, sample_pts=None):
-  a = np.loadtxt(input_file)
+  a = np.loadtxt(input_file).astype(np.float32)
   if sample_pts:
     sample_indices = np.random.randint(0, a.shape[0], sample_pts)
     points = a[sample_indices, 0:3]
     normals = a[sample_indices, 3:6]
+    features = a[sample_indices, 6:10]
     labels = a[sample_indices, 10].astype(np.int)
   else:
     points = a[:, 0:3]
     normals = a[:, 3:6]
+    features = a[:, 6:10]
     labels = a[:, 10].astype(np.int)
   save_ply(output_file, points, normals, labels)
-
-
-def convert_points(sample_pts=None, max_files=-1):
-  root_folder = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour'
-  input_folder = os.path.join(root_folder, 'ply100000' if sample_pts is None else 'ply' + str(sample_pts))
-  suffix = 'points100000' if sample_pts is None else 'points' + str(sample_pts)
-  suffix = suffix if max_files == -1 else str(max_files) + suffix
-  output_folder = os.path.join(root_folder, suffix)
-  print('Convert ply files to points files ...')
-  if not os.path.exists(output_folder):
-    os.makedirs(output_folder)
-
-  filenames = []
-  for filename in os.listdir(input_folder):
-    if filename.endswith('.ply'):
-      filenames.append(os.path.join(input_folder, filename))
-    if max_files != -1 and len(filenames) >= max_files:
-        break
-
-  chunk = 0
-  list_filenames = []
-  cmds = []
-  for filenames_chunk in chunks(filenames, int(len(filenames)/4)):
-    print(chunk)
-    chunk += 1
-    list_filename = os.path.join(output_folder, 'filelist_ply_chunk{}.txt'.format(chunk) )
-    list_filenames.append(list_filename)
-    with open(list_filename, 'w') as fid:
-      fid.write('\n'.join(filenames_chunk))
-
-    cmds.append(' '.join(['/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/octree/build/./ply2points',
-          '--filenames', list_filename,
-          '--output_path', output_folder,
-          '--verbose', '0']))
-  for cmd in cmds:
-    print(cmd + "\n")
-
-
-def convert_points_to_tfrecords(sample_pts=None, max_files=-1):
-  root_folder = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour'
-  suffix = 'points100000' if sample_pts is None else 'points' + str(sample_pts)
-  suffix = suffix if max_files == -1 else str(max_files) + suffix
-  data_path = os.path.join(root_folder, suffix)
-
-  for phase in ["train", "test"]:
-    output_record = "{}_{}.tfrecords".format(phase, suffix)
-    output_record = os.path.join(root_folder, "dataset_points", output_record)
-    filelist_in = os.path.join(root_folder, "dataset_points", "_{}_points.txt".format(phase))
-    filelist_out = os.path.join(root_folder, "dataset_points", "_{}_{}.txt".format(phase, suffix))
-
-    with open(filelist_in, "r") as fin, open(filelist_out, "w") as fout:
-      for line in fin.readlines():
-        filename, label = line.split(" ")
-        filename = os.path.split(filename)[1]
-        if os.path.exists(os.path.join(data_path, filename)):
-          fout.write(filename + " " + label)
-
-    shuffle = '--shuffle true' if phase == 'train' else ''
-    cmds = ['python', convert_tfrecords,
-              '--file_dir', data_path,
-              '--list_file', filelist_out,
-              '--records_name', output_record,
-              shuffle]
-
-    cmd = ' '.join(cmds)
-    print(cmd)
-    os.system(cmd)
 
 
 def save_ply(filename, points, normals, labels):
@@ -133,12 +67,63 @@ def save_ply(filename, points, normals, labels):
     np.savetxt(fid, data, fmt='%.6f')
 
 
-def chunks(l, n):
-  n = max(1, n)
-  return (l[i:i+n] for i in range(0, len(l), n))
+def convert_points(root_dir, sample_pts=None):
+  ply_dir = os.path.join(root_dir, 'ply100000' if sample_pts is None else 'ply' + str(sample_pts))
+  suffix = 'points100000' if sample_pts is None else 'points' + str(sample_pts)
+  points_dir = os.path.join(root_dir, suffix)
+  print('Convert ply files to points files in {}...'.format(points_dir))
+  if not os.path.exists(points_dir):
+    os.makedirs(points_dir)
+
+  filenames = []
+  for filename in os.listdir(ply_dir):
+    if filename.endswith('.ply'):
+      filenames.append(os.path.join(ply_dir, filename))
+  print("filenames ", filenames)
+
+  list_filename = os.path.join(root_dir, 'filelist_{}.txt'.format(os.path.split(ply_dir)[1]))
+  print("list_filename ", list_filename)
+  with open(list_filename, 'w') as fid:
+    fid.write('\n'.join(filenames))
+
+  cmd = ' '.join([
+      '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/octree/build/./ply2points',
+      '--filenames', list_filename,
+      '--output_path', points_dir,
+      '--verbose', '0'])
+  print(cmd + "\n")
+  os.system(cmd)
+
+
+def convert_points_to_tfrecords(root_dir, records_dir, sample_pts=None):
+  points_dir = 'points100000' if sample_pts is None else 'points' + str(sample_pts)
+
+  for phase in ["train", "test"]:
+    output_record = "{}_{}.tfrecords".format(phase, points_dir)
+    points_dir = os.path.join(root_dir, points_dir)
+    output_record = os.path.join(root_dir, records_dir, output_record)
+    filelist_in = os.path.join(root_dir, records_dir, "{}_points.txt".format(phase))
+
+    shuffle = '--shuffle true' if phase == 'train' else ''
+    cmds = ['python', convert_tfrecords,
+              '--file_dir', points_dir,
+              '--list_file', filelist_in,
+              '--records_name', output_record,
+              shuffle]
+
+    cmd = ' '.join(cmds)
+    print(cmd)
+    os.system(cmd)
 
 
 if __name__ == '__main__':
-  # from_colored_annotated_data_to_default_ply()  #todo: run in parallel..
-  # convert_points()
-  convert_points_to_tfrecords(max_files=200)
+  # from_colored_annotated_data_to_default_ply(
+  #     '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/',
+  #     'w_colour_norm_w_labels_sample',
+  #     sample_pts=1000
+  # )  #todo: run in parallel..
+  # convert_points('/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/',
+  #                sample_pts=1000)
+  convert_points_to_tfrecords('/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour',
+                              'dataset_points_sample',
+                              sample_pts=1000)
