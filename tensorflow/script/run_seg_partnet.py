@@ -15,6 +15,7 @@ from libs import points_property, octree_property, octree_decode_key
 from visualize import vis_confusion_matrix
 
 FLAGS.LOSS.point_wise = True
+MASK_LABEL = 0
 
 
 # get the label and pts
@@ -98,14 +99,14 @@ class ComputeGraphSeg:
         logit = seg_network(octree, FLAGS.MODEL, training, reuse, pts=pts)
         debug_checks["{}/logit".format(dataset)] = logit
         metrics_dict, dc = loss_functions_seg_debug_checks(
-          logit, label, FLAGS.LOSS.num_class, FLAGS.LOSS.weight_decay, 'ocnn', mask=0)
+          logit, label, FLAGS.LOSS.num_class, FLAGS.LOSS.weight_decay, 'ocnn', mask=MASK_LABEL)
         debug_checks.update(dc)
         tensors_dict.update(metrics_dict)
         tensors_dict['total_loss'] = metrics_dict['loss'] + metrics_dict['regularizer']
 
         if flags_data.batch_size == 1:
           num_class = FLAGS.LOSS.num_class
-          intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=0)
+          intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=MASK_LABEL)
           iou = tf.constant(0.0)     # placeholder, calc its value later
           tensors_dict['iou'] = iou
           for i in range(num_class):
@@ -165,7 +166,7 @@ class PartNetSolver(TFSolver):
       for i in range(0, self.flags.test_iter):
         iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks])
 
-        points, labels, predictions, normals, masked_logit = \
+        points, labels, masked_predictions, normals, masked_logit = \
           iter_tdc['test/input_point_info/points'], \
           iter_tdc['test/input_point_info/labels'], \
           iter_tdc['softmax_loss/prediction'], \
@@ -173,25 +174,19 @@ class PartNetSolver(TFSolver):
           iter_tdc["loss_seg/masked_logit"]
 
         dec_colors = LEVEL3_COLORS[category]
-        cp = np.array([decimal_to_rgb(dec_colors[p]) for p in predictions])
+        masked_p_colors = np.array([decimal_to_rgb(dec_colors[p]) for p in masked_predictions])
 
-        # note: since we have used a mask of 0, in points_label we ignore all points with 0 label i.e. that are undefined
+        # note: in points_label we ignore all points with MASK_LABEL > label i.e. that are undefined
         # so len(iter_debug_checks['softmax_loss/prediction']) != len(iter_debug_checks['test/input_point_info/points'])
         # so predictions and labels of those patches are ignored ..
         # but the metrics for all defined classes can still be calculated for this sample
-        if predictions.shape[0] != points.shape[0]:
-          label_mask = labels > 0
-          normals, points, labels = sess.run([tf.boolean_mask(normals, label_mask),
-                                              tf.boolean_mask(points, label_mask),
-                                              tf.boolean_mask(labels, label_mask)])
-        points = points[:, 0: 3]
+        label_mask = labels > MASK_LABEL
+        masked_normals, masked_points, masked_labels = sess.run([tf.boolean_mask(normals, label_mask),
+                                                                 tf.boolean_mask(points, label_mask)[:, 0: 3],
+                                                                 tf.boolean_mask(labels, label_mask)])
 
-        assert cp.shape[0] == points.shape[0] == normals.shape[0] == masked_logit.shape[0]
-        assert cp.shape[1] == points.shape[1] == normals.shape[1] == 3
-
-        # np.where(labels != predictions)
-
-        save_ply(os.path.join(predicted_ply_dir, "{}.ply".format(i)), points[:, 0:3], normals, cp)
+        assert masked_p_colors.shape[0] == masked_points.shape[0] == masked_normals.shape[0] == masked_logit.shape[0]
+        assert masked_p_colors.shape[1] == masked_points.shape[1] == masked_normals.shape[1] == 3
 
         # run testing average and print the results
         reports = 'batch: %04d; ' % i
@@ -200,6 +195,10 @@ class PartNetSolver(TFSolver):
           if key != 'confusion_matrix':
             reports += '%s: %0.4f; ' % (key, value)
         print(reports)
+
+        current_iou = int(self.result_callback(iter_test_result_dict)['iou'] * 100)
+        current_ply_f = os.path.join(predicted_ply_dir, "iou{}_i{}.ply".format(current_iou, i))
+        save_ply(current_ply_f, masked_points, masked_normals, masked_p_colors)
 
         # make sure results are sorted before writing them
         iter_test_result_sorted = []
@@ -218,8 +217,8 @@ class PartNetSolver(TFSolver):
     reports = 'ALL: %04d; ' % self.flags.test_iter
     avg_test_sorted = []
     for key in test_keys:
-      avg_test_sorted.append(test_metrics_dict[key])
       if key != 'confusion_matrix':
+        avg_test_sorted.append(test_metrics_dict[key])
         reports += '%s: %0.4f; ' % (key, test_metrics_dict[key])
       else:
         vis_confusion_matrix(test_metrics_dict[key].reshape(self.num_class, self.num_class),
@@ -254,6 +253,7 @@ def save_ply(filename, points, normals, colors):
       fid.write(" ".join([str(i) for i in point]) + " " +
                 " ".join([str(i) for i in normal]) + " " +
                 " ".join([str(int(i)) for i in color])+"\n")
+
 
 # run the experiments
 if __name__ == '__main__':
