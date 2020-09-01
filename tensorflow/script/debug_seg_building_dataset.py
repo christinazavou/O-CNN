@@ -49,7 +49,22 @@ def config_points_partnet(category="Bottle"):
 
 
 def config_points_buildings():
-    filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points/test_200points100000.tfrecords'
+    # filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points/test_200points100000.tfrecords'
+    filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points/test_points.tfrecords'
+    depth = 7
+    task = 'seg_points_buildings'
+    octrees = PointDataset(ParseExample(x_alias='data', y_alias='label'),
+                           NormalizePoints(),
+                           TransformPoints(distort=True, depth=depth, offset=0, axis='y',
+                                           scale=0.25, jitter=0.125, angle=[5, 5, 5],
+                                           uniform=True,
+                                           bounding_sphere=bounding_sphere),
+                           Points2Octree(depth=depth, node_dis=True, ))
+    return octrees, filename, depth, task
+
+
+def config_points_buildings():
+    filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points/test_points.tfrecords'
     depth = 7
     task = 'seg_points_buildings'
     octrees = PointDataset(ParseExample(x_alias='data', y_alias='label'),
@@ -131,7 +146,7 @@ def check_properties():
         octree5, _, _ = sess.run(octrees(filename, batch_size=5, shuffle_size=0,
                                          return_iter=True, take=10,
                                          return_pts=True).get_next())
-        # DatasetDebug.check_config(octree, octree5, depth, task, sess)
+        DatasetDebug.check_config(octree, octree5, depth, task, sess)
         points_xyzd = points_property(points, property_name='xyz', channel=4)
         points_xyz = points_property(points, property_name='xyz', channel=3)
         points_label = points_property(points, property_name='label', channel=1)
@@ -143,6 +158,20 @@ def check_properties():
         print("points_label: ", plabel.shape)
         print("octree_xyz: ", oxyz.shape)
         print("octree_label: ", olabel.shape)
+
+        points_normal = points_property(points, property_name='normal', channel=3)
+        pnormal = sess.run(points_normal)
+        print("points_normal: ", pnormal.shape)
+
+        # points_feature = points_property(points, property_name='feature', channel=4)
+        # pfeature = sess.run(points_feature)
+        # print("points_feature: ", pfeature.shape)
+
+        octree_feature = octree_property(octree, property_name="feature", depth=depth, dtype=tf.float32, channel=4)
+        ofeature = sess.run(octree_feature)
+        print("octree_feature: ", ofeature.shape)
+
+        # x,y,z,d,nx,ny,nz,r,g,b,a,l
 
         # ----------------------------------------------------------------------------------
 
