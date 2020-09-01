@@ -16,6 +16,7 @@ from visualize import vis_confusion_matrix
 
 FLAGS.LOSS.point_wise = True
 MASK_LABEL = 0
+CONF_MAT_KEY = 'confusion_matrix'
 
 
 # get the label and pts
@@ -149,7 +150,7 @@ class PartNetSolver(TFSolver):
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
       test_keys = list(self.test_tensors_dict.keys())
-      self.summ2txt(test_keys, 'batch')
+      self.summ2txt([key for key in test_keys if key != CONF_MAT_KEY], 'batch')
 
       # restore and initialize
       self.initialize(sess)
@@ -192,7 +193,7 @@ class PartNetSolver(TFSolver):
         reports = 'batch: %04d; ' % i
         for key, value in iter_test_result_dict.items():
           test_metrics_dict[key] += value
-          if key != 'confusion_matrix':
+          if key != CONF_MAT_KEY:
             reports += '%s: %0.4f; ' % (key, value)
         print(reports)
 
@@ -203,12 +204,13 @@ class PartNetSolver(TFSolver):
         # make sure results are sorted before writing them
         iter_test_result_sorted = []
         for key in test_keys:
-          iter_test_result_sorted.append(iter_test_result_dict[key])
+          if key != CONF_MAT_KEY:
+            iter_test_result_sorted.append(iter_test_result_dict[key])
         self.summ2txt(iter_test_result_sorted, i)
 
     # Final testing results
     for key, value in test_metrics_dict.items():
-      if key != 'confusion_matrix':
+      if key != CONF_MAT_KEY:
         test_metrics_dict[key] /= self.flags.test_iter
     test_metrics_dict = self.result_callback(test_metrics_dict)
 
@@ -217,7 +219,7 @@ class PartNetSolver(TFSolver):
     reports = 'ALL: %04d; ' % self.flags.test_iter
     avg_test_sorted = []
     for key in test_keys:
-      if key != 'confusion_matrix':
+      if key != CONF_MAT_KEY:
         avg_test_sorted.append(test_metrics_dict[key])
         reports += '%s: %0.4f; ' % (key, test_metrics_dict[key])
       else:
