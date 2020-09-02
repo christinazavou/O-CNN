@@ -252,10 +252,10 @@ def softmax_loss_debug_checks(logit, label_gt, num_class, label_smoothing=0.0):
   with tf.name_scope('softmax_loss'):
     label_gt = tf.cast(label_gt, tf.int32)
     onehot = tf.one_hot(label_gt, depth=num_class)
-    debug_checks['softmax_loss/onehot'] = onehot
+    debug_checks['softmax_loss/masked_onehot'] = onehot
 
     prediction = tf.argmax(logit, axis=1, output_type=tf.int32)
-    debug_checks['softmax_loss/prediction'] = prediction
+    debug_checks['softmax_loss/masked_prediction'] = prediction
 
     loss = tf.losses.softmax_cross_entropy(
         onehot, logit, label_smoothing=label_smoothing)

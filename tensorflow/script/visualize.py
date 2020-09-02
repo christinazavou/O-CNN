@@ -27,3 +27,4 @@ def vis_confusion_matrix(matrix, categories, colors, title):
 
 
 # vis_confusion_matrix(np.array([[1,1,1],[0,0,0],[3,3,3]]), ['a', 'b', 'c'], [14621210, 2960781, 2468886], "ena")
+# vis_confusion_matrix(np.array([[1,1,1],[0,0,0],[3,3,3]]), ['a', 'b', 'c'], ["#ff9180", "#bf3069", "#bf3069"], "ena")

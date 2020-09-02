@@ -2,6 +2,7 @@ import os
 
 import tensorflow as tf
 import numpy as np
+import pickle
 
 from config import parse_args, FLAGS
 from seg_labels import find_category, LEVEL3_LABELS, LEVEL3_COLORS, decimal_to_rgb, get_level3_category_labels, \
@@ -16,10 +17,11 @@ from libs import points_property, octree_property, octree_decode_key
 from visualize import vis_confusion_matrix
 
 FLAGS.LOSS.point_wise = True
-MASK_LABEL = 0
+MASK_LABEL = 0  # metrics are ignored for the points with label 'undefined' ..
 CONF_MAT_KEY = 'confusion_matrix'
 CATEGORIES = ANNFASS_LABELS
 COLOURS = ANNFASS_COLORS
+
 
 # get the label and pts
 def get_point_info(points, mask_ratio=0, mask=-1):
@@ -164,32 +166,33 @@ class PartNetSolver(TFSolver):
       predicted_ply_dir = os.path.join(self.flags.logdir, "predicted_ply_{}".format(category))
       if not os.path.exists(predicted_ply_dir):
         os.makedirs(predicted_ply_dir)
+      predicted_pkl_dir = os.path.join(self.flags.logdir, "predicted_pkl_{}".format(category))
+      if not os.path.exists(predicted_pkl_dir):
+        os.makedirs(predicted_pkl_dir)
 
       print('Start testing ...')
       for i in range(0, self.flags.test_iter):
         iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks])
 
-        points, labels, masked_predictions, normals, masked_logit = \
-          iter_tdc['test/input_point_info/points'], \
-          iter_tdc['test/input_point_info/labels'], \
-          iter_tdc['softmax_loss/prediction'], \
-          iter_tdc["test/input_point_info/normals"], \
-          iter_tdc["loss_seg/masked_logit"]
+
+        points, labels, normals, logit = iter_tdc['test/input_point_info/points'], \
+                                         iter_tdc['test/input_point_info/labels'], \
+                                         iter_tdc["test/input_point_info/normals"], \
+                                         iter_tdc["test/logit"]
+        masked_predictions, masked_logit, masked_labels = iter_tdc['softmax_loss/masked_prediction'], \
+                                                          iter_tdc["loss_seg/masked_logit"], \
+                                                          iter_tdc['loss_seg/masked_label']
 
         dec_colors = COLOURS[category]
         masked_p_colors = np.array([to_rgb(dec_colors[p]) for p in masked_predictions])
 
-        # note: in points_label we ignore all points with MASK_LABEL > label i.e. that are undefined
-        # so len(iter_debug_checks['softmax_loss/prediction']) != len(iter_debug_checks['test/input_point_info/points'])
-        # so predictions and labels of those patches are ignored ..
-        # but the metrics for all defined classes can still be calculated for this sample
         label_mask = labels > MASK_LABEL
-        masked_normals, masked_points, masked_labels = sess.run([tf.boolean_mask(normals, label_mask),
-                                                                 tf.boolean_mask(points, label_mask)[:, 0: 3],
-                                                                 tf.boolean_mask(labels, label_mask)])
+        masked_normals, masked_points, predictions = sess.run([tf.boolean_mask(normals, label_mask),
+                                                               tf.boolean_mask(points, label_mask)[:, 0: 3],
+                                                               tf.argmax(logit, axis=1, output_type=tf.int32)])
 
-        assert masked_p_colors.shape[0] == masked_points.shape[0] == masked_normals.shape[0] == masked_logit.shape[0]
-        assert masked_p_colors.shape[1] == masked_points.shape[1] == masked_normals.shape[1] == 3
+        # if predictions.shape != masked_predictions.shape:
+        #   print("!=:", labels.min(), labels.max(), predictions.min(), predictions.max())
 
         # run testing average and print the results
         reports = 'batch: %04d; ' % i
@@ -202,6 +205,9 @@ class PartNetSolver(TFSolver):
         current_iou = int(self.result_callback(iter_test_result_dict)['iou'] * 100)
         current_ply_f = os.path.join(predicted_ply_dir, "iou{}_i{}.ply".format(current_iou, i))
         save_ply(current_ply_f, masked_points, masked_normals, masked_p_colors)
+        current_pkl_f = os.path.join(predicted_pkl_dir, "p{}_m{}_i{}.pkl".format(predictions.shape[0],
+                                                                               masked_predictions.shape[0], i))
+        save_pickled(current_pkl_f, labels, predictions)
 
         # make sure results are sorted before writing them
         iter_test_result_sorted = []
@@ -231,6 +237,12 @@ class PartNetSolver(TFSolver):
                              "Category: {}, Test samples: {}".format(category, self.flags.test_iter))
     print(reports)
     self.summ2txt(avg_test_sorted, 'ALL')
+
+
+def save_pickled(filename, ground_truth, prediction):
+  # assert len(ground_truth.shape) == 1 and len(prediction.shape) == 1
+  with open(filename, 'wb') as fout:
+    pickle.dump({'orig': list(ground_truth), 'pred': list(prediction)}, fout)
 
 
 def save_ply(filename, points, normals, colors):

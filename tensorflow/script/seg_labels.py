@@ -514,11 +514,111 @@ LEVEL3_LABELS = {
         'foot',
         'surface'
     ],
+'StorageFurniture': [
+        'undefined',
+        'storage_furniture/cabinet/countertop',
+        'storage_furniture/cabinet/shelf',
+        'storage_furniture/cabinet/cabinet_frame/frame_vertical_bar',
+        'storage_furniture/cabinet/cabinet_frame/back_panel',
+        'storage_furniture/cabinet/cabinet_frame/top_panel',
+        'storage_furniture/cabinet/cabinet_frame/vertical_side_panel',
+        'storage_furniture/cabinet/cabinet_frame/frame_horizontal_bar',
+        'storage_furniture/cabinet/cabinet_frame/vertical_front_panel',
+        'storage_furniture/cabinet/cabinet_frame/bottom_panel',
+        'storage_furniture/cabinet/cabinet_frame/vertical_divider_panel',
+        'storage_furniture/cabinet/drawer/drawer_box/drawer_back',
+        'storage_furniture/cabinet/drawer/drawer_box/drawer_bottom',
+        'storage_furniture/cabinet/drawer/drawer_box/drawer_side',
+        'storage_furniture/cabinet/drawer/drawer_box/drawer_front',
+        'storage_furniture/cabinet/drawer/handle',
+        'storage_furniture/cabinet/cabinet_base/panel_base/bottom_panel',
+        'storage_furniture/cabinet/cabinet_base/panel_base/base_side_panel',
+        'storage_furniture/cabinet/cabinet_base/foot_base/foot',
+        'storage_furniture/cabinet/cabinet_base/foot_base/caster/wheel',
+        'storage_furniture/cabinet/cabinet_base/foot_base/caster/caster_stem',
+        'storage_furniture/cabinet/cabinet_door/hinge',
+        'storage_furniture/cabinet/cabinet_door/handle',
+        'storage_furniture/cabinet/cabinet_door/cabinet_door_surface'
+    ],
+    'Table': [
+        'undefined',
+        'table/game_table/ping_pong_table/ping_pong_net',
+        'table/game_table/ping_pong_table/tabletop/tabletop_surface',
+        'table/game_table/ping_pong_table/table_base/regular_leg_base/bar_stretcher',
+        'table/game_table/ping_pong_table/table_base/regular_leg_base/leg',
+        'table/game_table/pool_table/pool_ball',
+        'table/game_table/pool_table/tabletop/tabletop_surface',
+        'table/game_table/pool_table/tabletop/tabletop_frame/bar',
+        'table/game_table/pool_table/table_base/regular_leg_base/leg',
+        'table/picnic_table/regular_table/tabletop/tabletop_surface',
+        'table/picnic_table/regular_table/table_base/regular_leg_base/leg',
+        'table/picnic_table/bench_connector',
+        'table/picnic_table/bench',
+        'table/regular_table/tabletop/tabletop_surface/glass',
+        'table/regular_table/tabletop/tabletop_surface/bar',
+        'table/regular_table/tabletop/tabletop_surface/board',
+        'table/regular_table/tabletop/tabletop_dropleaf',
+        'table/regular_table/tabletop/tabletop_frame/bar',
+        'table/regular_table/table_base/star_leg_base/star_leg_set/leg',
+        'table/regular_table/table_base/star_leg_base/central_support',
+        'table/regular_table/table_base/regular_leg_base/tabletop_connector',
+        'table/regular_table/table_base/regular_leg_base/bar_stretcher',
+        'table/regular_table/table_base/regular_leg_base/leg',
+        'table/regular_table/table_base/regular_leg_base/runner',
+        'table/regular_table/table_base/regular_leg_base/circular_stretcher',
+        'table/regular_table/table_base/regular_leg_base/foot',
+        'table/regular_table/table_base/regular_leg_base/caster/wheel',
+        'table/regular_table/table_base/regular_leg_base/caster/caster_stem',
+        'table/regular_table/table_base/drawer_base/tabletop_connector',
+        'table/regular_table/table_base/drawer_base/back_panel',
+        'table/regular_table/table_base/drawer_base/bar_stretcher',
+        'table/regular_table/table_base/drawer_base/leg',
+        'table/regular_table/table_base/drawer_base/vertical_side_panel',
+        'table/regular_table/table_base/drawer_base/shelf',
+        'table/regular_table/table_base/drawer_base/cabinet_door/handle',
+        'table/regular_table/table_base/drawer_base/cabinet_door/cabinet_door_surface',
+        'table/regular_table/table_base/drawer_base/drawer/drawer_box/drawer_back',
+        'table/regular_table/table_base/drawer_base/drawer/drawer_box/drawer_bottom',
+        'table/regular_table/table_base/drawer_base/drawer/drawer_box/drawer_side',
+        'table/regular_table/table_base/drawer_base/drawer/drawer_box/drawer_front',
+        'table/regular_table/table_base/drawer_base/drawer/handle',
+        'table/regular_table/table_base/drawer_base/keyboard_tray/keyboard_tray_surface',
+        'table/regular_table/table_base/drawer_base/vertical_front_panel',
+        'table/regular_table/table_base/drawer_base/foot',
+        'table/regular_table/table_base/drawer_base/bottom_panel',
+        'table/regular_table/table_base/drawer_base/caster/wheel',
+        'table/regular_table/table_base/drawer_base/caster/caster_stem',
+        'table/regular_table/table_base/drawer_base/vertical_divider_panel',
+        'table/regular_table/table_base/pedestal_base/pedestal',
+        'table/regular_table/table_base/pedestal_base/tabletop_connector',
+        'table/regular_table/table_base/pedestal_base/central_support'
+    ],
+    'TrashCan': [
+        'undefined',
+        'trash_can/container/container_bottom',
+        'trash_can/container/container_box',
+        'trash_can/container/container_neck',
+        'trash_can/outside_frame/frame_vertical_bar',
+        'trash_can/outside_frame/frame_horizontal_circle',
+        'trash_can/outside_frame/frame_bottom',
+        'trash_can/outside_frame/frame_holistic',
+        'trash_can/base/foot',
+        'trash_can/cover/cover_support',
+        'trash_can/cover/cover_lid'
+    ],
+    'Vase': [
+        'undefined',
+        'pot/body/lid',
+        'pot/body/container',
+        'pot/base/foot_base/foot',
+        'pot/containing_things/plant',
+        'pot/containing_things/liquid_or_soil'
+    ]
 }
 
 ANNFASS_LABELS = {
     "Building": [
-        "empty",
+        # "empty",
         "undetermined",
         "wall",
         "window",
@@ -563,7 +663,7 @@ for key, value in LEVEL3_LABELS.items():
 
 ANNFASS_COLORS = {
     "Building": [
-        "#000000",  # -1
+        # "#000000",  # -1
         "#000000",  # 0
         "#ff4500",  # 1
         "#0000ff",  # 2
@@ -623,7 +723,7 @@ def hex_to_rgb(hex):
 def to_rgb(value):
     if isinstance(value, str) and '#' in value:
         return hex_to_rgb(value)
-    assert isinstance(value, int)
+    assert isinstance(value, np.int64) , " given value {} is of type {}".format(value, type(value))
     return decimal_to_rgb(value)
 
 
