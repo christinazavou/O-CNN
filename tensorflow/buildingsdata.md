@@ -82,3 +82,18 @@ def convert_points(root_dir, sample_pts=None):
 
   and creates a points1000 folder with 16 points objects that have 1000 points and should look like the ones created in partnet
 
+
+then i manually create my test_points.txt and train_points.txt (be careful - no empty line) and call 
+
+  convert_points_to_tfrecords('/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour',
+                              'dataset_points_sample',
+                              sample_pts=1000)
+
+  which calls:
+
+python /home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/data/../util/convert_tfrecords.py --file_dir /media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/points1000 --list_file /media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points_sample/train_points.txt --records_name /media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points_sample/train_points1000.tfrecords --shuffle true
+
+
+
+NEXT:
+i need to check if in the generated data with features....feature channels 8.. a specific input gives a specific output .. to understand what each feature is...
