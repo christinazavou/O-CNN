@@ -1,5 +1,7 @@
 import os
+
 import numpy as np
+
 np.random.seed(100)
 
 
@@ -514,17 +516,95 @@ LEVEL3_LABELS = {
     ],
 }
 
+ANNFASS_LABELS = {
+    "Building": [
+        "empty",
+        "undetermined",
+        "wall",
+        "window",
+        "vehicle",
+        "roof",
+        "plant_tree",
+        "door",
+        "tower_steeple",
+        "furniture",
+        "ground_grass",
+        "beam_frame",
+        "stairs",
+        "column",
+        "railing_baluster",
+        "floor",
+        "chimney",
+        "ceiling",
+        "fence",
+        "pond_pool",
+        "corridor_path",
+        "balcony_patio",
+        "garage",
+        "dome",
+        "road",
+        "entrance_gate",
+        "parapet_merlon",
+        "buttress",
+        "dormer",
+        "lantern_lamp",
+        "arch",
+        "awning",
+        "shutters",
+        "ramp",
+        "canopy_gazebo"
+    ]
+}
 
 LEVEL3_COLORS = {}
-
 for key, value in LEVEL3_LABELS.items():
     LEVEL3_COLORS[key] = np.random.randint(0, 16777215, len(value))
     LEVEL3_COLORS[key][0] = 8355711  # grey for 'undefined'
 
+ANNFASS_COLORS = {
+    "Building": [
+        "#000000",  # -1
+        "#000000",  # 0
+        "#ff4500",  # 1
+        "#0000ff",  # 2
+        "#396073",  # 3
+        "#4b008c",  # 4
+        "#fa8072",  # 5
+        "#7f0000",  # 6
+        "#d6f2b6",  # 7
+        "#0d2133",  # 8
+        "#204035",  # 9
+        "#ff4040",  # 10
+        "#60b9bf",  # 11
+        "#3d4010",  # 12
+        "#733d00",  # 13
+        "#400000",  # 14
+        "#999673",  # 15
+        "#ff00ff",  # 16
+        "#394173",  # 17
+        "#553df2",  # 18
+        "#bf3069",  # 19
+        "#301040",  # 20
+        "#ff9180",  # 21
+        "#997391",  # 22
+        "#ffbfd9",  # 23
+        "#00aaff",  # 24
+        "#8a4d99",  # 25
+        "#40ff73",  # 26
+        "#8c6e69",  # 27
+        "#cc00ff",  # 28
+        "#b24700",  # 29
+        "#ffbbdd",  # 30
+        "#0dd3ff",  # 31
+        "#00401a",  # 32
+        "#c3e639",  # 33
+    ]
+}
 
-def find_category(model_path):
+
+def find_category(model_path, categories):
     dirs = model_path.split(os.sep)
-    categories = LEVEL3_LABELS.keys()
+    categories = categories.keys()
     for d in dirs:
         if d in categories:
             return d
@@ -536,6 +616,17 @@ def decimal_to_rgb(decimal):
     return tuple(int(hexadecimal_str[i:i + 2], 16) for i in (0, 2, 4))
 
 
+def hex_to_rgb(hex):
+    return tuple(int(hex[1:][i:i + 2], 16) for i in (0, 2, 4))
+
+
+def to_rgb(value):
+    if isinstance(value, str) and '#' in value:
+        return hex_to_rgb(value)
+    assert isinstance(value, int)
+    return decimal_to_rgb(value)
+
+
 def get_level3_category_labels(cat):
     return [l.split("/")[-1] for l in LEVEL3_LABELS[cat]]
 
@@ -544,7 +635,7 @@ if __name__ == '__main__':
 
     for key, value in LEVEL3_LABELS.items():
         print(key, len(value))
-        print("colors ", [decimal_to_rgb(col) for col in LEVEL3_COLORS[key]])
+        print("colors ", [to_rgb(col) for col in LEVEL3_COLORS[key]])
 
-    cat = find_category('/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/logs/seg/0811_partnet_randinit/Bottle/ratio_1.00/model/iter_000150.ckpt')
+    cat = find_category('/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/tensorflow/script/logs/seg/0811_partnet_randinit/Bottle/ratio_1.00/model/iter_000150.ckpt', LEVEL3_LABELS)
     print("category ", cat)

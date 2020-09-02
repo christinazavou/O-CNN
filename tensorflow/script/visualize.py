@@ -19,8 +19,9 @@ def vis_confusion_matrix(matrix, categories, colors, title):
     g.set_ylabel('Actual')
 
     for cat_idx in range(len(categories)):
-        g.get_xticklabels()[cat_idx].set_color('#{:06x}'.format(colors[cat_idx]))
-        g.get_yticklabels()[cat_idx].set_color('#{:06x}'.format(colors[cat_idx]))
+        c = '#{:06x}'.format(colors[cat_idx]) if isinstance(colors[cat_idx], int) else colors[cat_idx]
+        g.get_xticklabels()[cat_idx].set_color(c)
+        g.get_yticklabels()[cat_idx].set_color(c)
     plt.title(title)
     plt.show()
 

@@ -4,7 +4,8 @@ import tensorflow as tf
 import numpy as np
 
 from config import parse_args, FLAGS
-from partnet_labels import find_category, LEVEL3_LABELS, LEVEL3_COLORS, decimal_to_rgb, get_level3_category_labels
+from seg_labels import find_category, LEVEL3_LABELS, LEVEL3_COLORS, decimal_to_rgb, get_level3_category_labels, \
+  ANNFASS_COLORS, ANNFASS_LABELS, to_rgb
 from tfsolver import TFSolver
 from network_factory import seg_network
 from dataset import DatasetFactory
@@ -17,7 +18,8 @@ from visualize import vis_confusion_matrix
 FLAGS.LOSS.point_wise = True
 MASK_LABEL = 0
 CONF_MAT_KEY = 'confusion_matrix'
-
+CATEGORIES = ANNFASS_LABELS
+COLOURS = ANNFASS_COLORS
 
 # get the label and pts
 def get_point_info(points, mask_ratio=0, mask=-1):
@@ -157,7 +159,7 @@ class PartNetSolver(TFSolver):
       print('Restore from checkpoint: %s' % self.flags.ckpt)
       tf_saver.restore(sess, self.flags.ckpt)
 
-      category = find_category(self.flags.ckpt)
+      category = find_category(self.flags.ckpt, CATEGORIES)
       assert category is not None
       predicted_ply_dir = os.path.join(self.flags.logdir, "predicted_ply_{}".format(category))
       if not os.path.exists(predicted_ply_dir):
@@ -174,8 +176,8 @@ class PartNetSolver(TFSolver):
           iter_tdc["test/input_point_info/normals"], \
           iter_tdc["loss_seg/masked_logit"]
 
-        dec_colors = LEVEL3_COLORS[category]
-        masked_p_colors = np.array([decimal_to_rgb(dec_colors[p]) for p in masked_predictions])
+        dec_colors = COLOURS[category]
+        masked_p_colors = np.array([to_rgb(dec_colors[p]) for p in masked_predictions])
 
         # note: in points_label we ignore all points with MASK_LABEL > label i.e. that are undefined
         # so len(iter_debug_checks['softmax_loss/prediction']) != len(iter_debug_checks['test/input_point_info/points'])
@@ -224,8 +226,8 @@ class PartNetSolver(TFSolver):
         reports += '%s: %0.4f; ' % (key, test_metrics_dict[key])
       else:
         vis_confusion_matrix(test_metrics_dict[key].reshape(self.num_class, self.num_class),
-                             get_level3_category_labels(category),
-                             LEVEL3_COLORS[category],
+                             CATEGORIES[category],
+                             COLOURS[category],
                              "Category: {}, Test samples: {}".format(category, self.flags.test_iter))
     print(reports)
     self.summ2txt(avg_test_sorted, 'ALL')
