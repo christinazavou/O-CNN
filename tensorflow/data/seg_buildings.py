@@ -22,17 +22,35 @@ finest_level_dict = dict(zip(all_categoty, finest_level))
 level_list_dict = dict(zip(all_categoty, level_list_list))
 
 
-def from_colored_annotated_data_to_default_ply(root_dir, data_dir, sample_pts=None):
+def from_colored_annotated_data_to_default_ply(root_dir, data_dir, sample_pts=None, parallel=False):
   ply_dir = 'ply100000' if sample_pts is None else 'ply'+str(sample_pts)
   output_path = os.path.join(root_dir, ply_dir)
   print('Convert the raw data to ply files in {}...'.format(output_path))
   if not os.path.exists(output_path):
     os.makedirs(output_path)
-  for annotated_file in os.listdir(os.path.join(root_dir, data_dir)):
-    annotation_id = annotated_file.replace('_w_label.txt', '')
-    from_colored_single_data_to_default_ply(os.path.join(root_dir, data_dir, annotated_file),
-                                            os.path.join(output_path, annotation_id + ".ply"),
-                                            sample_pts)
+  if not parallel:
+      not_parallel(root_dir, data_dir, output_path, sample_pts)
+  else:
+      run_parallel(root_dir, data_dir, output_path, sample_pts)
+
+
+def not_parallel(root_dir, data_dir, output_path, sample_pts):
+    for annotated_file in os.listdir(os.path.join(root_dir, data_dir)):
+        annotation_id = annotated_file.replace('_w_label.txt', '')
+        from_colored_single_data_to_default_ply(os.path.join(root_dir, data_dir, annotated_file),
+                                                os.path.join(output_path, annotation_id + ".ply"),
+                                                sample_pts)
+
+def run_parallel(root_dir, data_dir, output_path, sample_pts):
+    import multiprocessing as mp
+    pool = mp.Pool(6)
+    results = [pool.apply(from_colored_single_data_to_default_ply,
+                          args=(os.path.join(root_dir, data_dir, annotated_file),
+                                os.path.join(output_path, annotated_file.replace('_w_label.txt', '') + ".ply"),
+                                sample_pts))
+               for annotated_file in os.listdir(os.path.join(root_dir, data_dir))]
+    pool.close()
+    print("results", results)
 
 
 def from_colored_single_data_to_default_ply(input_file, output_file, sample_pts=None):
@@ -67,7 +85,11 @@ def save_ply(filename, points, normals, labels):
     np.savetxt(fid, data, fmt='%.6f')
 
 
-def convert_points(root_dir, sample_pts=None):
+def chunks(l, n):
+  return (l[x: x+n] for x in range(0, len(l), n))
+
+
+def convert_points(root_dir, sample_pts=None, parallel=False):
   ply_dir = os.path.join(root_dir, 'ply100000' if sample_pts is None else 'ply' + str(sample_pts))
   suffix = 'points100000' if sample_pts is None else 'points' + str(sample_pts)
   points_dir = os.path.join(root_dir, suffix)
@@ -79,34 +101,61 @@ def convert_points(root_dir, sample_pts=None):
   for filename in os.listdir(ply_dir):
     if filename.endswith('.ply'):
       filenames.append(os.path.join(ply_dir, filename))
-  print("filenames ", filenames)
 
-  list_filename = os.path.join(root_dir, 'filelist_{}.txt'.format(os.path.split(ply_dir)[1]))
-  print("list_filename ", list_filename)
-  with open(list_filename, 'w') as fid:
-    fid.write('\n'.join(filenames))
+  if not parallel:
+    not_parallel_points(root_dir, filenames, ply_dir, points_dir)
+  else:
+    parallel_points__(root_dir, filenames, ply_dir, points_dir)
 
-  cmd = ' '.join([
-      '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/octree/build/./ply2points',
-      '--filenames', list_filename,
-      '--output_path', points_dir,
-      '--verbose', '0'])
-  print(cmd + "\n")
-  os.system(cmd)
+
+def parallel_points__(root_dir, filenames, ply_dir, points_dir):
+  list_filenames = []
+
+  for chunk, files in enumerate(chunks(filenames, int(len(filenames) / 6))):
+    list_filename = os.path.join(root_dir, 'filelist_{}_chunk{}.txt'.format(os.path.split(ply_dir)[1], chunk))
+    with open(list_filename, 'w') as fid:
+      fid.write('\n'.join(files))
+    list_filenames.append(list_filename)
+
+  for list_f in list_filenames:
+    command = ' '.join(['/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/octree/build/./ply2points',
+        '--filenames', list_f,
+        '--output_path', points_dir,
+        '--verbose', '0'])
+    print(command)
+  print("YOU SHOULD RUN THEM MANUALLY")
+
+
+def one_command(list_filename, points_dir):
+    cmd = ' '.join([
+        '/home/christina/Documents/ANNFASS_code/zavou-repos/O-CNN/octree/build/./ply2points',
+        '--filenames', list_filename,
+        '--output_path', points_dir,
+        '--verbose', '0'])
+    print(cmd + "\n")
+    os.system(cmd)
+
+
+def not_parallel_points(root_dir, filenames, ply_dir, points_dir):
+    list_filename = os.path.join(root_dir, 'filelist_{}.txt'.format(os.path.split(ply_dir)[1]))
+    with open(list_filename, 'w') as fid:
+        fid.write('\n'.join(filenames))
+
+    one_command(list_filename, points_dir)
 
 
 def convert_points_to_tfrecords(root_dir, records_dir, sample_pts=None):
   points_dir = 'points100000' if sample_pts is None else 'points' + str(sample_pts)
 
-  for phase in ["train", "test"]:
+  for phase in ["val", "test", "train"]:
     output_record = "{}_{}.tfrecords".format(phase, points_dir)
-    points_dir = os.path.join(root_dir, points_dir)
+    _points_dir = os.path.join(root_dir, points_dir)
     output_record = os.path.join(root_dir, records_dir, output_record)
     filelist_in = os.path.join(root_dir, records_dir, "{}_points.txt".format(phase))
 
     shuffle = '--shuffle true' if phase == 'train' else ''
     cmds = ['python', convert_tfrecords,
-              '--file_dir', points_dir,
+              '--file_dir', _points_dir,
               '--list_file', filelist_in,
               '--records_name', output_record,
               shuffle]
@@ -119,11 +168,13 @@ def convert_points_to_tfrecords(root_dir, records_dir, sample_pts=None):
 if __name__ == '__main__':
   # from_colored_annotated_data_to_default_ply(
   #     '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/',
-  #     'w_colour_norm_w_labels_sample',
-  #     sample_pts=1000
-  # )  #todo: run in parallel..
+  #     'w_colour_norm_w_labels',
+  #     sample_pts=None,
+  #     parallel=True
+  # )
   # convert_points('/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/',
-  #                sample_pts=1000)
+  #                sample_pts=None,
+  #                parallel=True)
   convert_points_to_tfrecords('/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour',
-                              'dataset_points_sample',
-                              sample_pts=1000)
+                              'dataset_points_tuesday',
+                              sample_pts=None)
