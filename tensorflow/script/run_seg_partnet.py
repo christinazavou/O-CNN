@@ -166,6 +166,9 @@ class PartNetSolver(TFSolver):
       predicted_ply_dir = os.path.join(self.flags.logdir, "predicted_ply_{}".format(category))
       if not os.path.exists(predicted_ply_dir):
         os.makedirs(predicted_ply_dir)
+      groundtruth_ply_dir = os.path.join(self.flags.logdir, "groundtruth_ply_{}".format(category))
+      if not os.path.exists(groundtruth_ply_dir):
+        os.makedirs(groundtruth_ply_dir)
       predicted_pkl_dir = os.path.join(self.flags.logdir, "predicted_pkl_{}".format(category))
       if not os.path.exists(predicted_pkl_dir):
         os.makedirs(predicted_pkl_dir)
@@ -174,23 +177,18 @@ class PartNetSolver(TFSolver):
       for i in range(0, self.flags.test_iter):
         iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks])
 
-
-        points, labels, normals, logit = iter_tdc['test/input_point_info/points'], \
+        points, labels, normals, logit = iter_tdc['test/input_point_info/points'][:, 0:3], \
                                          iter_tdc['test/input_point_info/labels'], \
                                          iter_tdc["test/input_point_info/normals"], \
                                          iter_tdc["test/logit"]
-        masked_predictions, masked_logit, masked_labels = iter_tdc['softmax_loss/masked_prediction'], \
-                                                          iter_tdc["loss_seg/masked_logit"], \
-                                                          iter_tdc['loss_seg/masked_label']
+        predictions = sess.run(tf.argmax(logit, axis=1, output_type=tf.int32))
 
-        dec_colors = COLOURS[category]
-        masked_p_colors = np.array([to_rgb(dec_colors[p]) for p in masked_predictions])
+        l_colors = np.array([to_rgb(COLOURS[category][int(l)]) if l >= 0 else to_rgb(COLOURS[category][0])
+                             for l in labels])
+        p_colors = np.array([to_rgb(COLOURS[category][int(p)]) if p >= 0 else to_rgb(COLOURS[category][0])
+                             for p in predictions])
 
-        label_mask = labels > MASK_LABEL
-        masked_normals, masked_points, predictions = sess.run([tf.boolean_mask(normals, label_mask),
-                                                               tf.boolean_mask(points, label_mask)[:, 0: 3],
-                                                               tf.argmax(logit, axis=1, output_type=tf.int32)])
-
+        masked_predictions = iter_tdc['softmax_loss/masked_prediction']
         # if predictions.shape != masked_predictions.shape:
         #   print("!=:", labels.min(), labels.max(), predictions.min(), predictions.max())
 
@@ -203,10 +201,12 @@ class PartNetSolver(TFSolver):
         print(reports)
 
         current_iou = int(self.result_callback(iter_test_result_dict)['iou'] * 100)
-        current_ply_f = os.path.join(predicted_ply_dir, "iou{}_i{}.ply".format(current_iou, i))
-        save_ply(current_ply_f, masked_points, masked_normals, masked_p_colors)
+        current_ply_i_f = os.path.join(groundtruth_ply_dir, "i{}.ply".format(i))
+        current_ply_o_f = os.path.join(predicted_ply_dir, "iou{}_i{}.ply".format(current_iou, i))
+        save_ply(current_ply_i_f, points, normals, p_colors)
+        save_ply(current_ply_o_f, points, normals, l_colors)
         current_pkl_f = os.path.join(predicted_pkl_dir, "p{}_m{}_i{}.pkl".format(predictions.shape[0],
-                                                                               masked_predictions.shape[0], i))
+                                                                                 masked_predictions.shape[0], i))
         save_pickled(current_pkl_f, labels, predictions)
 
         # make sure results are sorted before writing them
