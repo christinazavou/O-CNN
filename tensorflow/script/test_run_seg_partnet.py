@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
-from run_seg_partnet import tf_IoU_per_shape
+from run_seg_partnet import tf_IoU_per_shape, PartNetSolver, result_callback
 
 """
 Note:
@@ -31,12 +31,18 @@ def test_tf_io_u_per_shape():
         3    # label for point/patch 5 is C1Part3
     ]))
     class_num = 4
-    mask = -1
+    mask = 0
+
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         # iou_debug = sess.run(tf_IoU_per_shape(logit, label, class_num, mask, debug=True))
         # for key, value in iou_debug.items():
         #     print(key, value)
         intersections, unions = sess.run(tf_IoU_per_shape(logit, label, class_num, mask))
-        assert np.array_equal(intersections, np.array([1, 1, 0, 1]))
-        assert np.array_equal(unions, np.array([1, 2, 1, 1]))
+        assert np.array_equal(intersections, np.array([0, 1, 0, 1]))
+        assert np.array_equal(unions, np.array([0, 2, 1, 1]))
+
+        result_dict = {'intsc_%d'%i: intersections[i] for i in range(class_num)}
+        result_dict.update({'union_%d'%i: unions[i] for i in range(4)})
+        result_dict = result_callback(result_dict, class_num)
+        assert int(result_dict["iou"]*1000) == 499
