@@ -25,9 +25,12 @@ COLOURS = ANNFASS_COLORS
 
 # get the label and pts
 def get_point_info(points, mask_ratio=0, mask=-1):
+  debug_checks = {}
   with tf.name_scope('points_info'):
     pts   = points_property(points, property_name='xyz', channel=4)
     label = points_property(points, property_name='label', channel=1)
+    debug_checks['get_point_info/pts(xyz)'] = pts
+    debug_checks['get_point_info/label'] = label
     label = tf.reshape(label, [-1])
     label_mask = label > mask  # mask out invalid points, -1
     if mask_ratio > 0:         # random drop some points to speed up training
@@ -35,7 +38,9 @@ def get_point_info(points, mask_ratio=0, mask=-1):
       label_mask = tf.logical_and(label_mask, rnd_mask)
     pts   = tf.boolean_mask(pts, label_mask)
     label = tf.boolean_mask(label, label_mask)
-  return pts, label
+    debug_checks['get_point_info/masked_and_ratio/pts(xyz)'] = pts
+    debug_checks['get_point_info/masked_and_ratio/label'] = label
+  return pts, label, debug_checks
 
 
 # IoU
@@ -91,17 +96,17 @@ class ComputeGraphSeg:
         debug_checks["{}/input_octree".format(dataset)] = octree
         debug_checks["{}/input_points".format(dataset)] = points
         debug_checks["{}/input_labels".format(dataset)] = _labels
-        pts, label = get_point_info(points, flags_data.mask_ratio)
         print("mask ratio for {} is {}".format(dataset, flags_data.mask_ratio))
-        debug_checks["{}/input_point_info/points".format(dataset)] = pts
-        debug_checks["{}/input_point_info/labels".format(dataset)] = label
-        debug_checks["{}/input_point_info/normals".format(dataset)] = points_property(
+        pts, label, dc = get_point_info(points, flags_data.mask_ratio)
+        debug_checks.update(dc)
+        debug_checks["{}/device_0/normals".format(dataset)] = points_property(
           points, property_name='normal', channel=3)
         if not FLAGS.LOSS.point_wise:
           pts, label = None, get_seg_label(octree, FLAGS.MODEL.depth_out)
           debug_checks["{}/input_seg_label/points"] = pts
           debug_checks["{}/input_seg_label/label"] = label
-        logit = seg_network(octree, FLAGS.MODEL, training, reuse, pts=pts)
+        logit, dc = seg_network(octree, FLAGS.MODEL, training, reuse, pts=pts)
+        debug_checks.update(dc)
         debug_checks["{}/logit".format(dataset)] = logit
         metrics_dict, dc = loss_functions_seg_debug_checks(
           logit, label, FLAGS.LOSS.num_class, FLAGS.LOSS.weight_decay, 'ocnn', mask=MASK_LABEL)
@@ -181,9 +186,9 @@ class PartNetSolver(TFSolver):
       for i in range(0, self.flags.test_iter):
         iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks])
 
-        points, labels, normals, logit = iter_tdc['test/input_point_info/points'][:, 0:3], \
-                                         iter_tdc['test/input_point_info/labels'], \
-                                         iter_tdc["test/input_point_info/normals"], \
+        points, labels, normals, logit = iter_tdc['get_point_info/masked_and_ratio/pts(xyz)'][:, 0:3], \
+                                         iter_tdc['get_point_info/masked_and_ratio/label'], \
+                                         iter_tdc["test/device_0/normals"], \
                                          iter_tdc["test/logit"]
         predictions = sess.run(tf.argmax(logit, axis=1, output_type=tf.int32))
 

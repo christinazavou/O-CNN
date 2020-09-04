@@ -49,9 +49,7 @@ def config_points_partnet(category="Bottle"):
 
 
 def config_points_buildings():
-    # filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points/test_200points100000.tfrecords'
-    # filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points/test_points.tfrecords'
-    filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points_sample/train_points1000.tfrecords'
+    filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points_tuesday/test_points100000.tfrecords'
     depth = 7
     task = 'seg_points_buildings'
     octrees = PointDataset(ParseExample(x_alias='data', y_alias='label'),
@@ -127,12 +125,10 @@ def check_properties():
     # octrees, filename, depth, task = config_points_partnet()
     octrees, filename, depth, task = config_points_buildings()
     with tf.Session() as sess:
-        octree, _, points = sess.run(octrees(filename, batch_size=1, shuffle_size=0,
-                                             return_iter=True, take=10,
+        octree, _, points = sess.run(octrees(filename, batch_size=1, shuffle_size=0, return_iter=True, take=10,
                                              return_pts=True).get_next())
-        octree5, _, _ = sess.run(octrees(filename, batch_size=5, shuffle_size=0,
-                                         return_iter=True, take=10,
-                                         return_pts=True).get_next())
+        octree5, _, points5 = sess.run(octrees(filename, batch_size=5, shuffle_size=0, return_iter=True, take=10,
+                                               return_pts=True).get_next())
         DatasetDebug.check_config(octree, octree5, depth, task, sess)
         points_xyzd = points_property(points, property_name='xyz', channel=4)
         points_xyz = points_property(points, property_name='xyz', channel=3)
@@ -157,6 +153,9 @@ def check_properties():
         octree_feature = octree_property(octree, property_name="feature", depth=depth, dtype=tf.float32, channel=4)
         ofeature = sess.run(octree_feature)
         print("octree_feature: ", ofeature.shape)
+
+        points5_xyzd_tf = points_property(points5, property_name='xyz', channel=4)
+        print("points5_xyzd ", sess.run(points5_xyzd_tf).shape)
 
         # x,y,z,d,nx,ny,nz,r,g,b,a,l
 

@@ -23,7 +23,7 @@ class TFSolver:
       train_params['gpu_num'] = gpu_num
       test_params['gpu_num']  = gpu_num
 
-    self.train_tensors_dict, _ = self.graph(**train_params)
+    self.train_tensors_dict, self.train_debug_checks = self.graph(**train_params)
     self.test_tensors_dict, self.test_debug_checks = self.graph(**test_params)
 
     total_loss = self.train_tensors_dict['total_loss']
