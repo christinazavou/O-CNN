@@ -127,17 +127,35 @@ class ComputeGraphSeg:
 
 
 def result_callback(avg_results_dict, num_class):
-    # calc part-IoU, update `iou`, this is in correspondence with Line 77
-    iou_avg = 0.0
-    ious = [0] * num_class
-    for i in range(1, num_class):  # !!! Ignore the first label
-        instc_i = avg_results_dict['intsc_%d' % i]
-        union_i = avg_results_dict['union_%d' % i]
-        ious[i] = instc_i / (union_i + 1.0e-10)
-        iou_avg = iou_avg + ious[i]
-    iou_avg = iou_avg / (num_class - 1)
-    avg_results_dict['iou'] = iou_avg
-    return avg_results_dict
+  return result_callback_maria(avg_results_dict, num_class)
+    # # calc part-IoU, update `iou`, this is in correspondence with Line 77
+    # iou_avg = 0.0
+    # ious = [0] * num_class
+    # for i in range(1, num_class):  # !!! Ignore the first label
+    #     instc_i = avg_results_dict['intsc_%d' % i]
+    #     union_i = avg_results_dict['union_%d' % i]
+    #     ious[i] = instc_i / (union_i + 1.0e-10)
+    #     iou_avg = iou_avg + ious[i]
+    # iou_avg = iou_avg / (num_class - 1)
+    # avg_results_dict['iou'] = iou_avg
+    # return avg_results_dict
+
+
+def result_callback_maria(avg_results_dict, num_class):
+  # calc part-IoU, update `iou`, this is in correspondence with Line 77
+  iou_avg = 0.0
+  ious = [0] * num_class
+  for i in range(1, num_class):  # !!! Ignore the first label
+    instc_i = avg_results_dict['intsc_%d' % i]
+    union_i = avg_results_dict['union_%d' % i]
+    if union_i > 0.0:
+      ious[i] = instc_i / union_i
+    else:
+      ious[i] = 0.0
+  iou_avg = iou_avg + ious[i]
+  iou_avg = iou_avg / tf.math.count_nonzero(ious)
+  avg_results_dict['iou'] = iou_avg
+  return avg_results_dict
 
 
 # define the solver
