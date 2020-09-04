@@ -207,8 +207,8 @@ class PartNetSolver(TFSolver):
         current_iou = int(self.result_callback(iter_test_result_dict)['iou'] * 100)
         current_ply_i_f = os.path.join(groundtruth_ply_dir, "i{}.ply".format(i))
         current_ply_o_f = os.path.join(predicted_ply_dir, "iou{}_i{}.ply".format(current_iou, i))
-        save_ply(current_ply_i_f, points, normals, p_colors)
-        save_ply(current_ply_o_f, points, normals, l_colors)
+        save_ply(current_ply_i_f, points, normals, l_colors)
+        save_ply(current_ply_o_f, points, normals, p_colors)
         current_pkl_f = os.path.join(predicted_pkl_dir, "p{}_m{}_i{}.pkl".format(predictions.shape[0],
                                                                                  masked_predictions.shape[0], i))
         save_pickled(current_pkl_f, labels, predictions)
