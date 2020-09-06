@@ -14,21 +14,30 @@ class OctreeUpsample:
 
 
 def branch(data, octree, depth, channel, block_num, training):
+  debug_checks = {}
   if depth > 5: block_num = block_num // 2 # !!! whether should we add this !!!
+  print("branch with depth ={}, channel = {}, (res)block_num = {}".format(depth, channel, block_num))
   for i in range(block_num):
     with tf.variable_scope('resblock_d%d_%d' % (depth, i)):
       # data = octree_resblock2(data, octree, depth, channel, training)
       bottleneck = 4 if channel < 256 else 8
       data = octree_resblock(data, octree, depth, channel, 1, training, bottleneck)
-  return data
+      debug_checks['{}/data'.format(tf.get_variable_scope().name)] = data
+  return data, debug_checks
+
+def branch_channels(channel, i):
+  return (2 ** i) * channel
 
 def branches(data, octree, depth, channel, block_num, training):
+  debug_checks = {}
+  print("branches at depth {} with len(data)={}".format(depth, len(data)))
   for i in range(len(data)):
     with tf.variable_scope('branch_%d' %  (depth - i)):
-      depth_i, channel_i = depth - i, (2 ** i) * channel
+      depth_i, channel_i = depth - i, branch_channels(channel, i)
       # if channel_i > 256: channel_i = 256
-      data[i] = branch(data[i], octree, depth_i, channel_i, block_num, training)
-  return data
+      data[i], dc = branch(data[i], octree, depth_i, channel_i, block_num, training)
+      debug_checks.update(dc)
+  return data, debug_checks
 
 def trans_func(data_in, octree, d0, d1, training):
   data = data_in
@@ -77,18 +86,26 @@ def trans_func(data_in, octree, d0, d1, training, upsample):
   return data
 
 def transitions(data, octree, depth, training, upsample='neareast'):
+  debug_checks = {}
   num = len(data)
   features = [[0]*num for i in range(num + 1)]
   for i in range(num):
     for j in range(num + 1):
       d0, d1 = depth - i, depth - j
+      print("i {}, j {}, d0 {}, d1 {}".format(i, j, d0, d1))
       features[j][i] = trans_func(data[i], octree, d0, d1, training, upsample)
+  debug_checks['{}/transitions_features'.format(tf.get_variable_scope().name)] = features
 
   outputs = [None] *(num + 1)
   for j in range(num + 1):
     with tf.variable_scope('fuse_%d' % (depth - j)):
       outputs[j] = tf.nn.relu(tf.add_n(features[j]))
-  return outputs
+  debug_checks['{}'.format(tf.get_variable_scope().name)] = outputs
+  return outputs, debug_checks
+
+
+def front_layer_channeld(channel, d, d1):
+  return channel / 2 ** (d - d1 + 1)
 
 
 class HRNet:
@@ -132,6 +149,7 @@ class HRNet:
       ## backbone
       convs, dc = self.backbone(octree, training)
       debug_checks.update(dc)
+      debug_checks.update({'backbone': convs})
       self.tensors['convs'] = convs
 
       ## header
@@ -168,34 +186,33 @@ class HRNet:
 
   def seg_header_pts(self, inputs, octree, nout, pts, training):
     debug_checks = {}
-    feature, db = self.points_feat(inputs, octree)  # The resolution is 5-depth
-    debug_checks.update(db)
+    feature, dc = self.points_feat(inputs, octree)  # The resolution is 5-depth
+    debug_checks.update(dc)
     
     depth_out, factor = self.flags.depth_out, self.flags.factor
     xyz, ids = tf.split(pts, [3, 1], axis=1)
-    debug_checks['seg_header_pts_xyz'] = xyz
-    debug_checks['seg_header_pts_ids'] = ids
+    debug_checks['{}pts/xyz'.format(tf.get_variable_scope().name)] = xyz
+    debug_checks['{}pts/ids'.format(tf.get_variable_scope().name)] = ids
     xyz = xyz + 1.0                                             # [0, 2]
     pts5 = tf.concat([xyz * 16.0, ids], axis=1)                 # [0, 32]
-    debug_checks["seg_header_pts_pts5"] = pts5
+    debug_checks["{}pts/pts5".format(tf.get_variable_scope().name)] = pts5
     feature = octree_bilinear_v3(pts5, feature, octree, depth=5)
-    debug_checks["seg_header_pts_feature"] = feature
+    debug_checks["{}pts/feature(bilinear)".format(tf.get_variable_scope().name)] = feature
     if depth_out == 6:
       conv6 = self.tensors['front/conv6']     # The resolution is 6-depth
       pts6  = tf.concat([xyz * 32.0, ids], axis=1)              # [0, 64]
-      debug_checks["seg_header_pts_pts6"] = pts6
+      debug_checks["{}pts/pts6".format(tf.get_variable_scope().name)] = pts6
       conv6 = octree_nearest_interp(pts6, conv6, octree, depth=6)
-      debug_checks["seg_header_pts_conv6"] = conv6
+      debug_checks["{}pts/conv6(nearinterp)".format(tf.get_variable_scope().name)] = conv6
       feature = tf.concat([feature, conv6], axis=1)
-      debug_checks["seg_header_pts_feature_"] = feature
+      debug_checks["{}pts/feature(concat)".format(tf.get_variable_scope().name)] = feature
 
     with tf.variable_scope('predict_%d' % depth_out):
       logit = predict_module(feature, nout, 128 * factor, training) # 2-FC
-      debug_checks["seg_header_pts/predict_{}/logit".format(depth_out)] = logit
+      debug_checks["{}pts/logit".format(tf.get_variable_scope().name)] = logit
       logit = tf.transpose(tf.squeeze(logit, [0, 3])) # (1, C, H, 1) -> (H, C)
-      debug_checks["seg_header_pts/predict_{}/logit_tr".format(depth_out)] = logit
+      debug_checks["{}pts/logit_transposed".format(tf.get_variable_scope().name)] = logit
     return logit, debug_checks
-
 
   def points_feat(self, inputs, octree):
     debug_checks = {}
@@ -208,9 +225,10 @@ class HRNet:
           d = depth - i + j
           print("i {} j {} d {}".format(i, j, d))
           data[i] = OctreeUpsample(self.flags.upsample)(data[i], octree, d)
-          debug_checks["points_feat_up_{}_j{}".format(i, j)] = data[i]
+          debug_checks["{}/upsample_i{}j{}d{}".format(tf.get_variable_scope().name, i, j, d)] = data[i]
+    debug_checks["{}/upsampled".format(tf.get_variable_scope().name)] = data
     feature = tf.concat(data, axis=1)  # the resolution is depth-5
-    debug_checks["points_feat_feature"] = feature
+    debug_checks["{}/feature(concat)".format(tf.get_variable_scope().name)] = feature
     return feature, debug_checks
 
   def cls_header(self, inputs, octree, nout, training):
@@ -254,44 +272,44 @@ class HRNet:
     with tf.variable_scope('signal'):
       data = octree_property(octree, property_name='feature', dtype=tf.float32,
                             depth=depth, channel=flags.channel)
-      debug_checks['{}/backbone_signal/data'.format(training)] = data
       data = tf.reshape(data, [1, flags.channel, -1, 1])
-      debug_checks['{}/backbone_signal/data_reshaped'.format(training)] = data
+      debug_checks['{}/data(feature)'.format(tf.get_variable_scope().name)] = data
       if flags.signal_abs: data = tf.abs(data)
 
     # front
     convs = [None]
     channel, d1 = 64 * flags.factor, 5
-    convs[0], db = self.front_layer(data, octree, depth, d1, channel, training)
-    debug_checks.update(db)
+    convs[0], dc = self.front_layer(data, octree, depth, d1, channel, training)
+    debug_checks.update(dc)
 
     # stages
     stage_num = 3
     print("we'll use 3 stages")
     for stage in range(1, stage_num + 1):
       with tf.variable_scope('stage_%d' % stage):
-        convs = branches(convs, octree, d1, channel, flags.resblock_num, training)
-        debug_checks["{}/stage_{}".format(training, stage)] = convs
+        convs, dc = branches(convs, octree, d1, channel, flags.resblock_num, training)
+        debug_checks.update(dc)
         if stage == stage_num: break
-        convs = transitions(convs, octree, depth=d1, training=training, upsample=flags.upsample)
+        convs, dc = transitions(convs, octree, depth=d1, training=training, upsample=flags.upsample)
+        debug_checks.update(dc)
     return convs, debug_checks
 
   def front_layer(self, data, octree, d0, d1, channel, training):
     debug_checks = {}
     conv = data
     with tf.variable_scope('front'):
-      print("in front we use depths {} - {}".format(d0, d1))
+      print("in front we use depths {} to {}".format(d0, d1))
       for d in range(d0, d1, -1):
         with tf.variable_scope('depth_%d' % d):
-          channeld = channel / 2 ** (d - d1 + 1)
-          print("in depth {} we use {} channels".format(d, channeld))
+          channeld = front_layer_channeld(channel, d, d1)
+          print("in depth {} with input {} we will output {} channels".format(d, channel, channeld))
           conv = octree_conv_bn_relu(conv, octree, d, channeld, training)
-          debug_checks["{}/front/depth_{}/conv".format(training, d)] = conv
+          debug_checks["{}/conv".format(tf.get_variable_scope().name)] = conv
           self.tensors['front/conv6'] = conv # TODO: add a resblock here?
           conv, _ = octree_max_pool(conv, octree, d)
-          debug_checks["{}/front/depth_{}/conv_maxpooled".format(training, d)] = conv
+          debug_checks["{}/conv_pooled".format(tf.get_variable_scope().name)] = conv
       with tf.variable_scope('depth_%d' % d1):
         conv = octree_conv_bn_relu(conv, octree, d1, channel, training)
         self.tensors['front/conv5'] = conv
-        debug_checks["{}/front/depth_{}/conv(f)".format(training, d)] = conv
+        debug_checks["{}/front/conv5".format(tf.get_variable_scope().name)] = conv
     return conv, debug_checks

@@ -7,6 +7,7 @@ from learning_rate import LRFactory
 from tensorflow.python.client import timeline
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+CONF_MAT_KEY = 'confusion_matrix'
 
 
 class TFSolver:
@@ -46,15 +47,12 @@ class TFSolver:
 
   def summaries(self, train_tensor_dict, test_tensor_dict):
     self.summ_train_occ = None
-    if 'confusion_matrix' in train_tensor_dict:
-      self.summ_train_occ = summary_train({'confusion_matrix': train_tensor_dict['confusion_matrix']})
-      del train_tensor_dict['confusion_matrix']
+    if CONF_MAT_KEY in train_tensor_dict:
+      self.summ_train_occ = summary_train({CONF_MAT_KEY: train_tensor_dict[CONF_MAT_KEY]})
+      del train_tensor_dict[CONF_MAT_KEY]
     self.summ_train_alw = summary_train(train_tensor_dict)
     self.summ_test, self.summ_holder_dict = summary_test(test_tensor_dict)
-    self.summ_test_keys = list(self.summ_holder_dict.keys())
-    if 'confusion_matrix' in self.summ_test_keys:
-      idx = self.summ_test_keys.index('confusion_matrix')
-      del self.summ_test_keys[idx]
+    self.summ_test_keys = [key for key in self.summ_holder_dict.keys() if key != CONF_MAT_KEY]
     self.summ2txt(self.summ_test_keys, 'step', 'w')
 
   def summ2txt(self, values, step, flag='a'):
@@ -86,11 +84,6 @@ class TFSolver:
 
     for i in range(self.flags.test_iter):
       iter_results_dict, iter_debug_checks = sess.run([self.test_tensors_dict, self.test_debug_checks])
-
-      # note: since we have used a mask of 0, in points_label we ignore all points with 0 label i.e. that are undefined
-      # so len(iter_debug_checks['softmax_loss/prediction']) != len(iter_debug_checks['test/input_point_info/points'])
-      # so predictions and labels of those patches are ignored ..
-      # but the metrics for all defined classes can still be calculated for this sample
 
       for key, value in iter_results_dict.items():
         avg_results_dict[key] += value

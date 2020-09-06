@@ -247,22 +247,19 @@ def softmax_loss(logit, label_gt, num_class, label_smoothing=0.0):
   return loss
 
 
-def softmax_loss_debug_checks(logit, label_gt, num_class, label_smoothing=0.0):
-  debug_checks = {}
+def softmax_loss_with_cong_mat(logit, label_gt, num_class, label_smoothing=0.0):
   with tf.name_scope('softmax_loss'):
     label_gt = tf.cast(label_gt, tf.int32)
     onehot = tf.one_hot(label_gt, depth=num_class)
-    debug_checks['softmax_loss/masked_onehot'] = onehot
 
     prediction = tf.argmax(logit, axis=1, output_type=tf.int32)
-    debug_checks['softmax_loss/masked_prediction'] = prediction
 
     loss = tf.losses.softmax_cross_entropy(
         onehot, logit, label_smoothing=label_smoothing)
 
     conf_mat = confusion_matrix(prediction, label_gt, num_class, weights=None)
 
-  return loss, conf_mat, debug_checks
+  return loss, conf_mat
 
 
 def confusion_matrix(prediction, label, num_classes, weights=None):
@@ -421,10 +418,9 @@ def loss_functions_seg_debug_checks(logit, label_gt, num_class, weight_decay, va
     label_mask = label_gt > mask  # filter label -1
     masked_logit = tf.boolean_mask(logit, label_mask)
     masked_label = tf.boolean_mask(label_gt, label_mask)
-    debug_checks['loss_seg/masked_logit'] = masked_logit
-    debug_checks['loss_seg/masked_label'] = masked_label
-    loss, conf_mat, dc = softmax_loss_debug_checks(masked_logit, masked_label, num_class)
-    debug_checks.update(dc)
+    debug_checks['{}/masked_logit'.format(tf.get_variable_scope().name)] = masked_logit
+    debug_checks['{}/masked_label'.format(tf.get_variable_scope().name)] = masked_label
+    loss, conf_mat = softmax_loss_with_cong_mat(masked_logit, masked_label, num_class)
 
     accu = softmax_accuracy(masked_logit, masked_label)
     regularizer = l2_regularizer(var_name, weight_decay)
