@@ -206,6 +206,14 @@ class HRNet:
       debug_checks["{}pts/conv6(nearinterp)".format(tf.get_variable_scope().name)] = conv6
       feature = tf.concat([feature, conv6], axis=1)
       debug_checks["{}pts/feature(concat)".format(tf.get_variable_scope().name)] = feature
+    # if depth_out == 7:  # FIXME TODO: ask and use/remove
+    #   conv7 = self.tensors['front/conv6']     # The resolution is 7-depth
+    #   pts7  = tf.concat([xyz * 64.0, ids], axis=1)              # [0, 128]
+    #   debug_checks["{}pts/pts7".format(tf.get_variable_scope().name)] = pts7
+    #   conv7 = octree_nearest_interp(pts7, conv7, octree, depth=7)
+    #   debug_checks["{}pts/conv7(nearinterp)".format(tf.get_variable_scope().name)] = conv7
+    #   feature = tf.concat([feature, conv7], axis=1)
+    #   debug_checks["{}pts/feature(concat)".format(tf.get_variable_scope().name)] = feature
 
     with tf.variable_scope('predict_%d' % depth_out):
       logit = predict_module(feature, nout, 128 * factor, training) # 2-FC

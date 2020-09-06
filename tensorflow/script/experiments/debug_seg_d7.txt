@@ -1,0 +1,181 @@
+fo i have to add:
+    if depth_out == 7:
+      conv7 = self.tensors['front/conv6']     # The resolution is 7-depth
+      pts7  = tf.concat([xyz * 64.0, ids], axis=1)              # [0, 128]
+      debug_checks["{}pts/pts7".format(tf.get_variable_scope().name)] = pts7
+      conv7 = octree_nearest_interp(pts7, conv7, octree, depth=7)
+      debug_checks["{}pts/conv7(nearinterp)".format(tf.get_variable_scope().name)] = conv7
+      feature = tf.concat([feature, conv7], axis=1)
+      debug_checks["{}pts/feature(concat)".format(tf.get_variable_scope().name)] = feature
+
+in   def seg_header_pts(self, inputs, octree, nout, pts, training): ?
+
+----------------------------------------------------------------------------------------------
+One huge (merged) octree (binary)
+'/octree' = {tuple: 1} 5119520
+
+Batch size x points(binary)
+'/points' = {tuple: 1} 2
+
+Batch size x 1 int label
+'/labels' = {tuple: 1} 2
+
+All points of the huge (merged) octree x 4 floats
+'/pts(xyz)' = {tuple: 2} (20000, 4)
+
+All points of the huge (merged) octree x 1 float
+'/label' = {tuple: 2} (20000, 1)
+
+All points of the huge (merged) octree x 3 floats
+'/normals' = {tuple: 2} (20000, 3)
+
+Sampled points from the huge (merged) octree:
+'/masked_and_ratio/pts(xyz)' = {tuple: 2} (10055, 4)
+'/masked_and_ratio/label' = {tuple: 1} 10055
+
+----------------------------------------------------------------------------------------------
+All octants of last depth of the huge octree x 4 floats (the features)
+'ocnn_hrnet/signal/data(feature)' = {tuple: 4} (1, 4, 69632, 1)
+
+
+Next is the 'front_layer' wehre we used flags.factor:2, d0:7, d1:5 and:
+channel, d1 = 64 * flags.factor, 5
+
+in depth 7 with input 128 we will output 16.0 channels
+'ocnn_hrnet/front/depth_7/conv' = {tuple: 4} (1, 16, 69632, 1)
+
+Max pooled conv results
+'ocnn_hrnet/front/depth_7/conv_pooled' = {tuple: 4} (1, 16, 17720, 1)
+
+in depth 6 with input 128 we will output 32.0 channels
+'ocnn_hrnet/front/depth_6/conv' = {tuple: 4} (1, 32, 17720, 1)
+
+
+Max pooled conv results
+'ocnn_hrnet/front/depth_6/conv_pooled' = {tuple: 4} (1, 32, 4296, 1)
+
+
+At d1 (i.e. depth 5) convolution results to 64*2 channels
+'ocnn_hrnet/front/depth_5/front/conv5' = {tuple: 4} (1, 128, 4296, 1)
+
+note: we always save conv/depth5 and conv/depth6 as we use a constant of d1=5
+
+----------------------------------------------------------------------------------------------
+Next, after the convolutions of front layer, we have our branch layers, where after a convolution, we pass not only the convolved data, but the upsampled (higher resolution) data as well in the next layer.
+
+Here we use 3 stages and flags.resblock_num:3.
+
+Stage 1
+Branches at depth 5 with len(data)=1
+
+Branch with depth =5, channel = 128, (res)block_num = 3
+'ocnn_hrnet/stage_1/branch_5/resblock_d5_0/data' = {tuple: 4} (1, 128, 4296, 1)
+'ocnn_hrnet/stage_1/branch_5/resblock_d5_1/data' = {tuple: 4} (1, 128, 4296, 1)
+'ocnn_hrnet/stage_1/branch_5/resblock_d5_2/data' = {tuple: 4} (1, 128, 4296, 1)
+
+
+'ocnn_hrnet/stage_1/transitions_features': [
+	[(1,128,8816,1)],
+	[(1,256,1992,1)]
+]
+
+the output of this stage:
+'ocnn_hrnet/stage_1': [
+	(1,128,8816,1), (1,256,1992,1)
+]
+
+
+Stage 2
+Branches at depth 5 with len(data)=2 
+
+Branch with depth =5, channel = 128, (res)block_num = 3
+'ocnn_hrnet/stage_2/branch_5/resblock_d5_0/data' = {tuple: 4} (1, 128, 4296, 1)
+'ocnn_hrnet/stage_2/branch_5/resblock_d5_1/data' = {tuple: 4} (1, 128, 4296, 1)
+'ocnn_hrnet/stage_2/branch_5/resblock_d5_2/data' = {tuple: 4} (1, 128, 4296, 1)
+
+
+Branch with depth =4, channel = 256, (res)block_num = 3
+'ocnn_hrnet/stage_2/branch_4/resblock_d4_0/data' = {tuple: 4} (1, 256, 1088, 1)
+'ocnn_hrnet/stage_2/branch_4/resblock_d4_1/data' = {tuple: 4} (1, 256, 1088, 1)
+'ocnn_hrnet/stage_2/branch_4/resblock_d4_2/data' = {tuple: 4} (1, 256, 1088, 1)
+
+
+'ocnn_hrnet/stage_2/transitions_features': [
+	[(1,128,8816,1), (1,128,8816,1)],
+	[(1,256,1992,1), (1,256,1992,1)],
+	[(1,512,496,1), (1,512,496,1)]
+]
+
+the output of this stage:
+'ocnn_hrnet/stage_2': [
+	(1,128,8816,1), (1,256,1992,1), (1,512,496,1)
+]
+
+
+Branches at depth 5 with len(data)=3
+
+Branch with depth =5, channel = 128, (res)block_num = 3
+'ocnn_hrnet/stage_3/branch_5/resblock_d5_0/data' = {tuple: 4} (1, 128, 4296, 1)
+'ocnn_hrnet/stage_3/branch_5/resblock_d5_1/data' = {tuple: 4} (1, 128, 4296, 1)
+'ocnn_hrnet/stage_3/branch_5/resblock_d5_2/data' = {tuple: 4} (1, 128, 4296, 1)
+
+Branch with depth =4, channel = 256, (res)block_num = 3
+'ocnn_hrnet/stage_3/branch_4/resblock_d4_0/data' = {tuple: 4} (1, 256, 1088, 1)
+'ocnn_hrnet/stage_3/branch_4/resblock_d4_1/data' = {tuple: 4} (1, 256, 1088, 1)
+'ocnn_hrnet/stage_3/branch_4/resblock_d4_2/data' = {tuple: 4} (1, 256, 1088, 1)
+
+Branch with depth =3, channel = 512, (res)block_num = 3
+'ocnn_hrnet/stage_3/branch_3/resblock_d3_0/data' = {tuple: 4} (1, 512, 272, 1)
+'ocnn_hrnet/stage_3/branch_3/resblock_d3_1/data' = {tuple: 4} (1, 512, 272, 1)
+'ocnn_hrnet/stage_3/branch_3/resblock_d3_2/data' = {tuple: 4} (1, 512, 272, 1)
+
+
+So the backbone of HRNet gives as output:
+'backbone': [
+	(1,128,8816,1), (1,256,1992,1), (1,512,496,1)
+]
+
+----------------------------------------------------------------------------------------------Next we have the header of the HRNet segmentation network.
+
+First we upsample each of the output convolutions of our previous 3 stages.
+'ocnn_hrnet/seg_header/up_1/upsample_i1j0d4' = {tuple: 4} (1, 256, 4296, 1)
+'ocnn_hrnet/seg_header/up_2/upsample_i2j0d3' = {tuple: 4} (1, 512, 1088, 1)
+'ocnn_hrnet/seg_header/up_2/upsample_i2j1d4' = {tuple: 4} (1, 512, 4296, 1)
+
+'ocnn_hrnet/seg_header/upsampled': [
+	(1,128,8816,1), (1,256,8816,1), (1,512,8816,1)
+]
+
+and we concatenate them
+'ocnn_hrnet/seg_header/feature(concat)' = {tuple: 4} (1, 896, 4296, 1)
+
+
+'ocnn_hrnet/seg_headerpts/xyz' = {tuple: 2} (10055, 3)
+'ocnn_hrnet/seg_headerpts/ids' = {tuple: 2} (10055, 1)
+
+The points of 32resolution(depth 5)
+'ocnn_hrnet/seg_headerpts/pts5' = {tuple: 2} (10055, 4)
+
+We do bilinear interpolation to get a result for each input sampled point from our convoluted results of front layer depth 5.
+'ocnn_hrnet/seg_headerpts/feature(bilinear)' = {tuple: 4} (1, 896, 10055, 1)
+
+(ADDED BY ME)The points of 128resolution(depth 7)
+'ocnn_hrnet/seg_headerpts/pts7' = (10055,4)
+
+(ADDED BY ME)We do nearest interpolation to get a result for each input sampled point from our convoluted results of front layer depth 7.
+'ocnn_hrnet/seg_headerpts/conv7(nearinterp)' = (1, 32, 10055, 1)
+
+(ADDED BY ME)We concatenate the two:
+'ocnn_hrnet/seg_headerpts/feature(concat)' = (1, 928, 10055, 1)
+
+And we predict
+'ocnn_hrnet/seg_header/predict_7pts/logit' = {tuple: 4} (1, 9, 10055, 1)
+'ocnn_hrnet/seg_header/predict_7pts/logit_transposed' = {tuple: 2} (10055, 9)
+'/logit' = {tuple: 2} (10055, 9)
+'/masked_logit' = {tuple: 2} (10055, 9)
+'/masked_label' = {tuple: 1} 10055
+
+
+
+
+
