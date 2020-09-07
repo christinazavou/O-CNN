@@ -29,6 +29,10 @@ Our method extracts the input signal of the CNN from the 3D shape stored in the 
 5.	```Mini-batch of 3D models:```
 	For 3D objects in a mini-batch used in the CNN training, their octrees are not the same. To support efficient CNN training on the GPU, we merge these octrees into one superoctree.
 
+note:
+- 1D property vectors
+- All the property vectors share the same index, and the length of the vectors is the number of octants at the current depth.
+
 #####CNN operations on the octree:
 
 1.	**3D convolution**:
@@ -36,25 +40,28 @@ Our method extracts the input signal of the CNN from the 3D shape stored in the 
 	Because of the special hierarchical structure of an octree, the stride of convolution is constrained to be an integer power of 2.
 2.	**Pooling**:
 	Applying the max-pooling operator on an octree reduces to picking out the max elements from every 8 contiguous element.
-	Then the resolution of the feature map is down-sampled by a factor of 2.
+	Then the resolution of the feature map is down-sampled by a factor of 2. (since is is equivalent with going from an octree of depth N to an octree of depth N-1)
 3.	**Unpooling**:
 	After applying the max-pooling operation, the locations of the maxima within each pooling region can be recorded in a set of switch variables stored in a continuous array. The corresponding max-unpooling operation makes use of these switches to place the signal of the current feature map into appropriate locations of the up-sampled feature map
 4.	**Deconvolution**:
 	can be implemented by just reversing the forward and backward passes of convolution
 
+note:
+- difference with full-voxel CNN approaches is that here we only apply convolutions to the octants, i.e. regions with no data are not passed through convolution and computations in general.
+
 ##### Network structure:
 
 ###### OCNN:
 	
-- We repeatedly apply convolution and pooling on the octree data structure from bottom to top. We use the ReLU function to activate the output and use batch normalization to reduce the  internal-covariateshift
+- We repeatedly apply convolution and pooling on the octree data structure from bottom to top. We use the ReLU function to activate the output and use batch normalization to reduce the  internal-covariate shift
 - “convolution + BN + ReLU + pooling”  = a basic unit = Ul
-- The number of channels of the feature map for Ul is set to 2^max(1,9−l) and the convolution kernel size is 3.
+- The number of **channels** of the feature map **for Ul is set to 2^max(1,9−l)** and the convolution _kernel size is 3_.
 - We enforce all the 2nd-depth octants to exist and use zero vector padding on the empty octants at the 2nd depth.
-- input → Ud → Ud−1 → · · · → U2 = OCNN(d)
+- **_input → Ud → Ud−1 → · · · → U2 = OCNN(d)_**
 
 ###### OCNN for object classification:
 - We add two fully connected (FC) layers, a softmax layer, and two Dropout layers after OCNN(d)
-- O-CNN(d) → Dropout → FC(128) → Dropout → FC(Nc ) → softmax → output
+- **_O-CNN(d) → Dropout → FC(128) → Dropout → FC(Nc ) → softmax → output_**
 
 ###### OCNN for shape retrieval:
 - Same as for object classification. Output vector used for similarity.
@@ -63,13 +70,19 @@ Our method extracts the input signal of the CNN from the 3D shape stored in the 
 - The convolution network is set as our O-CNN(d).
 - The deconvolution network is the mirror of O-CNN(d) where the convolution and pooling operators are replaced by deconvolution and unpooling operators.
 - “unpooling + deconvolution + BN + ReLU” = a basic unit = DUl
-- O-CNN(d) → DU2 → DU3 → · · · → DUd
+- **_O-CNN(d) → DU2 → DU3 → · · · → DUd_**
 
-##### Experiments:
+##### Experiments: Training details:
 - a desktop machine with an Intel Core I7-6900K CPU (3.2 GHz) and a GeForce 1080 GPU (8GB memory)
-- stochastic gradient descent (SGD) with a momentum of 0.9, a weight decay of 0.0005, and a batch size of 32. The dropout ratio is 0.5. The initial learning rate is 0.1, and decreased by a factor of 10 after every 10 epochs. The optimization stops after about 40 epochs.
+- stochastic gradient descent (SGD) with 
+    - a momentum of 0.9, 
+    - a weight decay of 0.0005, and 
+    - a batch size of 32. 
+- The dropout ratio is 0.5.
+- The initial learning rate is 0.1, and decreased by a factor of 10 after every 10 epochs. 
+- The optimization stops after about 40 epochs.
 
-##### Dataset:
+##### Experiments: Dataset:
 - ModelNet40 and ShapeNetCore55
 - to build the octree data structure with correct normal information,
     1. we first use the ray shooting algorithm (_**Virtual_Scanner**_) to sample dense points with oriented normals from the shapes. Specifically, we place 14 virtual cameras on the face centers of the truncated bounding cube of the object, uniformly shoot 16k parallel rays towards the object from each direction, calculate the intersections of the rays and the surface, and orient the normals of the surface points towards the camera. The points on the invisible part of the shapes are discarded. 
@@ -78,21 +91,34 @@ Our method extracts the input signal of the CNN from the 3D shape stored in the 
 ###### object classification:
 - ModelNet40: 12,311 CAD models from 40 categories with multi-class labels
 - 9,843 models are used for training, and 2,468 models for testing
-- The upright orientation of the models in the dataset is known. We augment the dataset by rotating each model along the upright direction uniformly to generate 12 poses for each model.
+- The upright orientation of the models in the dataset is known. _We augment the dataset by rotating each model along the upright direction uniformly to generate 12 poses for each model._
 - in the test phase we use orientation pooling
+- The loss function is modeled as the cross-entropy
+
+some findings:
+- the normal signal preserves more information of the original shape and is superior over the binary signal. (comparisons: 1=full voxel with the binary signal; 2=full voxel with the normal signal with zero vectors in empty voxels; 3=octree with the normal signal 4=octree with the binary signal)
+- restricting the computation on the octants only is a reasonable strategy that results in the good performance of the O-CNN
+
+note:
+- the output of the learned convolution filters is activated when important image features appear. _In Figure 6, we illustrate some filters in U5,U4,U3 of O-CNN(5) by color-coding the responses to the input shape on the corresponding octants._
 
 ###### shape retrieval:
 - ShapeNet Core55: 51190 3D models with 55 categories and 204 subcategories
-- The models are normalized to a unit length cube and have a consistent upright orientation. 70% of the dataset is used for training, 10% for validation, and 20% for testing. We use the same method as object classification to perform data augmentation.
+- The models are normalized to a unit length cube and have a consistent upright orientation. 70% of the dataset is used for training, 10% for validation, and 20% for testing. We use the same method as object classification to perform _data augmentation_.
 - In the training stage, the cross-entropy loss function is minimized with only the category information. The subcategory information in the dataset is discarded for simplicity
 - orientation pooling is used to generate one feature vector for each shape
 - The retrieval set of a query shape is constructed by collecting all shapes that have the same label, and then sorting them according to the feature vector distance between the query shape and the retrieved shape
+- evaluation is done with precision, recall, mAP, F-score, and NDCG
 
 ###### object part segmentation:
 - The goal is to assign part category information to each point or triangle face
 - ShapeNet: 16 categories of shapes, with 2 to 6 parts per category. In total there are 16,881 models with part annotations.
 - sparse point clouds, with only about 3k points for each model, and the point normals are missing
 - _**We align the point cloud with the corresponding 3D mesh, and project the point back to the triangle faces. Then we assign the normal of the triangle face to the point, and condense the point cloud by uniformly re-sampling the triangle faces. Based on this pre-processed point cloud, the octree structure is built**_
-- 12 copies rotated around the upright axis. 
-- limited data ==> thus we reuse the weights trained by the retrieval task
-- Specifically, in the training stage, the convolution part is initialized with the weight trained on ShapeNet and fixed during optimization, while the weight of the deconvolution part is  andomly initialized and then evolves according to the optimization process
+- _12 copies rotated around the upright axis._ 
+- limited data ==> thus **we reuse the weights trained by the retrieval task**
+- Specifically, in the training stage, the **convolution part is initialized with the weight trained on ShapeNet and fixed during optimization**, while the **weight of the deconvolution part is  randomly initialized and then evolves** according to the optimization process
+- evaluation is done with IoU
+
+note:
+- since in part segmentation the network makes a prediction for each point, they can do a refinement afterwards
