@@ -165,6 +165,32 @@ class Point2OctreeDataset:
         return itr if return_iterator else itr.get_next()
 
 
+class Point2OctreeDataset_DEBUG:
+    def __init__(self, parse_example, transform_points):
+        self.parse_example = parse_example
+        self.transform_points = transform_points
+
+    def __call__(self, tf_record_filenames, batch_size, shuffle_size=1000,
+                 return_iterator=False, take=-1, return_pts=False, **kwargs):
+        with tf.name_scope('points_dataset'):
+            def preprocess(record):
+                points, label, filename = self.parse_example(record)
+                points = self.transform_points(points)
+                return points
+
+            dataset = tf.data.TFRecordDataset(tf_record_filenames) \
+                .take(take) \
+                .repeat()
+            if shuffle_size > 1:
+                dataset = dataset.shuffle(shuffle_size)
+            itr = dataset \
+                .map(preprocess, num_parallel_calls=8) \
+                .batch(batch_size) \
+                .prefetch(8) \
+                .make_one_shot_iterator()
+        return itr if return_iterator else itr.get_next()
+
+
 class OctreeDatasetDebug:
     def __init__(self, parse_example):
         self.parse_example = parse_example

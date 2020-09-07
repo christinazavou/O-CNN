@@ -95,6 +95,19 @@ def config_points_6(category="Bottle"):
     return octrees, filename, depth, task
 
 
+def config_points_test(category="Bottle"):
+    filename = '/media/christina/Data/ANFASS_data/partnet_data/dataset/{}_train_level3.tfrecords' \
+        .format(category)
+    depth = 6
+    task = 'seg_points_partnet'
+    octrees = Point2OctreeDataset_DEBUG(ParseExampleDebug(x_alias='data', y_alias='label'),
+                                        TransformPoints(distort=True, depth=depth, offset=0, axis='y',
+                                                        scale=0.25, jitter=0.125, angle=[5, 5, 5],
+                                                        uniform=True,
+                                                        bounding_sphere=bounding_sphere))
+    return octrees, filename, depth, task
+
+
 class DatasetDebug:
     channels = {
         'cls': {
@@ -206,6 +219,14 @@ def check_properties():
     # octree, label = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10)
     # octree5, label5 = octrees(filename, batch_size=5, shuffle_size=0, return_iterator=False, take=10)
     # DatasetDebug.check_config(octree, octree5, depth, task)
+
+    octrees, filename, depth, task = config_points_test()
+    with tf.Session() as sess:
+        points = octrees(filename, batch_size=1, shuffle_size=0, return_iterator=False, take=10, return_pts=True)
+        print(points)
+        res = sess.run(points)
+        print(res)
+    exit()
 
     octrees, filename, depth, task = config_points_6()
     with tf.Session() as sess:

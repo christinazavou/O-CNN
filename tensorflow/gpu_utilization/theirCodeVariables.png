@@ -1,0 +1,14 @@
+00 = {RefVariable} <tf.Variable 'ocnn/depth_5/conv_bn_relu/octree_conv/weights:0' shape=(16, 81) dtype=float32_ref>
+01 = {RefVariable} <tf.Variable 'ocnn/depth_5/conv_bn_relu/batch_normalization/gamma:0' shape=(16,) dtype=float32_ref>
+02 = {RefVariable} <tf.Variable 'ocnn/depth_5/conv_bn_relu/batch_normalization/beta:0' shape=(16,) dtype=float32_ref>
+03 = {RefVariable} <tf.Variable 'ocnn/depth_4/conv_bn_relu/octree_conv/weights:0' shape=(32, 432) dtype=float32_ref>
+04 = {RefVariable} <tf.Variable 'ocnn/depth_4/conv_bn_relu/batch_normalization/gamma:0' shape=(32,) dtype=float32_ref>
+05 = {RefVariable} <tf.Variable 'ocnn/depth_4/conv_bn_relu/batch_normalization/beta:0' shape=(32,) dtype=float32_ref>
+06 = {RefVariable} <tf.Variable 'ocnn/depth_3/conv_bn_relu/octree_conv/weights:0' shape=(64, 864) dtype=float32_ref>
+07 = {RefVariable} <tf.Variable 'ocnn/depth_3/conv_bn_relu/batch_normalization/gamma:0' shape=(64,) dtype=float32_ref>
+08 = {RefVariable} <tf.Variable 'ocnn/depth_3/conv_bn_relu/batch_normalization/beta:0' shape=(64,) dtype=float32_ref>
+09 = {RefVariable} <tf.Variable 'ocnn/fc1/dense/kernel:0' shape=(4096, 128) dtype=float32_ref>
+10 = {RefVariable} <tf.Variable 'ocnn/fc1/batch_normalization/gamma:0' shape=(128,) dtype=float32_ref>
+11 = {RefVariable} <tf.Variable 'ocnn/fc1/batch_normalization/beta:0' shape=(128,) dtype=float32_ref>
+12 = {RefVariable} <tf.Variable 'ocnn/fc2/dense/kernel:0' shape=(128, 40) dtype=float32_ref>
+13 = {RefVariable} <tf.Variable 'ocnn/fc2/dense/bias:0' shape=(40,) dtype=float32_ref>

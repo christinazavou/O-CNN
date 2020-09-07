@@ -102,6 +102,8 @@ some findings:
 note:
 - the output of the learned convolution filters is activated when important image features appear. _In Figure 6, we illustrate some filters in U5,U4,U3 of O-CNN(5) by color-coding the responses to the input shape on the corresponding octants._
 
+![](figures/partsegmentation_results_OCNNpaper.png)
+
 ###### shape retrieval:
 - ShapeNet Core55: 51190 3D models with 55 categories and 204 subcategories
 - The models are normalized to a unit length cube and have a consistent upright orientation. 70% of the dataset is used for training, 10% for validation, and 20% for testing. We use the same method as object classification to perform _data augmentation_.
@@ -109,6 +111,8 @@ note:
 - orientation pooling is used to generate one feature vector for each shape
 - The retrieval set of a query shape is constructed by collecting all shapes that have the same label, and then sorting them according to the feature vector distance between the query shape and the retrieved shape
 - evaluation is done with precision, recall, mAP, F-score, and NDCG
+
+![](figures/retrieval_results_OCNNpaper.png)
 
 ###### object part segmentation:
 - The goal is to assign part category information to each point or triangle face
@@ -122,3 +126,5 @@ note:
 
 note:
 - since in part segmentation the network makes a prediction for each point, they can do a refinement afterwards
+
+![](figures/partsegmentation_results_OCNNpaper.png)
