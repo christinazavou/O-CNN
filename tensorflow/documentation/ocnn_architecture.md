@@ -1,27 +1,32 @@
-the O-CNN takes the average normal vectors of a 3D model sampled in the finest leaf octants as input and computes features for the finest level octants. After pooling, the features are down-sampled to the parent octants in the next coarser level and are fed into the next O-CNN layer. This process is repeated until all O-CNN layers are evaluated
+The O-CNN takes the average normal vectors of a 3D model sampled in the finest leaf octants as input and computes features for the finest level octants. After pooling, the features are down-sampled to the parent octants in the next coarser level and are fed into the next O-CNN layer. This process is repeated until all O-CNN layers are evaluated.
 
-we pack the features and data of sparse octants at each depth as continuous arrays. A label buffer is introduced to find the correspondence between the features at different levels for efficient convolution and pooling operations.
+We pack the features and data of sparse octants at each depth as continuous arrays. A ```label``` buffer is introduced to find the correspondence between the features at different levels for efficient convolution and pooling operations.
 
 ##### input to the OCNN:
- - an oriented 3D model (e.g. an oriented triangle mesh or a point cloud with oriented normals)
+
+An oriented 3D model (e.g. an oriented triangle mesh or a point cloud with oriented normals)
 
 ##### To construct an octree for an input 3D model:
-- we first uniformly scale the 3D shape into an axis-aligned unit 3D bounding cube and then recursively subdivide the bounding cube of the 3D shape in breadth-first order. In each step, we traverse all non-empty octants occupied by the 3D shape boundary at the current depth l and subdivide each of them to eight child octants at the next depth l + 1. We repeat this process until the pre-defined octree depth d is reached.
+1. We first uniformly scale the 3D shape into an axis-aligned unit 3D bounding cube and 
+2. Then recursively subdivide the bounding cube of the 3D shape in breadth-first order. In each step, 
+    - we traverse all non-empty octants occupied by the 3D shape boundary at the current depth l and 
+    - subdivide each of them to eight child octants at the next depth l + 1. 
+3. We repeat this process until the pre-defined octree depth d is reached.
 
-##### To do the first conv:
-- our method extracts the input signal of the CNN from the 3D shape stored in the finest leaf nodes and records the resulting CNN features at each octant.
+##### To do the first convolution:
+Our method extracts the input signal of the CNN from the 3D shape stored in the finest leaf nodes and records the resulting CNN features at each octant.
 
 ##### Properties defined in the octree structure:
 
-1.	**Shuffle key**:
+1.	```Shuffle key```:
 	The shuffle key of an octant O at depth l encodes its position in 3D space with an unique 3 l-bit string key.
-2. 	**Label**:
-	we assign a label p for a non-empty octant at the l-th depth, which indicates that it is the p-th non-empty octant in the sorted octant list of the l-th depth.
-3. 	**Input signal**:
+2. 	```Label```:
+	We assign a label p for a non-empty octant at the l-th depth, which indicates that it is the p-th non-empty octant in the sorted octant list of the l-th depth.
+3. 	```Input signal```:
 	We use the averaged normal vectors computed at the finest leaf octants as the input signal of the CNN.
-4.	**CNN features**:
+4.	```CNN features```:
 	For each 3D convolution kernel defined at the l-th depth, we record the convolution results on all the octants at the l-th depth in a feature map vector Tl.
-5.	**Mini-batch of 3D models:**
+5.	```Mini-batch of 3D models:```
 	For 3D objects in a mini-batch used in the CNN training, their octrees are not the same. To support efficient CNN training on the GPU, we merge these octrees into one superoctree.
 
 #####CNN operations on the octree:
@@ -66,7 +71,9 @@ we pack the features and data of sparse octants at each depth as continuous arra
 
 ##### Dataset:
 - ModelNet40 and ShapeNetCore55
-- to build the octree data structure with correct normal information, we first use the ray shooting algorithm to sample dense points with oriented normals from the shapes. Specifically, we place 14 virtual cameras on the face centers of the truncated bounding cube of the object, uniformly shoot 16k parallel rays towards the object from each direction, calculate the intersections of the rays and the surface, and orient the normals of the surface points towards the camera. The points on the invisible part of the shapes are discarded. We then build an octree structure on the point cloud and compute the average normal vectors of the points inside the leaf octants. (_Virtual_Scanner_)
+- to build the octree data structure with correct normal information,
+    1. we first use the ray shooting algorithm (_**Virtual_Scanner**_) to sample dense points with oriented normals from the shapes. Specifically, we place 14 virtual cameras on the face centers of the truncated bounding cube of the object, uniformly shoot 16k parallel rays towards the object from each direction, calculate the intersections of the rays and the surface, and orient the normals of the surface points towards the camera. The points on the invisible part of the shapes are discarded. 
+    2. We then build an octree structure on the point cloud and compute the average normal vectors of the points inside the leaf octants.
 
 ###### object classification:
 - ModelNet40: 12,311 CAD models from 40 categories with multi-class labels
@@ -85,13 +92,7 @@ we pack the features and data of sparse octants at each depth as continuous arra
 - The goal is to assign part category information to each point or triangle face
 - ShapeNet: 16 categories of shapes, with 2 to 6 parts per category. In total there are 16,881 models with part annotations.
 - sparse point clouds, with only about 3k points for each model, and the point normals are missing
-- We align the point cloud with the corresponding 3D mesh, and project the point back to the triangle faces. Then we assign the normal of the triangle face to the point, and condense the point cloud by uniformly re-sampling the triangle faces. Based on this pre-processed point cloud, the octree structure is built
+- _**We align the point cloud with the corresponding 3D mesh, and project the point back to the triangle faces. Then we assign the normal of the triangle face to the point, and condense the point cloud by uniformly re-sampling the triangle faces. Based on this pre-processed point cloud, the octree structure is built**_
 - 12 copies rotated around the upright axis. 
 - limited data ==> thus we reuse the weights trained by the retrieval task
 - Specifically, in the training stage, the convolution part is initialized with the weight trained on ShapeNet and fixed during optimization, while the weight of the deconvolution part is  andomly initialized and then evolves according to the optimization process
-
-
-note in TF implementation:
-** probably they use two graphs, one with train and one with test because:
-1. in train they want to support multi gpu thus reuse=True is useful
-2. using TFRecordDataset its easy to make one dataset reading training data and one reading input data and then just pass them as inputs .. instead of feeding training data and then switching dataset to read test...
