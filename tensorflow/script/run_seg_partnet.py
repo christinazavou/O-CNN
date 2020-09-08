@@ -10,9 +10,15 @@ from seg_labels import find_category, LEVEL3_LABELS, LEVEL3_COLORS, decimal_to_r
 from tfsolver import TFSolver
 from network_factory import seg_network
 from dataset import DatasetFactory
-from ocnn import loss_functions_seg, build_solver, get_seg_label, loss_functions_seg_debug_checks
 from libs import points_property, octree_property, octree_decode_key
+import numpy as np
+from tqdm import tqdm
+import os
+from ocnn import *
+from learning_rate import LRFactory
+from tensorflow.python.client import timeline
 
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Add config
 from visualize import vis_confusion_matrix
 
@@ -171,6 +177,156 @@ class PartNetSolver(TFSolver):
 
   def result_callback(self, avg_results_dict):
     return result_callback(avg_results_dict, self.num_class)
+
+  def build_train_graph(self):
+    gpu_num = len(self.flags.gpu)
+    train_params = {'dataset': 'train', 'training': True,  'reuse': False}
+    test_params  = {'dataset': 'test',  'training': False, 'reuse': True}
+    if gpu_num > 1:
+      train_params['gpu_num'] = gpu_num
+      test_params['gpu_num']  = gpu_num
+
+    self.train_tensors_dict, self.train_debug_checks = self.graph(**train_params)
+    self.test_tensors_dict, self.test_debug_checks = self.graph(**test_params)
+
+    total_loss = self.train_tensors_dict['total_loss']
+    solver_param = [total_loss, LRFactory(self.flags)]
+    if gpu_num > 1:
+      solver_param.append(gpu_num)
+    self.train_op, lr = self.build_solver(*solver_param)
+
+    if gpu_num > 1: # average the tensors from different gpus for summaries
+      with tf.device('/cpu:0'):
+        self.train_tensors_dict = average_tensors(self.train_tensors_dict)
+        self.test_tensors_dict = average_tensors(self.test_tensors_dict)
+
+    tensor_dict_for_train_summary = {}
+    tensor_dict_for_train_summary.update(self.train_tensors_dict)
+    tensor_dict_for_train_summary.update({'lr': lr})
+    tensor_dict_for_test_summary = {}
+    tensor_dict_for_test_summary.update(self.test_tensors_dict)
+    self.summaries(tensor_dict_for_train_summary, tensor_dict_for_test_summary)
+
+  def summaries(self, train_tensor_dict, test_tensor_dict):
+    self.summ_train_occ = None
+    if CONF_MAT_KEY in train_tensor_dict:
+      self.summ_train_occ = summary_train({CONF_MAT_KEY: train_tensor_dict[CONF_MAT_KEY]})
+      del train_tensor_dict[CONF_MAT_KEY]
+    self.summ_train_alw = summary_train(train_tensor_dict)
+    self.summ_test, self.summ_holder_dict = summary_test(test_tensor_dict)
+    self.summ_test_keys = [key for key in self.summ_holder_dict.keys() if key != CONF_MAT_KEY]
+    self.summ2txt(self.summ_test_keys, 'step', 'w')
+
+  def build_test_graph(self):
+    gpu_num = len(self.flags.gpu)
+    test_params  = {'dataset': 'test',  'training': False, 'reuse': False}
+    if gpu_num > 1: test_params['gpu_num'] = gpu_num
+    self.test_tensors_dict, self.test_debug_checks = self.graph(**test_params)
+    if gpu_num > 1: # average the tensors from different gpus
+      with tf.device('/cpu:0'):
+        self.test_tensors_dict = average_tensors(self.test_tensors_dict)
+
+  def run_k_test_iterations(self, sess):
+    avg_results_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
+
+    for i in range(self.flags.test_iter):
+      iter_results_dict, iter_debug_checks = sess.run([self.test_tensors_dict, self.test_debug_checks])
+
+      for key, value in iter_results_dict.items():
+        avg_results_dict[key] += value
+
+    for key in avg_results_dict.keys():
+      avg_results_dict[key] /= self.flags.test_iter
+    avg_results = self.result_callback(avg_results_dict)
+    return avg_results
+
+  def train(self):
+    # build the computation graph
+    self.build_train_graph()
+
+    # checkpoint
+    start_iter = 1
+    self.tf_saver = tf.train.Saver(max_to_keep=self.flags.ckpt_num)
+    ckpt_path = os.path.join(self.flags.logdir, 'model')
+    if self.flags.ckpt:  # restore from the provided checkpoint
+      ckpt = self.flags.ckpt
+    else:  # restore from the breaking point
+      ckpt = tf.train.latest_checkpoint(ckpt_path)
+      if ckpt: start_iter = int(ckpt[ckpt.find("iter") + 5:-5]) + 1
+
+    # session
+    config = tf.ConfigProto(allow_soft_placement=True)
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config) as sess:
+      summary_writer = tf.summary.FileWriter(self.flags.logdir, sess.graph)
+
+      print('Initialize ...')
+      self.initialize(sess)
+      if ckpt: self.restore(sess, ckpt)
+
+      print('Start training ...')
+      for i in tqdm(range(start_iter, self.flags.max_iter + 1), ncols=80):
+        # training
+        if self.summ_train_occ != None:
+          summary_alw, summary_occ, _ = sess.run([self.summ_train_alw, self.summ_train_occ, self.train_op])
+          summary_writer.add_summary(summary_occ, i)
+          summary_writer.add_summary(summary_alw, i)
+        else:
+          summary_alw, _ = sess.run([self.summ_train_alw, self.train_op])
+          summary_writer.add_summary(summary_alw, i)
+
+        # testing
+        if i % self.flags.test_every_iter == 0:
+          # run testing average
+          avg_test_dict = self.run_k_test_iterations(sess)
+
+          # run testing summary
+          summary = sess.run(self.summ_test,
+                             feed_dict={pl: avg_test_dict[m]
+                                        for m, pl in self.summ_holder_dict.items()})
+          summary_writer.add_summary(summary, i)
+          avg_test_ordered = []
+          for key in self.summ_test_keys:
+            avg_test_ordered.append(avg_test_dict[key])
+          self.summ2txt(avg_test_ordered, i)
+
+          # save session
+          ckpt_name = os.path.join(ckpt_path, 'iter_%06d.ckpt' % i)
+          self.tf_saver.save(sess, ckpt_name, write_meta_graph=False)
+
+      print('Training done!')
+
+  def timeline(self):
+    # build the computation graph
+    self.build_train_graph()
+
+    # session
+    config = tf.ConfigProto(allow_soft_placement=True)
+    config.gpu_options.allow_growth = True
+    options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+    run_metadata = tf.RunMetadata()
+    timeline_skip, timeline_iter = 100, 2
+    with tf.Session(config=config) as sess:
+      summary_writer = tf.summary.FileWriter(self.flags.logdir, sess.graph)
+      print('Initialize ...')
+      self.initialize(sess)
+
+      print('Start profiling ...')
+      for i in tqdm(range(0, timeline_skip + timeline_iter), ncols=80):
+        if i < timeline_skip:
+          summary_alw, _ = sess.run([self.summ_train_alw, self.train_op])
+        else:
+          summary, _ = sess.run([self.summ_train_alw, self.train_op],
+                                options=options, run_metadata=run_metadata)
+          if (i == timeline_skip + timeline_iter - 1):
+            # summary_writer.add_run_metadata(run_metadata, 'step_%d'%i, i)
+            # write timeline to a json file
+            fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+            chrome_trace = fetched_timeline.generate_chrome_trace_format()
+            with open(os.path.join(self.flags.logdir, 'timeline.json'), 'w') as f:
+              f.write(chrome_trace)
+        summary_writer.add_summary(summary, i)
+      print('Profiling done!')
 
   def test(self):
     # build graph

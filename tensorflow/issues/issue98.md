@@ -1,6 +1,6 @@
-- is there a way to see the tensorflow implementation of occn_conv ?
+- Q1: is there a way to see the tensorflow implementation of occn_conv ?
 
-- isxiei to number of channels for Ul is set to 2^max(1,9−l) sta diktia tous? iparxei idikos logos pou einai etsi ? i apla epeidi genika se CNN me images aspoume oso mikrainei to resolution (widthxheight) toso auksanontai ta channels?
+- SQ1: isxiei to number of channels for Ul is set to 2^max(1,9−l) sta diktia tous? iparxei idikos logos pou einai etsi ? i apla epeidi genika se CNN me images aspoume oso mikrainei to resolution (widthxheight) toso auksanontai ta channels? TODO: check cls, ae, seg channels per level
 
 - in object classification ... "Since each model is rotated to 12 poses, in the testing phase the activations of the output layer for each pose can be pooled together to increase the accuracy of predictions." ... can i see in the code difference in train mode and test mode regarding this ? (it is also done in shape retrieval...is shape retrieval in the available code? it is also done in part segmentation .. can i see it there?)
 
