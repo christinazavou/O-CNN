@@ -13,3 +13,36 @@
 
 - in segmentation (in OCNN paper) they optionally do a refinement after prediction of each point .. is this done by default in Caffe/tensorflow ?
 
+- sto aocnn leei "models the 3D shape within each octant with a planar patch" .. touto en diaforetiko pou to ocnn ? leei oti "it takes the planar patch and displacement as input" .. touto en to idio me ekeino pou etrexa ego pou exei 4 input channels? i.e. displacement = distortion ? meta leei episis "The stored patch has a higher order approximation accuracy than using the center or one of the corners of the octant as the sample of the surface." omos afou en to nx,ny,nz,d pou xrisimopoiei ston kodika ... opotan einai to nx,ny,nz,d ousiastika to planar patch ? kai apla sto implementation tou ocnn tensorflow ekaman to na en pio paromoio me to implementation aocnn (diladi mono to adaptation den evalan)? 
+
+- if i use aocnn instead (in segmentation) will i be able to run bigger batch ?
+
+- in aocnn paper: "To make the normal direction consistent to the underlying shape normal, we check whether the angle between n and the average normals of SO is less than 90 degrees: if not, n and d are multiplied by −1" is it because the plane can have a normal in two opposite directions so we get the normals of the points to find which direction it is?
+
+- in aocnn paper:not sure what is "the edge length of the finest grid of the octree". not sure what is the difference of fig3middle and 3right.
+
+- in aocnn paper: "The loss function of the Adaptive O-CNN decoder includes the structure loss and the patch loss." .. is this in TF code? (i guess yes in shape completion network)
+
+- in midnet paper: they say they do "two shape segmentation". do they mean "part segmentation"? or what? which **two** ?
+
+- "we first exploit the shape instance discrimination loss to classify the point of each shape into a class and then apply the point instance discrimination to classify the points on each shape separately" pos ?
+
+- "We pre-process the point cloud to assign a normal vector for each point via principal component analysis if the accurate normal information is not available in the dataset, which will be used for constructing input features." i guess in ```new_points()``` there is pca if normals are not specified?
+
+- in midnet paper: "we convert each normal component to its absolute value" fantazomai ginetai sti dimiourgia tou octree...diladi otan doso points me not absolute normal meta an kano octree_property(feature) tha mou dosei absolute normal sosta? TODO: write a unit test
+
+- in midnet paper: "For point-wise features, we interpolate the high-resolution features defined at the second finest-level octants according to the point position via tri-linear interpolation." touto ginetai kai sto ocnn paper sto segmentation ? episis ti akrivos simenei ? oti ta features sto level maxdepth-1 einai to interpolation ton features tou level maxdepth apo ta neighbour octants i kati allo?
+
+- in midnet paper: "Note that the high-resolution features at each octant are also the concatenation of features obtained from the high-resolution network and the upsampled feature from the low-resolution subnetwork." edo ti ennoei ? ennoei ta features meta ta convolution kai activation ? 
+
+- in midnet .. ti ginetai me to point loss an ena shape ginei classified se lathos shape class?
+
+- feature visualization of shape-level and point-wise features with tsne...not in code?
+
+- afou kano apla segmentation with random init ... ti loss function xrisimopoiei ? to mid loss i kapoio allo ?
+
+- sto midnet paper: MID-FC(Fix) ti xrisimopoioun gia input sto FC? (note: look at fig 2 .. where final feature vectors for points have 926 channels and final feature vectors for shapes have 896 channels )
+
+- "After that, the output **shape or point** features are fed into the following back end layers for computing the shape analysis results." ... ara mipos using the flag LOSS.point_wise as false tha xrisimopoiei ta shape features gia to segmentation eno using True tha xrisimopoiei ta point features?
+
+- is there a configuration to run segmentation with mid loss or is it only with shape loss or point loss ?
