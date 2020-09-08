@@ -6,10 +6,6 @@ from dataset import DatasetFactory
 from network_factory import cls_network
 from ocnn import loss_functions
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-
-# configs
-FLAGS = parse_args()
 
 # define the graph
 class ComputeGraph:
@@ -37,10 +33,12 @@ class ComputeGraph:
 
     names = ['loss', 'accu', 'regularizer', 'total_loss']
     tensors = tower_tensors[0] if gpu_num == 1 else list(zip(*tower_tensors))
-    return tensors, names, None, None, None
+    return tensors, names
 
 
 # run the experiments
 if __name__ == '__main__':
-  solver = TFSolver(FLAGS.SOLVER, compute_graph)
+  FLAGS = parse_args()
+  compute_graph = ComputeGraph(FLAGS)
+  solver = TFSolver(FLAGS, compute_graph)
   solver.run()

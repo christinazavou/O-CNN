@@ -307,8 +307,18 @@ def normalize_signal(data):
       output = tf.nn.l2_normalize(data, axis=1)
   return output
 
-    
-def average_tensors(tensors_dict):
+
+def average_tensors(tower_tensors):
+  avg_tensors = []
+  with tf.name_scope('avg_tensors'):
+    for tensors in tower_tensors:
+      tensors = [tf.expand_dims(tensor, 0) for tensor in tensors]
+      avg_tensor = tf.concat(tensors, axis=0)
+      avg_tensor = tf.reduce_mean(avg_tensor, 0)
+      avg_tensors.append(avg_tensor)
+  return avg_tensors
+
+def average_tensors_dict(tensors_dict):
   avg_tensors_dict = {}
   with tf.name_scope('avg_tensors'):
     for tensor_name, tensors in tensors_dict.items():
@@ -366,7 +376,16 @@ def build_solver(total_loss, learning_rate_handle, gpu_num=1):
   return the_solver(total_loss, learning_rate_handle, gpu_num)
 
 
-def summary_train(tensor_dict):
+def summary_train(names, tensors):
+  with tf.name_scope('summary_train'):
+    summaries = []
+    for it in zip(names, tensors):
+      summaries.append(tf.summary.scalar(it[0], it[1]))
+    summ = tf.summary.merge(summaries)
+  return summ
+
+
+def summary_train_dict(tensor_dict):
   with tf.name_scope('summary_train'):
     summaries = []
     for key, value in tensor_dict.items():
@@ -377,8 +396,18 @@ def summary_train(tensor_dict):
     summ = tf.summary.merge(summaries)
   return summ
 
+def summary_test(names):
+  with tf.name_scope('summary_test'):
+    summaries = []
+    summ_placeholder = []
+    for name in names:
+      summ_placeholder.append(tf.placeholder(tf.float32))
+      summaries.append(tf.summary.scalar(name, summ_placeholder[-1]))
+    summ = tf.summary.merge(summaries)
+  return summ, summ_placeholder
 
-def summary_test(tensor_dict):
+
+def summary_test_dict(tensor_dict):
   with tf.name_scope('summary_test'):
     summaries = []
     summary_placeholder_dict = {}

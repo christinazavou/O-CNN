@@ -58,3 +58,15 @@ test-bottle-b32-hrnet:
 		&& source activate OCNN \
 		&& cd .. \
 		&& python run_seg_partnet.py --config configs/segmentation/seg_hrnet_partnet_pts.yaml SOLVER.run test SOLVER.gpu 0, SOLVER.logdir /media/christina/Data/ANFASS_data/O-CNN/output/segmentation/experiments/Bottle/Bottle_b32_hrnet SOLVER.test_iter 84 SOLVER.ckpt /media/christina/Data/ANFASS_data/O-CNN/output/segmentation/experiments/Bottle/Bottle_b32_hrnet/model/iter_003000.ckpt DATA.test.location /media/christina/Data/ANFASS_data/O-CNN/output/segmentation/experiments/Bottle/Bottle_test_level3.tfrecords MODEL.nout 9 MODEL.factor 2 LOSS.num_class 9
+
+train-cls-modelnet40-resnet:
+	export PATH=/home/graphicslab/miniconda3/bin/:$$PATH \
+		&& source activate OCNN \
+		&& cd .. \
+		&& python run_cls.py --config configs/cls/cls_points.yaml \
+		SOLVER.run train \
+		SOLVER.gpu 0, \
+		SOLVER.logdir /media/graphicslab/Elements/ANNFASS_data/cls_out/debug \
+		SOLVER.ckpt '' \
+		DATA.train.location /media/graphicslab/Elements/ANNFASS_data/cls_data/m40_train_points.tfrecords \
+		DATA.test.location /media/graphicslab/Elements/ANNFASS_data/cls_data/m40_test_points.tfrecords
