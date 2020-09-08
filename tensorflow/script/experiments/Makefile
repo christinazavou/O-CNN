@@ -64,7 +64,33 @@ train-cls-modelnet40-resnet:
 		&& python run_cls.py --config configs/cls/cls_points.yaml \
 		SOLVER.run train \
 		SOLVER.gpu 0, \
-		SOLVER.logdir /media/graphicslab/Elements/ANNFASS_data/cls_out/debug \
+		SOLVER.logdir /media/graphicslab/Elements/ANNFASS_data/cls_out/debugResnet \
 		SOLVER.ckpt '' \
+		DATA.train.location /media/graphicslab/Elements/ANNFASS_data/cls_data/m40_train_points.tfrecords \
+		DATA.test.location /media/graphicslab/Elements/ANNFASS_data/cls_data/m40_test_points.tfrecords
+
+train-cls-modelnet40-ocnn:
+	export PATH=/home/graphicslab/miniconda3/bin/:$$PATH \
+		&& source activate OCNN \
+		&& cd .. \
+		&& python run_cls.py --config configs/cls/cls_points.yaml \
+		SOLVER.run train \
+		SOLVER.gpu 0, \
+		SOLVER.logdir /media/graphicslab/Elements/ANNFASS_data/cls_out/debugOcnn \
+		SOLVER.ckpt '' \
+		MODEL.name ocnn \
+		DATA.train.location /media/graphicslab/Elements/ANNFASS_data/cls_data/m40_train_points.tfrecords \
+		DATA.test.location /media/graphicslab/Elements/ANNFASS_data/cls_data/m40_test_points.tfrecords
+
+test-cls-modelnet40-ocnn:
+	export PATH=/home/graphicslab/miniconda3/bin/:$$PATH \
+		&& source activate OCNN \
+		&& cd .. \
+		&& python run_cls.py --config configs/cls/cls_points.yaml \
+		SOLVER.run test \
+		SOLVER.gpu 0, \
+		SOLVER.logdir /media/graphicslab/Elements/ANNFASS_data/cls_out/debugOcnn \
+		SOLVER.ckpt /media/graphicslab/Elements/ANNFASS_data/cls_out/debugOcnn/model/iter_001000.ckpt \
+		MODEL.name ocnn \
 		DATA.train.location /media/graphicslab/Elements/ANNFASS_data/cls_data/m40_train_points.tfrecords \
 		DATA.test.location /media/graphicslab/Elements/ANNFASS_data/cls_data/m40_test_points.tfrecords

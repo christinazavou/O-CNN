@@ -1,4 +1,4 @@
-- Q1: is there a way to see the tensorflow implementation of occn_conv ?
+- **Q1**: is there a way to see the tensorflow implementation of occn_conv ?
 
 - SQ1: isxiei to number of channels for Ul is set to 2^max(1,9−l) sta diktia tous? iparxei idikos logos pou einai etsi ? i apla epeidi genika se CNN me images aspoume oso mikrainei to resolution (widthxheight) toso auksanontai ta channels? TODO: check cls, ae, seg channels per level
 
@@ -8,31 +8,32 @@
             octree_resblock: depth 5, channel input is 64 (2^6) and channel output is 16 (2^4 i.e. 2^9-5) SO YES
             octree_resblock: depth 5, channel input is 64 and output also 64
         OCNN:
+            maybe it is only here .. because it says Ul where Ul is defined as simple convolution - relu - pooling == >TODO: check this
+            indeed in here they use channels = [512, 256, 128, 64, 32, 16, 8, 4, 2]
+            thus in depth 5 the output channels are 2^4
+            in depth 4 the output channels are 2^5
+            
+            question: after max pool it means that depth 5 gives to depth 4 an input of 2^3 ? TODO: check this
         
         HRNET:
     
     autoencoder:
     
     segmentation:
-        in depth 9 with input 128 we will output 4.0 channels (2^2 = 2^9-7)
-        in depth 8 with input 128 we will output 8.0 channels (2^3 = 2^9-6)
         in depth 7 with input 128 we will output 16.0 channels (2^4 = 2^9-5)
         in depth 6 with input 128 we will output 32.0 channels (2^5 = 2^9-4)
 
 
-- in object classification ... "Since each model is rotated to 12 poses, in the testing phase the activations of the output layer for each pose can be pooled together to increase the accuracy of predictions." ... can i see in the code difference in train mode and test mode regarding this ? (it is also done in shape retrieval...is shape retrieval in the available code? it is also done in part segmentation .. can i see it there?)
-
-    classification:
+- **Q2**: in the papers it says "since each model is rotated to 12 poses, in the testing phase the activations of the output layer for each pose can be pooled together to increase the accuracy of predictions." and this is done for classification, retrieval, segmentation ... where can i see this in the code (i.e. in test phase and not in train phase)
         
 
-- i dont understant this "This is because the indicator function that represents the original shape is defined in a volume, while our octree is built from the point cloud. After replacing the normal signal as the occupying bits, it is equivalent to discarding the inside portion of the indicator function, which causes information loss compared with the full voxel representation and makes it hard to distinguish the inside and outside of the object"
+- SQ2: i dont understant "This is because the indicator function that represents the original shape is defined in a volume, while our octree is built from the point cloud. After replacing the normal signal as the occupying bits, it is equivalent to discarding the inside portion of the indicator function, which causes information loss compared with the full voxel representation and makes it hard to distinguish the inside and outside of the object"
 
-- in fig6 they show what each layer's activations focus on...is this in the code? i guess no but we can add it
+- N1: in fig6 they show what each layer's activations focus on...is this in the code? i guess no but we can add it
 
-- in segmentation (in OCNN paper) they reuse the weights trained by the retrieval task.
-(the **convolution part is initialized with the weight trained on ShapeNet and fixed during optimization**, while the **weight of the deconvolution part is  randomly initialized and then evolves** according to the optimization process)
+- N2: in segmentation (in OCNN paper) they reuse the weights trained by the retrieval task. (the **convolution part is initialized with the weight trained on ShapeNet and fixed during optimization**, while the **weight of the deconvolution part is randomly initialized and then evolves** according to the optimization process).
 
-- in segmentation (in OCNN paper) they optionally do a refinement after prediction of each point .. is this done by default in Caffe/tensorflow ?
+- **Q3**: in segmentation (in OCNN paper) they optionally do a refinement after prediction of each point .. is this done by default in Caffe/tensorflow ?
 
 - sto aocnn leei "models the 3D shape within each octant with a planar patch" .. touto en diaforetiko pou to ocnn ? leei oti "it takes the planar patch and displacement as input" .. touto en to idio me ekeino pou etrexa ego pou exei 4 input channels? i.e. displacement = distortion ? meta leei episis "The stored patch has a higher order approximation accuracy than using the center or one of the corners of the octant as the sample of the surface." omos afou en to nx,ny,nz,d pou xrisimopoiei ston kodika ... opotan einai to nx,ny,nz,d ousiastika to planar patch ? kai apla sto implementation tou ocnn tensorflow ekaman to na en pio paromoio me to implementation aocnn (diladi mono to adaptation den evalan)? 
 
