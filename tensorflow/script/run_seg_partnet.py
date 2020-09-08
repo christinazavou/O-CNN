@@ -205,15 +205,15 @@ class PartNetSolver(TFSolver):
     tensor_dict_for_train_summary.update({'lr': lr})
     tensor_dict_for_test_summary = {}
     tensor_dict_for_test_summary.update(self.test_tensors_dict)
-    self.summaries(tensor_dict_for_train_summary, tensor_dict_for_test_summary)
+    self.summaries_dict(tensor_dict_for_train_summary, tensor_dict_for_test_summary)
 
-  def summaries(self, train_tensor_dict, test_tensor_dict):
+  def summaries_dict(self, train_tensor_dict, test_tensor_dict):
     self.summ_train_occ = None
     if CONF_MAT_KEY in train_tensor_dict:
-      self.summ_train_occ = summary_train({CONF_MAT_KEY: train_tensor_dict[CONF_MAT_KEY]})
+      self.summ_train_occ = summary_train_dict({CONF_MAT_KEY: train_tensor_dict[CONF_MAT_KEY]})
       del train_tensor_dict[CONF_MAT_KEY]
-    self.summ_train_alw = summary_train(train_tensor_dict)
-    self.summ_test, self.summ_holder_dict = summary_test(test_tensor_dict)
+    self.summ_train_alw = summary_train_dict(train_tensor_dict)
+    self.summ_test, self.summ_holder_dict = summary_test_dict(test_tensor_dict)
     self.summ_test_keys = [key for key in self.summ_holder_dict.keys() if key != CONF_MAT_KEY]
     self.summ2txt(self.summ_test_keys, 'step', 'w')
 

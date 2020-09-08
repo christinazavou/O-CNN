@@ -12,7 +12,7 @@ test-seg-hrnet-buildings:
 	&& cd .. \
 	&& python run_seg_partnet.py --config configs/segmentation/seg_hrnet_partnet_pts.yaml SOLVER.run test SOLVER.gpu 0, SOLVER.logdir /media/christina/Elements/ANNFASS_DATA/output/segmentation/Building/hrnet_randinit/Batch4NoColourDepth6 SOLVER.test_iter 200 SOLVER.ckpt /media/christina/Elements/ANNFASS_DATA/output/segmentation/Building/hrnet_randinit/Batch4NoColourDepth6/model/iter_001000.ckpt DATA.test.location /media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points_tuesday/test_points100000.tfrecords MODEL.nout 34 MODEL.factor 2 LOSS.num_class 34
 
-train-seg-hrnet-buildings-with-colour:
+train-seg-hrnet-buildings-no-colour:
 	export PATH=/home/graphicslab/miniconda3/bin/:$$PATH \
 	&& source activate OCNN \
 	&& cd .. \
@@ -20,24 +20,22 @@ train-seg-hrnet-buildings-with-colour:
 		--config configs/segmentation/seg_hrnet_partnet_pts.yaml \
 		SOLVER.run train \
 		SOLVER.gpu 0, \
-		SOLVER.logdir logs/segmentation/Building/hrnet_randinit_sample/Batch4ColourDepth7 \
-		SOLVER.max_iter 100 \
-		SOLVER.step_size 50,25 \
-		SOLVER.test_every_iter 10 \
-		SOLVER.test_iter 20 \
+		SOLVER.logdir /media/graphicslab/Elements/ANNFASS_data/seg_out/debugD7NoC \
 		SOLVER.ckpt '' \
-		DATA.train.location /media/graphicslab/Elements/ANNFASS_DATA/RGBA_uniform/with_colour_sample/dataset_points_sample/train_points1000.tfrecords \
-		DATA.train.take 16 \
-		DATA.train.batch_size 4 \
-		DATA.test.location /media/graphicslab/Elements/ANNFASS_DATA/RGBA_uniform/with_colour_sample/dataset_points_sample/test_points1000.tfrecords \
-		MODEL.nout 34 \
-		MODEL.factor 2 \
-		LOSS.num_class 34 \
+		SOLVER.max_iter 1000 \
+		SOLVER.step_size 500,250 \
+		SOLVER.test_every_iter 200 \
+		DATA.train.location /media/graphicslab/Elements/ANNFASS_data/seg_data/no_colour/train_points100000.tfrecords \
 		DATA.train.depth 7 \
+		DATA.train.batch_size 4 \
+		DATA.train.take 1600 \
+		DATA.test.location /media/graphicslab/Elements/ANNFASS_data/seg_data/no_colour/test_points100000.tfrecords \
 		DATA.test.depth 7 \
+		DATA.test.batch_size 4 \
+		MODEL.nout 34 \
+		LOSS.num_class 34 \
 		MODEL.depth 7 \
-		MODEL.depth_out 7 \
-		MODEL.channel 8
+		MODEL.depth_out 7
 
 run-experiments:
 	export PATH=/home/christina/miniconda3/bin/:$$PATH \

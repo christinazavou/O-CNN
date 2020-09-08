@@ -10,7 +10,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 class TFSolver:
     def __init__(self, flags, compute_graph=None, build_solver=build_solver):
-        self.flags = flags.SOLVER
+        self.flags = flags
         self.graph = compute_graph
         self.build_solver = build_solver
 

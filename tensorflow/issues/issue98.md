@@ -14,7 +14,11 @@
     autoencoder:
     
     segmentation:
-        
+        in depth 9 with input 128 we will output 4.0 channels (2^2 = 2^9-7)
+        in depth 8 with input 128 we will output 8.0 channels (2^3 = 2^9-6)
+        in depth 7 with input 128 we will output 16.0 channels (2^4 = 2^9-5)
+        in depth 6 with input 128 we will output 32.0 channels (2^5 = 2^9-4)
+
 
 - in object classification ... "Since each model is rotated to 12 poses, in the testing phase the activations of the output layer for each pose can be pooled together to increase the accuracy of predictions." ... can i see in the code difference in train mode and test mode regarding this ? (it is also done in shape retrieval...is shape retrieval in the available code? it is also done in part segmentation .. can i see it there?)
 
