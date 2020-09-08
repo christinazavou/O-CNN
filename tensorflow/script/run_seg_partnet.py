@@ -22,7 +22,8 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Add config
 from visualize import vis_confusion_matrix
 
-FLAGS.LOSS.point_wise = True
+# FLAGS.LOSS.point_wise = True
+FLAGS.LOSS.point_wise = False
 MASK_LABEL = 0  # metrics are ignored for the points with label 'undefined' ..
 CONF_MAT_KEY = 'confusion_matrix'
 CATEGORIES = ANNFASS_LABELS
