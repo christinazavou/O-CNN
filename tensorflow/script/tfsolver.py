@@ -10,7 +10,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 class TFSolver:
   def __init__(self, flags, compute_graph=None, build_solver=build_solver):
-    self.flags = flags
+    self.flags = flags.SOLVER
     self.graph = compute_graph
     self.build_solver = build_solver
 
@@ -22,8 +22,8 @@ class TFSolver:
       train_params['gpu_num'] = gpu_num
       test_params['gpu_num']  = gpu_num
 
-    self.train_tensors, train_names, self.mytroctree, self.mytrlabel, self.tr_debug_checks = self.graph(**train_params)
-    self.test_tensors, self.test_names, _, _, _ = self.graph(**test_params)
+    self.train_tensors, train_names = self.graph(**train_params)
+    self.test_tensors, self.test_names = self.graph(**test_params)
 
     total_loss = self.train_tensors[train_names.index('total_loss')]
     solver_param = [total_loss, LRFactory(self.flags)]
