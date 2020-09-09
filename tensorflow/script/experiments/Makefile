@@ -94,3 +94,6 @@ test-cls-modelnet40-ocnn:
 		MODEL.name ocnn \
 		DATA.train.location /media/graphicslab/Elements/ANNFASS_data/cls_data/m40_train_points.tfrecords \
 		DATA.test.location /media/graphicslab/Elements/ANNFASS_data/cls_data/m40_test_points.tfrecords
+
+train-seg-partnet-hrnet-bottle:
+	--config configs/segmentation/seg_hrnet_partnet_pts.yaml SOLVER.run train SOLVER.gpu 0, SOLVER.logdir /media/christina/Data/ANFASS_data/seg_out/Bottle/debugDef SOLVER.test_iter 84 SOLVER.ckpt '' DATA.train.location /media/christina/Data/ANFASS_data/partnet_data/dataset/Bottle_train_level3.tfrecords DATA.test.location /media/christina/Data/ANFASS_data/partnet_data/dataset/Bottle_test_level3.tfrecords MODEL.nout 9 MODEL.factor 2 LOSS.num_class 9 DATA.train.take 315 DATA.test.batch_size 1 DATA.train.batch_size 4
