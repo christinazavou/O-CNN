@@ -2,6 +2,7 @@ import sys
 import tensorflow as tf
 sys.path.append("..")
 from libs import *
+from tensorflow.python.ops import math_ops
 
 
 def get_variables_with_name(name=None, without=None, train_only=True, verbose=False):
@@ -247,27 +248,12 @@ def softmax_loss(logit, label_gt, num_class, label_smoothing=0.0):
   return loss
 
 
-def softmax_loss_with_cong_mat(logit, label_gt, num_class, label_smoothing=0.0):
-  with tf.name_scope('softmax_loss'):
-    label_gt = tf.cast(label_gt, tf.int32)
-    onehot = tf.one_hot(label_gt, depth=num_class)
-
-    prediction = tf.argmax(logit, axis=1, output_type=tf.int32)
-
-    loss = tf.losses.softmax_cross_entropy(
-        onehot, logit, label_smoothing=label_smoothing)
-
-    conf_mat = confusion_matrix(prediction, label_gt, num_class, weights=None)
-
-  return loss, conf_mat
-
-
-def confusion_matrix(prediction, label, num_classes, weights=None):
+def confusion_matrix(prediction, label, num_classes=None, weights=None):
   matrix = tf.math.confusion_matrix(
     label, prediction, num_classes=num_classes, weights=weights, dtype=tf.dtypes.float32, name=None
   )
   return tf.reshape(matrix, (1, num_classes, num_classes, 1))
-
+  # return tf.expand_dims(tf.expand_dims(tf.math.confusion_matrix(label, prediction, dtype=tf.dtypes.float32), 0), -1)
 
 def l2_regularizer(name, weight_decay):
   with tf.name_scope('l2_regularizer'):
@@ -449,10 +435,15 @@ def loss_functions_seg_debug_checks(logit, label_gt, num_class, weight_decay, va
     masked_label = tf.boolean_mask(label_gt, label_mask)
     debug_checks['{}/masked_logit'.format(tf.get_variable_scope().name)] = masked_logit
     debug_checks['{}/masked_label'.format(tf.get_variable_scope().name)] = masked_label
-    loss, conf_mat = softmax_loss_with_cong_mat(masked_logit, masked_label, num_class)
+    loss = softmax_loss(masked_logit, masked_label, num_class)
+
+    # todo; fixme; checkit
+    masked_prediction = tf.argmax(masked_logit, axis=1, output_type=tf.int32)
+    conf_mat = confusion_matrix(masked_prediction, masked_label, num_class+1)
 
     accu = softmax_accuracy(masked_logit, masked_label)
     regularizer = l2_regularizer(var_name, weight_decay)
+
   return {'loss': loss, 'accu': accu, 'regularizer': regularizer, 'confusion_matrix': conf_mat},\
          debug_checks
 

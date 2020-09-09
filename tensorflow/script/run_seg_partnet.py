@@ -26,10 +26,10 @@ from visualize import vis_confusion_matrix
 FLAGS.LOSS.point_wise = False
 MASK_LABEL = 0  # metrics are ignored for the points with label 'undefined' ..
 CONF_MAT_KEY = 'confusion_matrix'
-CATEGORIES = ANNFASS_LABELS
-# CATEGORIES = LEVEL3_LABELS
-COLOURS = ANNFASS_COLORS
-# COLOURS = LEVEL3_COLORS
+# CATEGORIES = ANNFASS_LABELS
+CATEGORIES = LEVEL3_LABELS
+# COLOURS = ANNFASS_COLORS
+COLOURS = LEVEL3_COLORS
 
 
 # get the label and pts
