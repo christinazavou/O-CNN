@@ -114,8 +114,7 @@ class ComputeGraphSeg:
 
         if not FLAGS.LOSS.point_wise:
           pts, label = None, get_seg_label(octree, FLAGS.MODEL.depth_out)
-          debug_checks["{}/seg_label/pts".format(tf.get_variable_scope().name)] = pts
-          debug_checks["{}/seg_label/label".format(tf.get_variable_scope().name)] = label
+          debug_checks["{}/seg_label/label(pts=None)".format(tf.get_variable_scope().name)] = label
 
         logit, dc = seg_network(octree, FLAGS.MODEL, training, reuse, pts=pts)
         debug_checks.update(dc)

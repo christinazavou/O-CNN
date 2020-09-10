@@ -1,0 +1,77 @@
+--config configs/segmentation/seg_hrnet_partnet_pts.yaml SOLVER.run train SOLVER.gpu 0, SOLVER.logdir /media/christina/Data/ANFASS_data/seg_out/Bottle/debugNotPointwise SOLVER.test_iter 84 SOLVER.ckpt '' DATA.train.location /media/christina/Data/ANFASS_data/partnet_data/dataset/Bottle_train_level3.tfrecords DATA.test.location /media/christina/Data/ANFASS_data/partnet_data/dataset/Bottle_test_level3.tfrecords MODEL.nout 9 MODEL.factor 2 LOSS.num_class 9 DATA.train.take 315 DATA.test.batch_size 1 DATA.train.batch_size 4 SOLVER.test_every_iter 50
+==========================================================================================================================
+UPSAMPLING
+
+"nearest" ==> octree_tile
+"linear" ==> octree_bilinear
+
+to generate features for points: we have features per octant .. thus we get a weighted combination of the octants that are next to the point .. weighted by the distance of the octant to the point ..
+
+
+def seg_header(self, inputs, octree, nout, mask, training):
+
+pali exei if depth_out == 6: allios tipota .. meneis me what ???
+
+
+isos ontos exei memory issue me to octree generation because it is on gpu telika kai oxi on cpu
+
+
+==========================================================================================================================
+
+
+'/octree' = {tuple: 1} 2606320
+'/points' = {tuple: 1} 4
+'/labels' = {tuple: 1} 4
+'/pts(xyz)' = {tuple: 2} (35807, 4)
+'/label' = {tuple: 2} (35807, 1)
+'/masked_and_ratio/pts(xyz)' = {tuple: 2} (17763, 4)
+'/masked_and_ratio/label' = {tuple: 1} 17763
+'/normals' = {tuple: 2} (35807, 3)
+'/seg_label/label(pts=None)' = {tuple: 1} 35472
+'ocnn_hrnet/signal/data(feature)' = {tuple: 4} (1, 4, 35472, 1)
+'ocnn_hrnet/front/depth_6/conv' = {tuple: 4} (1, 32, 35472, 1)
+'ocnn_hrnet/front/depth_6/conv_pooled' = {tuple: 4} (1, 32, 8776, 1)
+'ocnn_hrnet/front/depth_5/front/conv5' = {tuple: 4} (1, 128, 8776, 1)
+'ocnn_hrnet/stage_1/branch_5/resblock_d5_0/data' = {tuple: 4} (1, 128, 8776, 1)
+'ocnn_hrnet/stage_1/branch_5/resblock_d5_1/data' = {tuple: 4} (1, 128, 8776, 1)
+'ocnn_hrnet/stage_1/branch_5/resblock_d5_2/data' = {tuple: 4} (1, 128, 8776, 1)
+'ocnn_hrnet/stage_2/branch_5/resblock_d5_0/data' = {tuple: 4} (1, 128, 8776, 1)
+'ocnn_hrnet/stage_2/branch_5/resblock_d5_1/data' = {tuple: 4} (1, 128, 8776, 1)
+'ocnn_hrnet/stage_2/branch_5/resblock_d5_2/data' = {tuple: 4} (1, 128, 8776, 1)
+'ocnn_hrnet/stage_2/branch_4/resblock_d4_0/data' = {tuple: 4} (1, 256, 2312, 1)
+'ocnn_hrnet/stage_2/branch_4/resblock_d4_1/data' = {tuple: 4} (1, 256, 2312, 1)
+'ocnn_hrnet/stage_2/branch_4/resblock_d4_2/data' = {tuple: 4} (1, 256, 2312, 1)
+'ocnn_hrnet/stage_3/branch_5/resblock_d5_0/data' = {tuple: 4} (1, 128, 8776, 1)
+'ocnn_hrnet/stage_3/branch_5/resblock_d5_1/data' = {tuple: 4} (1, 128, 8776, 1)
+'ocnn_hrnet/stage_3/branch_5/resblock_d5_2/data' = {tuple: 4} (1, 128, 8776, 1)
+'ocnn_hrnet/stage_3/branch_4/resblock_d4_0/data' = {tuple: 4} (1, 256, 2312, 1)
+'ocnn_hrnet/stage_3/branch_4/resblock_d4_1/data' = {tuple: 4} (1, 256, 2312, 1)
+'ocnn_hrnet/stage_3/branch_4/resblock_d4_2/data' = {tuple: 4} (1, 256, 2312, 1)
+'ocnn_hrnet/stage_3/branch_3/resblock_d3_0/data' = {tuple: 4} (1, 512, 552, 1)
+'ocnn_hrnet/stage_3/branch_3/resblock_d3_1/data' = {tuple: 4} (1, 512, 552, 1)
+'ocnn_hrnet/stage_3/branch_3/resblock_d3_2/data' = {tuple: 4} (1, 512, 552, 1)
+'/logit' = {tuple: 2} (35472, 9)
+'/masked_logit' = {tuple: 2} (16128, 9)
+'/masked_label' = {tuple: 1} 16128
+
+'ocnn_hrnet/stage_1/transitions_features': [
+	[(1,128,7567,1)], [(1,256,1840,1)]
+]
+
+'ocnn_hrnet/stage_1':[
+	(1,128,7568,1), (1,256,1840,1)
+]
+
+'ocnn_hrnet/stage_2/transitions_features': [
+	[(1,128,7568,1), (1,128,7568,1)],
+	[(1,256,1840,1), (1,256,1840,1)],
+	[(1,512,512,1), (1,512,512,1)]	
+]
+
+'ocnn_hrnet/stage_2': [
+	(1,128,7568,1), (1,256,1840,1), (1,512,512,1)
+]
+
+'backbone': [
+	(1,128,7568,1), (1,256,1840,1), (1,512,512,1)
+]

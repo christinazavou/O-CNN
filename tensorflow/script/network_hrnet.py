@@ -170,10 +170,13 @@ class HRNet:
     depth_out, factor = self.flags.depth_out, self.flags.factor
     if depth_out == 6:
       feature = OctreeUpsample('linear')(feature, octree, 5, mask)
+      debug_checks['{}/feature(linear_ups)'.format(tf.get_variable_scope().name)] = feature
       conv6 = self.tensors['front/conv6']  # (1, C, H, 1)
       if mask is not None:
         conv6 = tf.boolean_mask(conv6, mask, axis=2)
       feature = tf.concat([feature, conv6], axis=1)
+      debug_checks['{}/conv6'.format(tf.get_variable_scope().name)] = conv6
+      debug_checks['{}/feature(concat)'.format(tf.get_variable_scope().name)] = feature
     else:
       if mask is not None:
         feature = tf.boolean_mask(feature, mask, axis=2)
@@ -181,7 +184,8 @@ class HRNet:
     # feature = octree_conv1x1_bn_relu(feature, 1024, training=training)
     with tf.variable_scope('predict_%d' % depth_out):
       logit = predict_module(feature, nout, 128 * factor, training) # 2-FC
-      logit = tf.transpose(tf.squeeze(logit, [0, 3])) # (1, C, H, 1) -> (H, C)  
+      logit = tf.transpose(tf.squeeze(logit, [0, 3])) # (1, C, H, 1) -> (H, C)
+      debug_checks['{}/logit'.format(tf.get_variable_scope().name)] = logit
     return logit
 
   def seg_header_pts(self, inputs, octree, nout, pts, training):
