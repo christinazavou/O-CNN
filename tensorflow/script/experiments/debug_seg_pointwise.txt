@@ -191,5 +191,4 @@ And we predict
 '/masked_label' = {tuple: 1} 6857
 
 
-
-
+note: 896 = shape features' channels
