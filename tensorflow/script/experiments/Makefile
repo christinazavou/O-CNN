@@ -37,6 +37,24 @@ train-seg-hrnet-buildings-no-colour:
 		MODEL.depth 7 \
 		MODEL.depth_out 7
 
+params-seg-hrnet-buildings-no-colour:
+	export PATH=/home/christina/miniconda3/bin/:$$PATH \
+		&& source activate OCNN \
+		&& cd .. \
+		&& python run_seg_partnet.py \
+			--config configs/segmentation/seg_hrnet_partnet_pts.yaml \
+			SOLVER.run param_stats \
+			SOLVER.gpu 0, \
+			SOLVER.logdir /media/christina/Elements/ANNFASS_DATA/output/segmentation/Building/hrnet_randinit/Batch4NoColourDepth6 \
+			SOLVER.ckpt /media/christina/Elements/ANNFASS_DATA/output/segmentation/Building/hrnet_randinit/Batch4NoColourDepth6/model/iter_001000.ckpt \
+			DATA.train.location /media/graphicslab/Elements/ANNFASS_data/seg_data/no_colour/train_points100000.tfrecords \
+			DATA.train.batch_size 4 \
+			DATA.train.take 1600 \
+			DATA.test.location /media/graphicslab/Elements/ANNFASS_data/seg_data/no_colour/test_points100000.tfrecords \
+			DATA.test.batch_size 4 \
+			MODEL.nout 34 \
+			LOSS.num_class 34
+
 run-experiments:
 	export PATH=/home/christina/miniconda3/bin/:$$PATH \
 	&& source activate OCNN \

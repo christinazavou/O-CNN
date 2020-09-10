@@ -1,7 +1,3 @@
-import os
-
-import tensorflow as tf
-import numpy as np
 import pickle
 
 from config import parse_args, FLAGS
@@ -22,14 +18,14 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Add config
 from visualize import vis_confusion_matrix
 
-# FLAGS.LOSS.point_wise = True
-FLAGS.LOSS.point_wise = False
+FLAGS.LOSS.point_wise = True
+# FLAGS.LOSS.point_wise = False
 MASK_LABEL = 0  # metrics are ignored for the points with label 'undefined' ..
 CONF_MAT_KEY = 'confusion_matrix'
-# CATEGORIES = ANNFASS_LABELS
-CATEGORIES = LEVEL3_LABELS
-# COLOURS = ANNFASS_COLORS
-COLOURS = LEVEL3_COLORS
+CATEGORIES = ANNFASS_LABELS
+# CATEGORIES = LEVEL3_LABELS
+COLOURS = ANNFASS_COLORS
+# COLOURS = LEVEL3_COLORS
 
 
 # get the label and pts
@@ -119,6 +115,7 @@ class ComputeGraphSeg:
         logit, dc = seg_network(octree, FLAGS.MODEL, training, reuse, pts=pts)
         debug_checks.update(dc)
         debug_checks["{}/logit".format(tf.get_variable_scope().name)] = logit
+        debug_checks["{}/probabilities".format(tf.get_variable_scope().name)] = get_probabilities(logit)
         metrics_dict, dc = loss_functions_seg_debug_checks(
           logit, label, FLAGS.LOSS.num_class, FLAGS.LOSS.weight_decay, 'ocnn', mask=MASK_LABEL)
         debug_checks.update(dc)
@@ -142,34 +139,25 @@ def result_callback(avg_results_dict, num_class):
     return result_callback_maria(avg_results_dict, num_class)
   except Exception as e:
     raise Exception("Got exception: {}. Maybe you didnt use 'DATA.test.batch_size 1'".format(e))
-    # # calc part-IoU, update `iou`, this is in correspondence with Line 77
-    # iou_avg = 0.0
-    # ious = [0] * num_class
-    # for i in range(1, num_class):  # !!! Ignore the first label
-    #     instc_i = avg_results_dict['intsc_%d' % i]
-    #     union_i = avg_results_dict['union_%d' % i]
-    #     ious[i] = instc_i / (union_i + 1.0e-10)
-    #     iou_avg = iou_avg + ious[i]
-    # iou_avg = iou_avg / (num_class - 1)
-    # avg_results_dict['iou'] = iou_avg
-    # return avg_results_dict
 
 
 def result_callback_maria(avg_results_dict, num_class):
   # calc part-IoU, update `iou`, this is in correspondence with Line 77
   iou_avg = 0.0
-  ious = [0] * num_class
+  ious = []
   for i in range(1, num_class):  # !!! Ignore the first label
     instc_i = avg_results_dict['intsc_%d' % i]
     union_i = avg_results_dict['union_%d' % i]
     if union_i > 0.0:
-      ious[i] = instc_i / union_i
-    else:
-      ious[i] = 0.0
-    iou_avg = iou_avg + ious[i]
-  iou_avg = iou_avg / np.count_nonzero(ious)
+      ious.append(instc_i / union_i)
+  if len(ious) > 0:
+    iou_avg = sum(ious) / len(ious)
   avg_results_dict['iou'] = iou_avg
   return avg_results_dict
+
+
+def get_probabilities(logits):
+  return tf.nn.softmax(logits)
 
 
 # define the solver
@@ -377,11 +365,9 @@ class PartNetSolver(TFSolver):
                                                        iter_tdc["/normals"], \
                                                        iter_tdc["/logit"], \
                                                        iter_tdc['/masked_logit']
+
         predictions = np.argmax(logit, axis=1).astype(np.int32)
-        probabilities = []
-        for point in range(logit.shape[0]):
-          probabilities.append(logit[point, predictions[point]])
-        probabilities = np.array(probabilities)
+        probabilities = iter_tdc['/probabilities']
 
         l_colors = np.array([to_rgb(COLOURS[category][int(l)]) if l >= 0 else to_rgb(COLOURS[category][0])
                              for l in labels])
@@ -389,8 +375,6 @@ class PartNetSolver(TFSolver):
                              for p in predictions])
 
         masked_predictions = np.argmax(masked_logit, axis=1).astype(np.int32)
-        # if predictions.shape != masked_predictions.shape:
-        #   print("!=:", labels.min(), labels.max(), predictions.min(), predictions.max())
 
         # run testing average and print the results
         reports = 'batch: %04d; ' % i
@@ -403,7 +387,7 @@ class PartNetSolver(TFSolver):
         current_iou = int(self.result_callback(iter_test_result_dict)['iou'] * 100)
         current_ply_i_f = os.path.join(groundtruth_ply_dir, "i{}.ply".format(i))
         current_ply_o_f = os.path.join(predicted_ply_dir, "iou{}_i{}.ply".format(current_iou, i))
-        probabilities_o_f = os.path.join(probabilities_pkl_dir, "i{}.ply".format(i))
+        probabilities_o_f = os.path.join(probabilities_pkl_dir, "i{}.pkl".format(i))
         save_ply(current_ply_i_f, points, normals, l_colors)
         save_ply(current_ply_o_f, points, normals, p_colors)
         current_pkl_f = os.path.join(predicted_pkl_dir, "p{}_m{}_i{}.pkl".format(predictions.shape[0],
