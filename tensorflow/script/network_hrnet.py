@@ -39,28 +39,28 @@ def branches(data, octree, depth, channel, block_num, training):
       debug_checks.update(dc)
   return data, debug_checks
 
-def trans_func(data_in, octree, d0, d1, training):
-  data = data_in
-  channel0 = int(data.shape[1])
-  channel1 = channel0 * (2 ** (d0 - d1))
-  # if channel1 > 256: channel1 = 256  ## !!! clip the channel to 256
-  # no relu for the last feature map
-  with tf.variable_scope('trans_%d_%d' % (d0, d1)):
-    if d0 > d1:   # downsample
-      for d in range(d0, d1 + 1, -1):
-        with tf.variable_scope('down_%d' % d):
-          data = octree_conv_bn_relu(data, octree, d, channel0/4, training, stride=2)
-      with tf.variable_scope('down_%d' % (d1 + 1)):
-        data = octree_conv_bn(data, octree, d1 + 1, channel1, training, stride=2)
-    elif d0 < d1: # upsample
-      for d in range(d0, d1, 1): 
-        with tf.variable_scope('up_%d' % d):
-          if d == d0:
-            data = octree_conv1x1_bn(data, channel1, training)
-          data = octree_tile(data, octree, d)
-    else:        # do nothing
-      pass
-  return data
+# def trans_func(data_in, octree, d0, d1, training):
+#   data = data_in
+#   channel0 = int(data.shape[1])
+#   channel1 = channel0 * (2 ** (d0 - d1))
+#   # if channel1 > 256: channel1 = 256  ## !!! clip the channel to 256
+#   # no relu for the last feature map
+#   with tf.variable_scope('trans_%d_%d' % (d0, d1)):
+#     if d0 > d1:   # downsample
+#       for d in range(d0, d1 + 1, -1):
+#         with tf.variable_scope('down_%d' % d):
+#           data = octree_conv_bn_relu(data, octree, d, channel0/4, training, stride=2)
+#       with tf.variable_scope('down_%d' % (d1 + 1)):
+#         data = octree_conv_bn(data, octree, d1 + 1, channel1, training, stride=2)
+#     elif d0 < d1: # upsample
+#       for d in range(d0, d1, 1):
+#         with tf.variable_scope('up_%d' % d):
+#           if d == d0:
+#             data = octree_conv1x1_bn(data, channel1, training)
+#           data = octree_tile(data, octree, d)
+#     else:        # do nothing
+#       pass
+#   return data
 
 def trans_func(data_in, octree, d0, d1, training, upsample):
   data = data_in

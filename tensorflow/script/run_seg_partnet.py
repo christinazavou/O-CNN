@@ -22,8 +22,8 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Add config
 from visualize import vis_confusion_matrix
 
-FLAGS.LOSS.point_wise = True
-# FLAGS.LOSS.point_wise = False
+# FLAGS.LOSS.point_wise = True
+FLAGS.LOSS.point_wise = False
 MASK_LABEL = 0  # metrics are ignored for the points with label 'undefined' ..
 CONF_MAT_KEY = 'confusion_matrix'
 # CATEGORIES = ANNFASS_LABELS
@@ -167,7 +167,7 @@ def result_callback_maria(avg_results_dict, num_class):
       ious[i] = instc_i / union_i
     else:
       ious[i] = 0.0
-  iou_avg = iou_avg + ious[i]
+    iou_avg = iou_avg + ious[i]
   iou_avg = iou_avg / np.count_nonzero(ious)
   avg_results_dict['iou'] = iou_avg
   return avg_results_dict
@@ -364,10 +364,14 @@ class PartNetSolver(TFSolver):
       predicted_pkl_dir = os.path.join(self.flags.logdir, "predicted_pkl_{}".format(category))
       if not os.path.exists(predicted_pkl_dir):
         os.makedirs(predicted_pkl_dir)
+      probabilities_pkl_dir = os.path.join(self.flags.logdir, "probabilities_pkl_{}".format(category))
+      if not os.path.exists(probabilities_pkl_dir):
+        os.makedirs(probabilities_pkl_dir)
 
       print('Start testing ...')
       for i in range(0, self.flags.test_iter):
         iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks])
+        iter_test_result_dict = self.result_callback(iter_test_result_dict)
 
         points, labels, normals, logit, masked_logit = iter_tdc['/pts(xyz)'][:, 0:3], \
                                                        iter_tdc['/label'], \
@@ -375,6 +379,10 @@ class PartNetSolver(TFSolver):
                                                        iter_tdc["/logit"], \
                                                        iter_tdc['/masked_logit']
         predictions = np.argmax(logit, axis=1).astype(np.int32)
+        probabilities = []
+        for point in range(logit.shape[0]):
+          probabilities.append(logit[point, predictions[point]])
+        probabilities = np.array(probabilities)
 
         l_colors = np.array([to_rgb(COLOURS[category][int(l)]) if l >= 0 else to_rgb(COLOURS[category][0])
                              for l in labels])
@@ -396,11 +404,13 @@ class PartNetSolver(TFSolver):
         current_iou = int(self.result_callback(iter_test_result_dict)['iou'] * 100)
         current_ply_i_f = os.path.join(groundtruth_ply_dir, "i{}.ply".format(i))
         current_ply_o_f = os.path.join(predicted_ply_dir, "iou{}_i{}.ply".format(current_iou, i))
+        probabilities_o_f = os.path.join(probabilities_pkl_dir, "i{}.ply".format(i))
         save_ply(current_ply_i_f, points, normals, l_colors)
         save_ply(current_ply_o_f, points, normals, p_colors)
         current_pkl_f = os.path.join(predicted_pkl_dir, "p{}_m{}_i{}.pkl".format(predictions.shape[0],
                                                                                  masked_predictions.shape[0], i))
-        save_pickled(current_pkl_f, labels, predictions)
+        save_pickled(current_pkl_f, labels.ravel(), predictions.ravel())
+        save_pickled_np(probabilities_o_f, probabilities)
 
         # make sure results are sorted before writing them
         iter_test_result_sorted = []
@@ -437,6 +447,8 @@ def save_pickled(filename, ground_truth, prediction):
   with open(filename, 'wb') as fout:
     pickle.dump({'orig': list(ground_truth), 'pred': list(prediction)}, fout)
 
+def save_pickled_np(filename, probabilities):
+  pickle.dump(probabilities, open(filename, 'wb'))
 
 def save_ply(filename, points, normals, colors):
   pts_num = points.shape[0]

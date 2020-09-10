@@ -46,6 +46,10 @@ def test_tf_io_u_per_shape():
         result_dict.update({'union_%d'%i: unions[i] for i in range(4)})
         # result_dict = result_callback(result_dict, class_num)
         # assert int(result_dict["iou"]*1000) == 499
-        result_dict = result_callback_maria(result_dict, class_num)
+        # result_dict = result_callback_maria(result_dict, class_num)
         # assert int(result_dict["iou"]*1000) == 499
-        print(result_dict['iou'])
+        # print(result_dict['iou'])
+
+        result_dict = {'batch': 0.0, 'loss': 2.1302, 'accu': 0.3495, 'regularizer': 2.9788, 'total_loss': 5.109, 'iou': 0.2645, 'intsc_0': 0.0, 'union_0': 0.0, 'intsc_1': 26593.0, 'union_1': 56485.0, 'intsc_2': 0.0, 'union_2': 4996.0, 'intsc_3': 0.0, 'union_3': 0.0, 'intsc_4': 4584.0, 'union_4': 13736.0, 'intsc_5': 94.0, 'union_5': 25000.0, 'intsc_6': 0.0, 'union_6': 655.0, 'intsc_7': 0.0, 'union_7': 16183.0, 'intsc_8': 0.0, 'union_8': 0.0, 'intsc_9': 0.0, 'union_9': 15090.0, 'intsc_10': 0.0, 'union_10': 0.0, 'intsc_11': 0.0, 'union_11': 1443.0, 'intsc_12': 0.0, 'union_12': 0.0, 'intsc_13': 0.0, 'union_13': 0.0, 'intsc_14': 3650.0, 'union_14': 14611.0, 'intsc_15': 0.0, 'union_15': 1832.0, 'intsc_16': 0.0, 'union_16': 0.0, 'intsc_17': 0.0, 'union_17': 137.0, 'intsc_18': 0.0, 'union_18': 0.0, 'intsc_19': 0.0, 'union_19': 5943.0, 'intsc_20': 0.0, 'union_20': 0.0, 'intsc_21': 0.0, 'union_21': 0.0, 'intsc_22': 0.0, 'union_22': 0.0, 'intsc_23': 0.0, 'union_23': 0.0, 'intsc_24': 0.0, 'union_24': 7649.0, 'intsc_25': 0.0, 'union_25': 1137.0, 'intsc_26': 0.0, 'union_26': 0.0, 'intsc_27': 0.0, 'union_27': 0.0, 'intsc_28': 0.0, 'union_28': 0.0, 'intsc_29': 0.0, 'union_29': 0.0, 'intsc_30': 0.0, 'union_30': 0.0, 'intsc_31': 0.0, 'union_31': 0.0, 'intsc_32': 0.0, 'union_32': 0.0, 'intsc_33': 0.0, 'union_33': 0.0}
+
+        assert int(result_callback_maria(result_dict, 34)['iou']*10000) == 2645
