@@ -1,11 +1,13 @@
 the authors of ocnn paper, have recently published a new paper.
 this paper is about pretraining your 3D neural network with unlabeled data.
-specifically they created the MID loss with the HRNet structure. This structure uses convolutions together with downsampling and upsampling, and passes results of different shapes into the following layers (stages).
-In this way you can have at the end (stage 3) a good representation for the points, as well for the shape.
+specifically they created the MID loss with the HRNet structure.
+
+This structure uses convolutions together with downsampling and upsampling, and passes results of different shapes into the following layers (stages).
+In this way you can have at the end (stage 3) a good representation for the points, as well for the shape (when you pool and look at same square you consider bigger physical area).
 
 In the pretraining they suggest, the goal is to let augmented shapes be classified into their original shape, and let the points of the augmented shapes be mapped to their corresponding points of the original shape.
 
-This means that you have some feed forward connections from the point features into the point classes, and some feed forward connections from the shape features into the shape classes, and your loss function consists of two parts. For training the network and optimizing the weights they propose to update the backbone after each mini batch according to the learning rate, and update in a slower pace the weights of the rest neurons.
+This means that you have some feed forward connections from the point features into the point classes, and some feed forward connections from the shape features into the shape classes, and you have a loss function that consists of two parts. For training the network and optimizing the weights they propose to update the backbone after each mini batch according to the learning rate, and update in a slower pace the weights of the rest neurons.
 
 Together with this paper, they published the code to use HRNet for part segmentation, even without this MIDloss pretraining. This code is in Tensorflow, and it is comparable with their caffe implementation for segmentation. We are still investigating the exact details of the method.
 

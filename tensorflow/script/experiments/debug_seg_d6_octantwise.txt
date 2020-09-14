@@ -112,3 +112,6 @@ SEQ_HEADER:
 '/logit' = {tuple: 2} (35472, 9)
 '/masked_logit' = {tuple: 2} (16128, 9)
 '/masked_label' = {tuple: 1} 16128
+
+
+Question: where do i see the 32 added in concat to make 926 features for points?
