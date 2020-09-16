@@ -69,3 +69,23 @@ COPY tensorflow tensorflow
 COPY build_repo.sh .
 
 RUN sh build_repo.sh
+
+ENV SEG_DATA_DIR=/data/seg_data
+ENV SEG_OUT_DIR=/data/seg_out
+
+RUN cd tensorflow/script \
+    && echo python run_seg_partnet.py \
+        --config configs/segmentation/seg_hrnet_partnet_pts.yaml \
+        SOLVER.run train SOLVER.gpu 0, \
+        SOLVER.logdir ${SEG_OUT_DIR}/Chair/hrnet \
+        SOLVER.max_iter 20000 \
+        SOLVER.test_iter 1217 \
+        SOLVER.ckpt '' \
+        DATA.train.location ${SEG_DATA_DIR}/Chair_train_level3.tfrecords \
+        DATA.test.location ${SEG_DATA_DIR}/Chair_test_level3.tfrecords \
+        MODEL.nout 39 \
+        MODEL.factor 2 \
+        LOSS.num_class 39 \
+        DATA.train.take 4489 \
+        DATA.test.batch_size 1 \
+        DATA.train.batch_size 4
