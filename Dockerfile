@@ -60,6 +60,12 @@ RUN mkdir ~/temp \
         && make install
 
 
-WORKDIR /code
+WORKDIR /code/O-CNN
+RUN rm -rf *
 
-RUN git clone https://github.com/christinazavou/O-CNN.git
+COPY caffe caffe
+COPY octree octree
+COPY tensorflow tensorflow
+COPY build_repo.sh .
+
+RUN sh build_repo.sh

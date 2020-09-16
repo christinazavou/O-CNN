@@ -115,3 +115,6 @@ test-cls-modelnet40-ocnn:
 
 train-seg-partnet-hrnet-bottle:
 	--config configs/segmentation/seg_hrnet_partnet_pts.yaml SOLVER.run train SOLVER.gpu 0, SOLVER.logdir /media/christina/Data/ANFASS_data/seg_out/Bottle/debugDef SOLVER.test_iter 84 SOLVER.ckpt '' DATA.train.location /media/christina/Data/ANFASS_data/partnet_data/dataset/Bottle_train_level3.tfrecords DATA.test.location /media/christina/Data/ANFASS_data/partnet_data/dataset/Bottle_test_level3.tfrecords MODEL.nout 9 MODEL.factor 2 LOSS.num_class 9 DATA.train.take 315 DATA.test.batch_size 1 DATA.train.batch_size 4
+
+train-seg-hrnet-chair:
+	python run_seg_partnet.py --config configs/segmentation/seg_hrnet_partnet_pts.yaml SOLVER.run train SOLVER.gpu 0, SOLVER.logdir /media/graphicslab/BigData/zavou/ANNFASS_data/seg_out/Chair/hrnet SOLVER.max_iter 20000 SOLVER.test_iter 1217 SOLVER.ckpt '' DATA.train.location /media/graphicslab/BigData/zavou/ANNFASS_data/seg_data/partnet/Chair/Chair_train_level3.tfrecords DATA.test.location /media/graphicslab/BigData/zavou/ANNFASS_data/seg_data/partnet/Chair/Chair_test_level3.tfrecords MODEL.nout 39 MODEL.factor 2 LOSS.num_class 39 DATA.train.take 4489 DATA.test.batch_size 1 DATA.train.batch_size 4
