@@ -1,13 +1,10 @@
 - **Q1**: is there a way to see the tensorflow implementation of occn_conv ?
 
-- **Q2**: in the papers it says "since each model is rotated to 12 poses, in the testing phase the activations of the output layer for each pose can be pooled together to increase the accuracy of predictions." and this is done for classification, retrieval, segmentation ... where can i see this in the code (i.e. in test phase and not in train phase)
+- **Q2**: in the papers it says "since each model is rotated to 12 poses, in the testing phase the activations of the output layer for each pose can be pooled together to increase the accuracy of predictions." and this is done for classification, retrieval, segmentation ... is this not available in the tensorflow code? (i haven't seen any pooling in the test phase, neither saw generation of 12 poses..except in the classification with octrees generated beforehand where each pose is treaded as a unique model)
 
 - **Q3**: in segmentation (in OCNN paper) they optionally do a refinement after prediction of each point .. is this done by default in Caffe/tensorflow ?
 
 - **Q4**: if i use aocnn instead (in segmentation) will i be able to run bigger batch ? TODO
-
-- **Q5**: how are predictions per point happening if we only have shape features?
-
 
 - SQ1: isxiei to number of channels for Ul is set to 2^max(1,9−l) sta diktia tous? iparxei idikos logos pou einai etsi ? i apla epeidi genika se CNN me images aspoume oso mikrainei to resolution (widthxheight) toso auksanontai ta channels? TODO: check cls, ae, seg channels per level
 
@@ -32,16 +29,12 @@
         in depth 7 with input 128 we will output 16.0 channels (2^4 = 2^9-5)
         in depth 6 with input 128 we will output 32.0 channels (2^5 = 2^9-4)
 
-- SQ2: i dont understant "This is because the indicator function that represents the original shape is defined in a volume, while our octree is built from the point cloud. After replacing the normal signal as the occupying bits, it is equivalent to discarding the inside portion of the indicator function, which causes information loss compared with the full voxel representation and makes it hard to distinguish the inside and outside of the object"
-
 - SQ3: in aocnn paper: "To make the normal direction consistent to the underlying shape normal, we check whether the angle between n and the average normals of SO is less than 90 degrees: if not, n and d are multiplied by −1" is it because the plane can have a normal in two opposite directions so we get the normals of the points to find which direction it is?
 
 - SQ4: in aocnn paper: not sure what is "the edge length of the finest grid of the octree". not sure what is the difference of fig3middle and 3right.
 
-- SQ5: in aocnn paper: "The loss function of the Adaptive O-CNN decoder includes the structure loss and the patch loss." .. is this in TF code? (i guess yes in shape completion network)
 
 - SQ6: in midnet paper: they say they do "two shape segmentation". do they mean "part segmentation"? or what? which **two**? maybe they mean the part segmentation using point-loss and the part segmentation using shape-loss? 
-
 
 - N1: in fig6 they show what each layer's activations focus on...is this in the code? i guess no but we can add it
 
@@ -50,7 +43,6 @@
 - N3:in aocnn paper it says "models the 3D shape within each octant with a planar patch ... it takes the planar patch and displacement as input" ... i think this is what tensorflow implementation takes in all tasks ...  the default ocnn takes just nx,ny,nz without d, but in all TF implementations they used nx,ny,nz,d
 
 - N4: "We pre-process the point cloud to assign a normal vector for each point via principal component analysis if the accurate normal information is not available in the dataset, which will be used for constructing input features." i guess in ```new_points()``` there is pca if normals are not specified .. or there was somewhere else this step and in new_points() is mandatory to give normals..
-
 
 
 - "we first exploit the shape instance discrimination loss to classify the point of each shape into a class and then apply the point instance discrimination to classify the points on each shape separately" how is this in the code ?
@@ -72,3 +64,8 @@
 - "After that, the output **shape or point** features are fed into the following back end layers for computing the shape analysis results." ... ara mipos using the flag LOSS.point_wise as false tha xrisimopoiei ta shape features gia to segmentation eno using True tha xrisimopoiei ta point features?
 
 - is there a configuration to run segmentation with mid loss or is it only with shape loss or point loss ?
+
+solved:
+---
+- Q: in aocnn paper: "The loss function of the Adaptive O-CNN decoder includes the structure loss and the patch loss." .. is this in TF code? (i guess yes in shape completion network)
+- A: i think yes because there is one label loss (i.e. structure i.e. octant yes no in each level) and one regression loss (i.e. feature loss i.e. patch loss)

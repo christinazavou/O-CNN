@@ -32,7 +32,7 @@ take = [200]
 
 
 def config_points_partnet(category="Bottle"):
-    filename = '/media/christina/Data/ANFASS_data/partnet_data/dataset/{}_train_level3.tfrecords' \
+    filename = '/media/christina/Data/ANFASS_data/O-CNN/data/partnet_data/dataset/{}_train_level3.tfrecords' \
         .format(category)
     depth = 6
     task = 'seg_points_partnet'
@@ -142,9 +142,9 @@ class DatasetDebug:
 
 
 def check_properties():
-    # octrees, filename, depth, task = config_points_partnet()
+    octrees, filename, depth, task = config_points_partnet()
     # octrees, filename, depth, task = config_points_buildings()
-    octrees, filename, depth, task = config_points_buildings_with_colour()
+    # octrees, filename, depth, task = config_points_buildings_with_colour()
     with tf.Session() as sess:
         octree, _, points = sess.run(octrees(filename, batch_size=1, shuffle_size=0, return_iter=True, take=10,
                                              return_pts=True).get_next())
