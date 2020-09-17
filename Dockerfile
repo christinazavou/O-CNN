@@ -60,32 +60,58 @@ RUN mkdir ~/temp \
         && make install
 
 
+WORKDIR /data
+COPY m40_test_points.tfrecords .
+COPY m40_train_points.tfrecords .
+
+WORKDIR /code
+RUN git clone https://github.com/microsoft/O-CNN.git
+
 WORKDIR /code/O-CNN
-RUN rm -rf *
+RUN git checkout 316a85fe427fa21631ea61b8d72f894b051e57a7
 
-COPY caffe caffe
-COPY octree octree
-COPY tensorflow tensorflow
 COPY build_repo.sh .
-
 RUN sh build_repo.sh
 
-ENV SEG_DATA_DIR=/data/seg_data
-ENV SEG_OUT_DIR=/data/seg_out
 
-RUN cd tensorflow/script \
-    && echo python run_seg_partnet.py \
-        --config configs/segmentation/seg_hrnet_partnet_pts.yaml \
-        SOLVER.run train SOLVER.gpu 0, \
-        SOLVER.logdir ${SEG_OUT_DIR}/Chair/hrnet \
-        SOLVER.max_iter 20000 \
-        SOLVER.test_iter 1217 \
-        SOLVER.ckpt '' \
-        DATA.train.location ${SEG_DATA_DIR}/Chair_train_level3.tfrecords \
-        DATA.test.location ${SEG_DATA_DIR}/Chair_test_level3.tfrecords \
-        MODEL.nout 39 \
-        MODEL.factor 2 \
-        LOSS.num_class 39 \
-        DATA.train.take 4489 \
-        DATA.test.batch_size 1 \
-        DATA.train.batch_size 4
+#WORKDIR /code/O-CNN
+#RUN rm -rf *
+#
+#COPY caffe caffe
+#COPY octree octree
+#COPY tensorflow tensorflow
+#COPY build_repo.sh .
+#
+#RUN sh build_repo.sh
+#
+#ENV SEG_DATA_DIR=/data/seg_data
+#ENV SEG_OUT_DIR=/data/seg_out
+#
+#RUN cd tensorflow/script \
+#    && echo python run_seg_partnet.py \
+#        --config configs/segmentation/seg_hrnet_partnet_pts.yaml \
+#        SOLVER.run train SOLVER.gpu 0, \
+#        SOLVER.logdir ${SEG_OUT_DIR}/Chair/hrnet \
+#        SOLVER.max_iter 20000 \
+#        SOLVER.test_iter 1217 \
+#        SOLVER.ckpt '' \
+#        DATA.train.location ${SEG_DATA_DIR}/Chair_train_level3.tfrecords \
+#        DATA.test.location ${SEG_DATA_DIR}/Chair_test_level3.tfrecords \
+#        MODEL.nout 39 \
+#        MODEL.factor 2 \
+#        LOSS.num_class 39 \
+#        DATA.train.take 4489 \
+#        DATA.test.batch_size 1 \
+#        DATA.train.batch_size 4
+
+# commands to run:
+# docker build -t dezavou/ocnntf .
+# docker run -it dezavou/ocnntf /bin/bash
+# docker run:
+#     -d = --detach i.e. run in background
+#     -p 6006:6006 = --publish 6006:6006 i.e. send traffic from 6006 to local 6006
+#     -v /source/path:/dest/path = --mount source=/source/path,destination=/dest/path i.e. mount a volume 
+# or git clone the original .. gives issue .. try with changing math import...
+
+# docker build -t dezavou/ocnntfcommit .
+# docker run -it -v /media/graphicslab/BigData/zavou/ANNFASS_data:/data dezavou/ocnntfcommit /bin/bash
