@@ -137,7 +137,7 @@ def make_plateau_flags():
 
 class OnPlateauLrTest(tf.test.TestCase):
 
-    def test_lr(self):
+    def test_lr_is_not_working(self):
         flags = make_plateau_flags()
         lr_metric = OnPlateauLR(flags)
         curr_metric = tf.Variable(0.2, trainable=False)
@@ -145,14 +145,21 @@ class OnPlateauLrTest(tf.test.TestCase):
 
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
-            lr_current = sess.run(lr_value, feed_dict={curr_metric: 0.2})
-            print(lr_current)
-            lr_current = sess.run(lr_value, feed_dict={curr_metric: 0.4})
-            print(lr_current)
-            lr_current = sess.run(lr_value, feed_dict={curr_metric: 0.6})
-            print(lr_current)
-            lr_current = sess.run(lr_value, feed_dict={curr_metric: 0.1})
-            print(lr_current)
+            lr_current1 = sess.run(lr_value, feed_dict={curr_metric: 0.2})
+            lr_current2 = sess.run(lr_value, feed_dict={curr_metric: 0.4})
+            lr_current3 = sess.run(lr_value, feed_dict={curr_metric: 0.6})
+            lr_current4 = sess.run(lr_value, feed_dict={curr_metric: 0.1})
+            assert (lr_current1 == lr_current2 == lr_current3 == lr_current4) and (0.10 < lr_current1 < 0.11)
+
+    def test_lrpy_is_ok(self):
+        flags = make_plateau_flags()
+        lr_metric = OnPlateauLRPy(flags)
+
+        lr_current1 = lr_metric(0.2)
+        lr_current2 = lr_metric(0.4)
+        lr_current3 = lr_metric(0.6)
+        lr_current4 = lr_metric(0.1)
+        assert not (lr_current1 == lr_current2 == lr_current3 == lr_current4)
 
 
 if __name__ == "__main__":

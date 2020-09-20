@@ -92,16 +92,52 @@ class OnPlateauLR:
             return new_lr
 
 
-# class LRFactory:
-#     def __init__(self, flags):
-#         self.flags = flags
-#         if self.flags.lr_type == 'plateau':
-#             self.lr = OnPlateauLR(flags)
-#         else:
-#             print('Error, unsupported learning rate: ' + self.flags.lr_type)
-#
-#     def __call__(self, curr_metric, current_lr):
-#         return self.lr(curr_metric, current_lr)
+class OnPlateauLRPy:
+    def __init__(self, flags):
+        self.flags = flags
+        self.best_metric = 0. if self.flags.mode == 'max' else 1.e100
+        self.prev_lr = self.flags.learning_rate
+        self.cooldown_counter = 0
+        self.bad_epochs = 0
+
+    def is_better(self, curr_metric):
+        if self.flags.mode == 'min' and self.flags.threshold_mode == 'rel':
+            rel_epsilon = 1. - self.flags.threshold
+            return curr_metric < self.best_metric * rel_epsilon
+
+        elif self.flags.mode == 'min' and self.flags.threshold_mode == 'abs':
+            return curr_metric < self.best_metric - self.flags.threshold
+
+        elif self.flags.mode == 'max' and self.flags.threshold_mode == 'rel':
+            rel_epsilon = self.flags.threshold + 1.
+            return curr_metric > self.best_metric * rel_epsilon
+
+        else:  # mode == 'max' and epsilon_mode == 'abs':
+            return curr_metric > self.best_metric + self.flags.threshold
+
+    def __call__(self, curr_metric):
+        if self.is_better(curr_metric):
+            self.bad_epochs = 0
+            self.best_metric = curr_metric
+        else:
+            self.bad_epochs += 1
+
+        if self.cooldown_counter > 0:
+            self.bad_epochs = 0
+            self.cooldown_counter -= 1
+
+        if self.bad_epochs > self.flags.patience:
+            new_lr = max(self.prev_lr * self.flags.gamma, self.flags.min_lr)
+            self.cooldown_counter = self.flags.cooldown
+            self.bad_epochs = 0
+        else:
+            new_lr = self.prev_lr
+
+        if self.prev_lr - new_lr <= self.flags.eps:
+            new_lr = self.prev_lr
+
+        self.prev_lr = new_lr
+        return new_lr
 
 
 class LRFactory:
