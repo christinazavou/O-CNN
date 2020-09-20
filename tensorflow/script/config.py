@@ -24,7 +24,13 @@ _C.SOLVER.ckpt_num        = 100       # The number of checkpoint kept
 _C.SOLVER.var_name        = ('_name',)# Variable names used for finetuning
 _C.SOLVER.ignore_var_name = ('_name',)# Ignore variable names when loading ckpt
 _C.SOLVER.verbose         = False     # Whether to output some messages
-
+_C.SOLVER.mode         = 'min'     # ####################
+_C.SOLVER.patience         = 0     # ####################
+_C.SOLVER.threshold         = 1e-4     # ####################
+_C.SOLVER.threshold_mode         = 'rel'     # ####################
+_C.SOLVER.cooldown         = 0     # ####################
+_C.SOLVER.min_lr         = 0.0     # ####################
+_C.SOLVER.eps         = 1e-8     # ####################
 
 # DATA related parameters
 _C.DATA = CN()

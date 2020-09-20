@@ -336,8 +336,18 @@ def solver_single_gpu(total_loss, learning_rate_handle, gpu_num=1):
       global_step = tf.Variable(0, trainable=False, name='global_step')
       lr = learning_rate_handle(global_step)
       solver = tf.train.MomentumOptimizer(lr, 0.9) \
-                       .minimize(total_loss, global_step=global_step)
+        .minimize(total_loss, global_step=global_step)
   return solver, lr
+
+
+def solver_single_gpu_given_lr(total_loss, lr, gpu_num=1):
+  with tf.variable_scope('solver'):
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+      global_step = tf.Variable(0, trainable=False, name='global_step')
+      solver = tf.train.MomentumOptimizer(lr, 0.9) \
+        .minimize(total_loss, global_step=global_step)
+  return solver
 
 
 def solver_multiple_gpus(total_loss, learning_rate_handle, gpu_num):
@@ -374,6 +384,12 @@ def build_solver(total_loss, learning_rate_handle, gpu_num=1):
   assert (gpu_num > 0)
   the_solver = solver_single_gpu if gpu_num == 1 else solver_multiple_gpus
   return the_solver(total_loss, learning_rate_handle, gpu_num)
+
+
+def build_solver_given_lr(total_loss, lr, gpu_num=1):
+  assert (gpu_num > 0)
+  the_solver = solver_single_gpu_given_lr if gpu_num == 1 else solver_multiple_gpus
+  return the_solver(total_loss, lr, gpu_num)
 
 
 def summary_train(names, tensors):

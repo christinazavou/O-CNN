@@ -11,21 +11,21 @@ import numpy as np
 from tqdm import tqdm
 import os
 from ocnn import *
-from learning_rate import LRFactory
+from learning_rate import LRFactory, OnPlateauLRPy
 from tensorflow.python.client import timeline
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Add config
 from visualize import vis_confusion_matrix
 
-# FLAGS.LOSS.point_wise = True
-FLAGS.LOSS.point_wise = False
+FLAGS.LOSS.point_wise = True
+# FLAGS.LOSS.point_wise = False
 MASK_LABEL = 0  # metrics are ignored for the points with label 'undefined' ..
 CONF_MAT_KEY = 'confusion_matrix'
-CATEGORIES = ANNFASS_LABELS
-# CATEGORIES = LEVEL3_LABELS
-COLOURS = ANNFASS_COLORS
-# COLOURS = LEVEL3_COLORS
+# CATEGORIES = ANNFASS_LABELS
+CATEGORIES = LEVEL3_LABELS
+# COLOURS = ANNFASS_COLORS
+COLOURS = LEVEL3_COLORS
 
 
 # get the label and pts
@@ -162,38 +162,39 @@ def get_probabilities(logits):
 
 # define the solver
 class PartNetSolver(TFSolver):
-  def __init__(self, flags, compute_graph,  build_solver=build_solver):
+  def __init__(self, flags, compute_graph, build_solver=build_solver_given_lr):
     super(PartNetSolver, self).__init__(flags.SOLVER, compute_graph, build_solver)
-    self.num_class = flags.LOSS.num_class # used to calculate the IoU
+    self.num_class = flags.LOSS.num_class  # used to calculate the IoU
 
   def result_callback(self, avg_results_dict):
     return result_callback(avg_results_dict, self.num_class)
 
   def build_train_graph(self):
     gpu_num = len(self.flags.gpu)
-    train_params = {'dataset': 'train', 'training': True,  'reuse': False}
-    test_params  = {'dataset': 'test',  'training': False, 'reuse': True}
+    train_params = {'dataset': 'train', 'training': True, 'reuse': False}
+    test_params = {'dataset': 'test', 'training': False, 'reuse': True}
     if gpu_num > 1:
       train_params['gpu_num'] = gpu_num
-      test_params['gpu_num']  = gpu_num
+      test_params['gpu_num'] = gpu_num
 
     self.train_tensors_dict, self.train_debug_checks = self.graph(**train_params)
     self.test_tensors_dict, self.test_debug_checks = self.graph(**test_params)
 
-    total_loss = self.train_tensors_dict['total_loss']
-    solver_param = [total_loss, LRFactory(self.flags)]
+    self.total_loss = self.train_tensors_dict['total_loss']
+    self.lr = tf.Variable(initial_value=self.flags.learning_rate, name='plateau_lr')
+    solver_param = [self.total_loss, self.lr]
     if gpu_num > 1:
       solver_param.append(gpu_num)
-    self.train_op, lr = self.build_solver(*solver_param)
+    self.train_op = self.build_solver(*solver_param)
 
-    if gpu_num > 1: # average the tensors from different gpus for summaries
+    if gpu_num > 1:  # average the tensors from different gpus for summaries
       with tf.device('/cpu:0'):
         self.train_tensors_dict = average_tensors(self.train_tensors_dict)
         self.test_tensors_dict = average_tensors(self.test_tensors_dict)
 
     tensor_dict_for_train_summary = {}
     tensor_dict_for_train_summary.update(self.train_tensors_dict)
-    tensor_dict_for_train_summary.update({'lr': lr})
+    tensor_dict_for_train_summary.update({'lr': self.lr})
     tensor_dict_for_test_summary = {}
     tensor_dict_for_test_summary.update(self.test_tensors_dict)
     self.summaries_dict(tensor_dict_for_train_summary, tensor_dict_for_test_summary)
@@ -256,15 +257,37 @@ class PartNetSolver(TFSolver):
       if ckpt: self.restore(sess, ckpt)
 
       print('Start training ...')
-      for i in tqdm(range(start_iter, self.flags.max_iter + 1), ncols=80):
+
+      # option 1: use feed dict to pass the calculated learning rate
+      # option 2: use model.compile and pass the optimizer and the callbacks
+
+      lr_metric = OnPlateauLRPy(self.flags)
+
+      if self.summ_train_occ != None:
+        summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
+          [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr],
+          feed_dict={self.lr: self.flags.learning_rate})
+        summary_writer.add_summary(summary_occ, start_iter)
+        summary_writer.add_summary(summary_alw, start_iter)
+      else:
+        summary_alw, _, curr_loss, curr_lr = sess.run(
+          [self.summ_train_alw, self.train_op, self.total_loss, self.lr],
+          feed_dict={self.lr: self.flags.learning_rate})
+        summary_writer.add_summary(summary_alw, start_iter)
+
+      for i in tqdm(range(start_iter + 1, self.flags.max_iter + 1), ncols=80):
         # training
         if self.summ_train_occ != None:
-          summary_alw, summary_occ, _ = sess.run([self.summ_train_alw, self.summ_train_occ, self.train_op])
-          summary_writer.add_summary(summary_occ, i)
-          summary_writer.add_summary(summary_alw, i)
+          summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
+            [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr],
+            feed_dict={self.lr: lr_metric(curr_loss)})
+          summary_writer.add_summary(summary_occ, start_iter)
+          summary_writer.add_summary(summary_alw, start_iter)
         else:
-          summary_alw, _ = sess.run([self.summ_train_alw, self.train_op])
-          summary_writer.add_summary(summary_alw, i)
+          summary_alw, _, curr_loss, curr_lr = sess.run(
+            [self.summ_train_alw, self.train_op, self.total_loss, self.lr],
+            feed_dict={self.lr: lr_metric(curr_loss)})
+          summary_writer.add_summary(summary_alw, start_iter)
 
         # testing
         if i % self.flags.test_every_iter == 0:
