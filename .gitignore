@@ -12,3 +12,4 @@ tensorflow/script/dataset
 tensorflow/script/logs
 tensorflow/mycode/.idea
 tensorflow/mycode/.pytest_cache
+.idea
