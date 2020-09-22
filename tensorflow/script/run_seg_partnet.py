@@ -181,7 +181,7 @@ class PartNetSolver(TFSolver):
     self.test_tensors_dict, self.test_debug_checks = self.graph(**test_params)
 
     self.total_loss = self.train_tensors_dict['total_loss']
-    self.lr = tf.Variable(initial_value=self.flags.learning_rate, name='plateau_lr')
+    self.lr = tf.Variable(initial_value=self.flags.learning_rate, name='plateau_lr',trainable=False)
     solver_param = [self.total_loss, self.lr]
     if gpu_num > 1:
       solver_param.append(gpu_num)
@@ -261,7 +261,7 @@ class PartNetSolver(TFSolver):
       # option 1: use feed dict to pass the calculated learning rate
       # option 2: use model.compile and pass the optimizer and the callbacks
 
-      lr_metric = OnPlateauLRPy(self.flags)
+      lr_metric = LRFactory(self.flags)#OnPlateauLRPy(self.flags)
 
       if self.summ_train_occ != None:
         summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
