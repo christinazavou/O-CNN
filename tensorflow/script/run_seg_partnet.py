@@ -485,6 +485,10 @@ def save_ply(filename, points, normals, colors):
 # run the experiments
 if __name__ == '__main__':
   FLAGS = parse_args()
+  if FLAGS.DATA.train.depth>8 or FLAGS.DATA.test.depth>8:
+    raise ValueError("Network depth must be lesser or equal to 8!!!\nExiting...")
+  if FLAGS.DATA.train.depth!=FLAGS.DATA.test.depth:
+    raise ValueError("Train and test networks must have the same depth!!!\nExiting...")
   compute_graph = ComputeGraphSeg(FLAGS)
   solver = PartNetSolver(FLAGS, compute_graph)
   solver.run()
