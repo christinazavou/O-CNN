@@ -108,21 +108,16 @@ def chunks(lst, n):
 def write_data_to_tfrecords(file_dir, list_file, records_name, file_type, shuffle_data, count, chunk_size=8):
     [data, label, index] = get_data_label_pair(list_file, shuffle_data, count)
 
-    # memory issues kill the python process
-    # things to try out:
-    #   restart tf.Session
-    #   use tf.io.TFRecordWriter
-    #   write in chunks
-    #   generate multiple .tfrecords files and then use cat and type commands to merge the files
-    #   generate multiple .tfrecords files and use a new class that reads all those files ..
     writer = tf.io.TFRecordWriter(records_name)
     with tf.Session() as sess:
         for chunk in chunks(range(len(data)), chunk_size):
-            print('data loaded: {}/{}'.format(chunk[-1]+1, len(data)))
             filepaths = [os.path.join(file_dir, data[i]) for i in chunk]
             points_bytes = create_points(filepaths, sess)
             for i in range(len(chunk)):
                 overall_idx = chunk[i]
+                if not overall_idx % 10:
+                    print('data loaded: {}/{}'.format(overall_idx, len(data)))
+
                 feature = {file_type: _bytes_feature(points_bytes[i][0]),
                            'label': _int64_feature(label[overall_idx]),
                            'index': _int64_feature(index[overall_idx]),
@@ -170,7 +165,7 @@ if __name__ == '__main__':
                             prefix+'/dataset_points_chunk8/train.tfrecords',
                             'data',
                             True,
-                            100,
+                            49,
                             8)
     # write_data_to_tfrecords(prefix+'/w_colour_norm_w_labels',
     #                         prefix+'/dataset_points_chunk8/test.txt',
