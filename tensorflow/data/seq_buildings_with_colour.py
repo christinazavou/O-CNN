@@ -6,6 +6,7 @@ from libs import *
 import tensorflow as tf
 # help(points_new)
 
+
 def debug():
     depth = 6
 
@@ -56,6 +57,13 @@ def debug():
             print("done")
 
         break
+
+
+def check_records():
+    c = 0
+    for record in tf.io.tf_record_iterator('/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points_chunk8/trainall.tfrecords'):
+        c += 1
+    print("c=", c)
 
 
 import os
@@ -144,12 +152,16 @@ def get_data_label_pair(list_file, shuffle_data, count=-1, start_from=0):
     assert len(label_list) == count, "{} lines read != {}".format(len(label_list), count)
     index_list = list(range(len(label_list)))
 
+    shuffled_file = list_file + '.shuffle.txt'
+    if start_from != 0 or count != -1:
+        shuffled_file = list_file + 's{}c{}.shuffle.txt'.format(start_from, count)
+
     if shuffle_data:
         print("shuffling data")
         c = list(zip(file_list, label_list, index_list))
         shuffle(c)
         file_list, label_list, index_list = zip(*c)
-        with open(list_file + '.shuffle.txt', 'w') as f:
+        with open(shuffled_file, 'w') as f:
             for item in c:
                 f.write('{} {}\n'.format(item[0], item[1]))
     return file_list, label_list, index_list
@@ -169,7 +181,7 @@ if __name__ == '__main__':
                             prefix+'/dataset_points_chunk8/train.txt',
                             prefix+'/dataset_points_chunk8/train1.tfrecords',
                             'data',
-                            False,
+                            True,
                             15,
                             8,
                             0)
@@ -177,7 +189,7 @@ if __name__ == '__main__':
                             prefix+'/dataset_points_chunk8/train.txt',
                             prefix+'/dataset_points_chunk8/train2.tfrecords',
                             'data',
-                            False,
+                            True,
                             15,
                             8,
                             15)
