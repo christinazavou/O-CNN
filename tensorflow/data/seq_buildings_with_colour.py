@@ -105,8 +105,10 @@ def chunks(lst, n):
         yield lst[i:i + n]
 
 
-def write_data_to_tfrecords(file_dir, list_file, records_name, file_type, shuffle_data, count, chunk_size=8):
-    [data, label, index] = get_data_label_pair(list_file, shuffle_data, count)
+def write_data_to_tfrecords(file_dir, list_file, records_name, file_type, shuffle_data, count,
+                            chunk_size=8, start_from=0):
+
+    [data, label, index] = get_data_label_pair(list_file, shuffle_data, count, start_from)
 
     writer = tf.io.TFRecordWriter(records_name)
     with tf.Session() as sess:
@@ -127,16 +129,19 @@ def write_data_to_tfrecords(file_dir, list_file, records_name, file_type, shuffl
     writer.close()
 
 
-def get_data_label_pair(list_file, shuffle_data, count):
+def get_data_label_pair(list_file, shuffle_data, count=-1, start_from=0):
     file_list = []
     label_list = []
     with open(list_file) as f:
         for i, line in enumerate(f):
-            if count != -1 and i > count:
+            if i < start_from:
+                continue
+            if count != -1 and i >= count + start_from:
                 break
             file, label = line.split()
             file_list.append(file)
             label_list.append(int(label))
+    assert len(label_list) == count, "{} lines read != {}".format(len(label_list), count)
     index_list = list(range(len(label_list)))
 
     if shuffle_data:
@@ -162,11 +167,20 @@ if __name__ == '__main__':
     prefix = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour'
     write_data_to_tfrecords(prefix+'/w_colour_norm_w_labels',
                             prefix+'/dataset_points_chunk8/train.txt',
-                            prefix+'/dataset_points_chunk8/train.tfrecords',
+                            prefix+'/dataset_points_chunk8/train1.tfrecords',
                             'data',
-                            True,
-                            49,
-                            8)
+                            False,
+                            15,
+                            8,
+                            0)
+    write_data_to_tfrecords(prefix+'/w_colour_norm_w_labels',
+                            prefix+'/dataset_points_chunk8/train.txt',
+                            prefix+'/dataset_points_chunk8/train2.tfrecords',
+                            'data',
+                            False,
+                            15,
+                            8,
+                            15)
     # write_data_to_tfrecords(prefix+'/w_colour_norm_w_labels',
     #                         prefix+'/dataset_points_chunk8/test.txt',
     #                         prefix+'/dataset_points_chunk8/test.tfrecords',
