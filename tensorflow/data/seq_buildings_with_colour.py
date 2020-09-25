@@ -85,33 +85,50 @@ def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def create_points(file, sess):
-    a = np.loadtxt(file).astype(np.float32)
-    points = a[:, 0:3]  # x,y,z
-    normals = a[:, 3:6]  # nx,ny,nz
-    features = a[:, 6:10]  # r,g,b,a
-    labels = a[:, 10]  # int from 0 to 33
+def create_points(files, sess):
+    byte_points_tensors = []
+    for file in files:
+        a = np.loadtxt(file).astype(np.float32)
+        points = a[:, 0:3]  # x,y,z
+        normals = a[:, 3:6]  # nx,ny,nz
+        features = a[:, 6:10]  # r,g,b,a
+        labels = a[:, 10]  # int from 0 to 33
 
-    pts_tf = points_new(points, normals, features, labels)
-    return sess.run(pts_tf[0])
+        pts_tf = points_new(points, normals, features, labels)
+        byte_points_tensors.append(pts_tf)
+
+    return sess.run(byte_points_tensors)
 
 
-def write_data_to_tfrecords(file_dir, list_file, records_name, file_type, shuffle_data, count):
+def chunks(lst, n):
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+
+def write_data_to_tfrecords(file_dir, list_file, records_name, file_type, shuffle_data, count, chunk_size=8):
     [data, label, index] = get_data_label_pair(list_file, shuffle_data, count)
 
-    writer = tf.python_io.TFRecordWriter(records_name)
+    # memory issues kill the python process
+    # things to try out:
+    #   restart tf.Session
+    #   use tf.io.TFRecordWriter
+    #   write in chunks
+    #   generate multiple .tfrecords files and then use cat and type commands to merge the files
+    #   generate multiple .tfrecords files and use a new class that reads all those files ..
+    writer = tf.io.TFRecordWriter(records_name)
     with tf.Session() as sess:
-        for i in range(len(data)):
-            if not i % 1000:
-                print('data loaded: {}/{}'.format(i, len(data)))
-
-            points_bytes = create_points(os.path.join(file_dir, data[i]), sess)
-            feature = {file_type: _bytes_feature(points_bytes),
-                       'label': _int64_feature(label[i]),
-                       'index': _int64_feature(index[i]),
-                       'filename': _bytes_feature(('%06d_%s' % (i, data[i])).encode('utf8'))}
-            example = tf.train.Example(features=tf.train.Features(feature=feature))
-            writer.write(example.SerializeToString())
+        for chunk in chunks(range(len(data)), chunk_size):
+            print('data loaded: {}/{}'.format(chunk[-1]+1, len(data)))
+            filepaths = [os.path.join(file_dir, data[i]) for i in chunk]
+            points_bytes = create_points(filepaths, sess)
+            for i in range(len(chunk)):
+                overall_idx = chunk[i]
+                feature = {file_type: _bytes_feature(points_bytes[i][0]),
+                           'label': _int64_feature(label[overall_idx]),
+                           'index': _int64_feature(index[overall_idx]),
+                           'filename': _bytes_feature(('%06d_%s' % (overall_idx, data[overall_idx])).encode('utf8'))}
+                example = tf.train.Example(features=tf.train.Features(feature=feature))
+                writer.write(example.SerializeToString())
     writer.close()
 
 
@@ -147,16 +164,18 @@ if __name__ == '__main__':
     #                         args.shuffle_data,
     #                         args.count)
     #
-    prefix = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour_sample'
-    # write_data_to_tfrecords(prefix+'/w_colour_norm_w_labels',
-    #                         prefix+'/dataset_points_sample/train.txt',
-    #                         prefix+'/dataset_points_sample/train.tfrecords',
-    #                         'data',
-    #                         True,
-    #                         -1)
+    prefix = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour'
     write_data_to_tfrecords(prefix+'/w_colour_norm_w_labels',
-                            prefix+'/dataset_points_sample/test.txt',
-                            prefix+'/dataset_points_sample/test.tfrecords',
+                            prefix+'/dataset_points_chunk8/train.txt',
+                            prefix+'/dataset_points_chunk8/train.tfrecords',
                             'data',
                             True,
-                            -1)
+                            100,
+                            8)
+    # write_data_to_tfrecords(prefix+'/w_colour_norm_w_labels',
+    #                         prefix+'/dataset_points_chunk8/test.txt',
+    #                         prefix+'/dataset_points_chunk8/test.tfrecords',
+    #                         'data',
+    #                         False,
+    #                         -1,
+    #                         8)
