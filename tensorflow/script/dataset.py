@@ -17,6 +17,17 @@ class ParseExample:
     return parsed[self.x_alias], parsed[self.y_alias]
 
 
+class ParseExampleDebug:
+  def __init__(self, **kwargs):
+    self.features = {
+      'filename': tf.FixedLenFeature([], tf.string)
+    }
+
+  def __call__(self, record):
+    parsed = tf.parse_single_example(record, self.features)
+    return parsed['filename']
+
+
 class Points2Octree:
   def __init__(self, depth, full_depth=2, node_dis=False, node_feat=False,
                split_label=False, adaptive=False, adp_depth=4, th_normal=0.1,
@@ -103,6 +114,20 @@ class TransformPoints:
                               ratio=ratio, dim=dim, stddev=stddev)
     # The range of points is [-1, 1]
     return points # TODO: return the transformations
+
+
+class PointDatasetDebug:
+  def __init__(self, parse_example):
+    self.parse_example = parse_example
+
+  def __call__(self, record_names, batch_size, **kwargs):
+    with tf.name_scope('points_dataset'):
+      dataset = tf.data.TFRecordDataset(record_names).take(-1).repeat()
+      itr = dataset.map(self.parse_example, num_parallel_calls=16) \
+                   .batch(batch_size)\
+                   .prefetch(8)\
+                   .make_one_shot_iterator()
+    return itr.get_next()
 
 
 class PointDataset:

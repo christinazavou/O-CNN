@@ -64,7 +64,7 @@ def config_points_buildings():
 
 def config_points_buildings_with_colour():
     # data generated with python only
-    filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour_sample/dataset_points_sample/train.tfrecords'
+    filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points_chunk8/train.shuffle.all.tfrecords'
     depth = 7
     task = 'seg_points_buildings_w_colour'
     octrees = PointDataset(ParseExample(x_alias='data', y_alias='label'),
@@ -74,6 +74,15 @@ def config_points_buildings_with_colour():
                                            uniform=True,
                                            bounding_sphere=bounding_sphere),
                            Points2Octree(depth=depth, node_dis=True, ))
+    return octrees, filename, depth, task
+
+
+def config_points_buildings_with_colour_filenames():
+    # data generated with python only
+    filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points_chunk8/train.shuffle.all.tfrecords'
+    depth = 7
+    task = 'seg_points_buildings_w_colour'
+    octrees = PointDatasetDebug(ParseExampleDebug())
     return octrees, filename, depth, task
 
 
@@ -142,10 +151,29 @@ class DatasetDebug:
 
 
 def check_properties():
-    octrees, filename, depth, task = config_points_partnet()
+    # octrees, filename, depth, task = config_points_partnet()
     # octrees, filename, depth, task = config_points_buildings()
     # octrees, filename, depth, task = config_points_buildings_with_colour()
+    octrees, filename, depth, task = config_points_buildings_with_colour_filenames()
     with tf.Session() as sess:
+        count = 0
+        filepaths = sess.run(octrees(filename, batch_size=1600))
+        for filepath in filepaths:
+            filepath = filepath.decode('utf8')
+            count += 1
+            if count == 900:
+                assert "RESIDENTIALhouse_mesh2627_w_label" in filepath
+
+        filepaths = sess.run(octrees(filename, batch_size=300))
+        filepaths = sess.run(octrees(filename, batch_size=300))
+        filepaths = sess.run(octrees(filename, batch_size=300))
+        filepath = filepaths[-1].decode('utf8')
+        assert "RESIDENTIALhouse_mesh2627_w_label" in filepath, filepath
+
+        # TODO: na do an se ena dimiourgimeno tfrecords iparxei to idio fainomeno, dld me mikro batch size pianei ksana ta prota samples i oxi... an oxi simenei oti o tropos pou ginetai to cat content in file den leitourgei sosta
+
+        exit()
+
         octree, _, points = sess.run(octrees(filename, batch_size=1, shuffle_size=0, return_iter=True, take=10,
                                              return_pts=True).get_next())
         octree5, _, points5 = sess.run(octrees(filename, batch_size=5, shuffle_size=0, return_iter=True, take=10,

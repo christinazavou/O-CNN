@@ -4,6 +4,7 @@ import sys
 sys.path.append('..')
 from libs import *
 import tensorflow as tf
+import time
 # help(points_new)
 
 
@@ -60,10 +61,20 @@ def debug():
 
 
 def check_records():
+    records_name = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour' \
+                   '/dataset_points_chunk8/train.shuffle.all.tfrecords'
     c = 0
-    for record in tf.io.tf_record_iterator('/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points_chunk8/trainall.tfrecords'):
+    for record in tf.io.tf_record_iterator(records_name):
         c += 1
-    print("c=", c)
+        if c == 900:
+            parsed_record = tf.parse_single_example(
+                record,
+                {'filename': tf.FixedLenFeature([], tf.string)}
+            )
+            filename = tf.Session().run(parsed_record)['filename']
+            assert "RESIDENTIALhouse_mesh2627_w_label" in filename.decode('utf8')
+
+    assert c == 1600
 
 
 import os
@@ -108,36 +119,58 @@ def create_points(files, sess):
     return sess.run(byte_points_tensors)
 
 
-def chunks(lst, n):
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+def multi_chunks(lsts, n):
+    lengths = [len(lst) for lst in lsts]
+    assert len(set(lengths)) == 1
+    for i in range(0, len(lsts[0]), n):
+        yield (lst[i:i + n] for lst in lsts)
 
 
-def write_data_to_tfrecords(file_dir, list_file, records_name, file_type, shuffle_data, count,
-                            chunk_size=8, start_from=0):
+def get_data_label_index(list_file):
+    file_list = []
+    label_list = []
+    index_list = []
+    with open(list_file) as f:
+        for i, line in enumerate(f):
+            file, label, index = line.split()
+            file_list.append(file)
+            label_list.append(int(label))
+            index_list.append(int(index))
+    return file_list, label_list, index_list
 
-    [data, label, index] = get_data_label_pair(list_file, shuffle_data, count, start_from)
 
-    writer = tf.io.TFRecordWriter(records_name)
+def write_data_to_tfrecords(file_dir, list_file, records_name, file_type):
+    filenames, label, index = get_data_label_index(list_file)
+    s_time = time.time()
+    write_records(file_dir, records_name, file_type, filenames, label, index, 8)
+    e_time = time.time()
+    print("took {} minutes".format((e_time-s_time)//60))
+
+
+def write_records(file_dir, records_name, file_type, filenames, label, index, chunk_size=8):
     with tf.Session() as sess:
-        for chunk in chunks(range(len(data)), chunk_size):
-            filepaths = [os.path.join(file_dir, data[i]) for i in chunk]
-            points_bytes = create_points(filepaths, sess)
-            for i in range(len(chunk)):
-                overall_idx = chunk[i]
-                if not overall_idx % 10:
-                    print('data loaded: {}/{}'.format(overall_idx, len(data)))
+        with tf.io.TFRecordWriter(records_name) as writer:
+            chunk_data = 0
+            for f_chunk, l_chunk, i_chunk in multi_chunks([filenames, label, index], chunk_size):
+                f_chunk = [os.path.join(file_dir, filename) for filename in f_chunk]
+                points_bytes = create_points(f_chunk, sess)
+                chunk_data += chunk_size
+                if not chunk_data % (chunk_size * 10):
+                    print('data loaded: {}'.format(chunk_data))
+                chunk_idx = 0
+                for f, l, i in zip(f_chunk, l_chunk, i_chunk):
+                    feature = {
+                        file_type: _bytes_feature(points_bytes[chunk_idx][0]),
+                        'label': _int64_feature(l),
+                        'index': _int64_feature(i),
+                        'filename': _bytes_feature(('%06d_%s' % (i, f)).encode('utf8'))
+                    }
+                    example = tf.train.Example(features=tf.train.Features(feature=feature))
+                    writer.write(example.SerializeToString())
+                    chunk_idx += 1
 
-                feature = {file_type: _bytes_feature(points_bytes[i][0]),
-                           'label': _int64_feature(label[overall_idx]),
-                           'index': _int64_feature(index[overall_idx]),
-                           'filename': _bytes_feature(('%06d_%s' % (overall_idx, data[overall_idx])).encode('utf8'))}
-                example = tf.train.Example(features=tf.train.Features(feature=feature))
-                writer.write(example.SerializeToString())
-    writer.close()
 
-
-def get_data_label_pair(list_file, shuffle_data, count=-1, start_from=0):
+def split_data_label_indices_in_files(list_file, shuffle_data, count=-1, start_from=0):
     file_list = []
     label_list = []
     with open(list_file) as f:
@@ -149,54 +182,32 @@ def get_data_label_pair(list_file, shuffle_data, count=-1, start_from=0):
             file, label = line.split()
             file_list.append(file)
             label_list.append(int(label))
-    assert len(label_list) == count, "{} lines read != {}".format(len(label_list), count)
+    if count != -1:
+        assert len(label_list) == count, "{} lines read != {}".format(len(label_list), count)
     index_list = list(range(len(label_list)))
 
-    shuffled_file = list_file + '.shuffle.txt'
+    shuffled_file = list_file.replace(".txt", "") + '.shuffle.txt'
     if start_from != 0 or count != -1:
-        shuffled_file = list_file + 's{}c{}.shuffle.txt'.format(start_from, count)
+        shuffled_file = list_file.replace(".txt", "") + 's{}c{}.shuffle.txt'.format(start_from, count)
 
     if shuffle_data:
         print("shuffling data")
         c = list(zip(file_list, label_list, index_list))
         shuffle(c)
         file_list, label_list, index_list = zip(*c)
-        with open(shuffled_file, 'w') as f:
-            for item in c:
-                f.write('{} {}\n'.format(item[0], item[1]))
-    return file_list, label_list, index_list
+
+    def chunk_file_name(fname, chunk):
+        return "{}.{}.txt".format(fname.replace(".txt", ""), chunk)
+
+    chunk_idx = 0
+    for filenames, labels, indices in multi_chunks([file_list, label_list, index_list], 500):
+        txt_file = chunk_file_name(list_file, chunk_idx) if not shuffle_data else \
+            chunk_file_name(shuffled_file, chunk_idx)
+        with open(txt_file, 'w') as out_file:
+            for f, l, i in zip(filenames, labels, indices):
+                out_file.write('{} {} {}\n'.format(f, l, i))
+        chunk_idx += 1
 
 
 if __name__ == '__main__':
-    # args = parser.parse_args()
-    # write_data_to_tfrecords(args.file_dir,
-    #                         args.list_file,
-    #                         args.records_name,
-    #                         args.file_type,
-    #                         args.shuffle_data,
-    #                         args.count)
-    #
-    prefix = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour'
-    write_data_to_tfrecords(prefix+'/w_colour_norm_w_labels',
-                            prefix+'/dataset_points_chunk8/train.txt',
-                            prefix+'/dataset_points_chunk8/train1.tfrecords',
-                            'data',
-                            True,
-                            15,
-                            8,
-                            0)
-    write_data_to_tfrecords(prefix+'/w_colour_norm_w_labels',
-                            prefix+'/dataset_points_chunk8/train.txt',
-                            prefix+'/dataset_points_chunk8/train2.tfrecords',
-                            'data',
-                            True,
-                            15,
-                            8,
-                            15)
-    # write_data_to_tfrecords(prefix+'/w_colour_norm_w_labels',
-    #                         prefix+'/dataset_points_chunk8/test.txt',
-    #                         prefix+'/dataset_points_chunk8/test.tfrecords',
-    #                         'data',
-    #                         False,
-    #                         -1,
-    #                         8)
+    eval(sys.argv[1])
