@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <iterator>
 
 #include "cmd_flags.h"
 #include "octree.h"
@@ -33,6 +34,7 @@ DEFINE_bool(key2xyz, kOptional, false, "Convert the key to xyz when serializatio
 DEFINE_bool(extrapolate, kOptional, false, "Exptrpolate the node feature");
 DEFINE_bool(save_pts, kOptional, false, "Save the average points as signal");
 DEFINE_bool(verbose, kOptional, true, "Output logs");
+DEFINE_string(ignore_labels,kOptional,"-1.0", "Point labels to ignore, set to 0");
 
 
 // OctreeBuilder shows a basic example for building an octree with a point cloud
@@ -89,8 +91,8 @@ class OctreeBuilder {
     octree_info_.set_bbox(bbmin, bbmax);
   }
 
-  void build_octree() {
-    octree_.build(octree_info_, point_cloud_);
+  void build_octree(vector<float>ignore_labels) {
+    octree_.build(octree_info_, point_cloud_,ignore_labels);
   }
 
   void save_octree(const string& output_filename) {
@@ -98,6 +100,10 @@ class OctreeBuilder {
     // the point cloud is translated to (0, 0, 0) when building the octree
     octree_.mutable_info().set_bbox(radius_, center_);
     octree_.write_octree(output_filename);
+  }
+
+  void set_ignore_labels(){
+
   }
 
  public:
@@ -114,6 +120,16 @@ int main(int argc, char* argv[]) {
     cflags::PrintHelpInfo("\nUsage: Octree.exe");
     return 0;
   }
+
+  vector<float> ignore_labels;
+  // Build an istream that holds the input string
+  std::istringstream iss(FLAGS_ignore_labels);
+
+  // Iterate over the istream, using >> to grab floats
+  // and push_back to store them in the vector
+  std::copy(std::istream_iterator<float>(iss),
+        std::istream_iterator<float>(),
+        std::back_inserter(ignore_labels));
 
   // file path
   string file_path = FLAGS_filenames;
@@ -151,7 +167,7 @@ int main(int argc, char* argv[]) {
       sprintf(file_suffix, "_%d_%d_%03d.octree", FLAGS_depth, FLAGS_full_depth, v);
 
       // build
-      builder.build_octree();
+      builder.build_octree(ignore_labels);
 
       // save octree
       builder.save_octree(output_path + filename + file_suffix);

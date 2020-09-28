@@ -1,3 +1,5 @@
+#include <iterator>
+
 #include "octree.h"
 
 #include <tensorflow/core/framework/op.h>

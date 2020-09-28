@@ -24,7 +24,7 @@ class Octree : public OctreeParser {
   bool write_octree(const string& filename) const;
   string get_binary_string() const;
 
-  void build(const OctreeInfo& octree_info, const Points& point_cloud);
+  void build(const OctreeInfo& octree_info, const Points& point_cloud, const vector<float>& ignore_labels={0.0});
   void trim_octree();
 
   // serialize the results of the function build() into the buffer_
@@ -47,7 +47,7 @@ class Octree : public OctreeParser {
   void calc_node_num();  // called after the function build_structure()
 
   void calc_signal(const Points& point_cloud, const vector<float>& pts_scaled,
-      const vector<uintk>& sorted_idx, const vector<uintk>& unique_idx);
+      const vector<uintk>& sorted_idx, const vector<uintk>& unique_idx,const vector<float>& ignore_labels= {-1.0});
   void calc_signal(const bool calc_normal_err, const bool calc_dist_err);
   void extrapolate_signal();
 

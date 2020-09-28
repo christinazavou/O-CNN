@@ -43,7 +43,7 @@ def config_points_partnet(category="Bottle"):
                                            scale=0.25, jitter=0.125, angle=[5, 5, 5],
                                            uniform=True,
                                            bounding_sphere=bounding_sphere),
-                           Points2Octree(depth=depth, node_dis=True))
+                           Points2Octree(depth=depth, node_dis=True))#,ignore_labels=tf.constant([0.0,32.0,33.0])))
 
     return octrees, filename, depth, task
 
