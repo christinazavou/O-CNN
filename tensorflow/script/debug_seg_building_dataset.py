@@ -150,29 +150,33 @@ class DatasetDebug:
             pass  # more than one octrees merged thus more output rows in the result
 
 
-def check_properties():
-    # octrees, filename, depth, task = config_points_partnet()
-    # octrees, filename, depth, task = config_points_buildings()
-    # octrees, filename, depth, task = config_points_buildings_with_colour()
-    octrees, filename, depth, task = config_points_buildings_with_colour_filenames()
+def check_filenames():
     with tf.Session() as sess:
+        octrees, filename, depth, task = config_points_buildings_with_colour_filenames()
         count = 0
         filepaths = sess.run(octrees(filename, batch_size=1600))
         for filepath in filepaths:
             filepath = filepath.decode('utf8')
             count += 1
             if count == 900:
-                assert "RESIDENTIALhouse_mesh2627_w_label" in filepath
+                assert "RESIDENTIALhouse_mesh2627_w_label" in filepath, filepath
 
-        filepaths = sess.run(octrees(filename, batch_size=300))
-        filepaths = sess.run(octrees(filename, batch_size=300))
-        filepaths = sess.run(octrees(filename, batch_size=300))
+        x = octrees(filename, batch_size=300)
+        filepaths = sess.run(x)
+        filepaths = sess.run(x)
         filepath = filepaths[-1].decode('utf8')
-        assert "RESIDENTIALhouse_mesh2627_w_label" in filepath, filepath
+        assert 'RESIDENTIALchurch_mesh1845_w_label' in filepath, filepath
 
-        # TODO: na do an se ena dimiourgimeno tfrecords iparxei to idio fainomeno, dld me mikro batch size pianei ksana ta prota samples i oxi... an oxi simenei oti o tropos pou ginetai to cat content in file den leitourgei sosta
 
-        exit()
+def check_properties():
+    # octrees, filename, depth, task = config_points_partnet()
+    # octrees, filename, depth, task = config_points_buildings()
+    octrees, filename, depth, task = config_points_buildings_with_colour()
+
+    check_filenames()
+    exit()
+
+    with tf.Session() as sess:
 
         octree, _, points = sess.run(octrees(filename, batch_size=1, shuffle_size=0, return_iter=True, take=10,
                                              return_pts=True).get_next())
