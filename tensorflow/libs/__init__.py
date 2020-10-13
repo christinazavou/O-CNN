@@ -22,6 +22,7 @@ _tf_ocnn_module = tf.load_op_library(os.path.join(_current_path, 'libocnn.so'))
 bounding_sphere     = _tf_ocnn_module.bounding_sphere
 points_property     = _tf_ocnn_module.points_property
 transform_points    = _tf_ocnn_module.transform_points
+custom_transform_points = _tf_ocnn_module.custom_transform_points
 normalize_points    = _tf_ocnn_module.normalize_points
 points_new          = _tf_ocnn_module.points_new
 points_set_property = _tf_ocnn_module.points_set_property
@@ -65,6 +66,7 @@ ops.NotDifferentiable('BoundingSphere')
 ops.NotDifferentiable('OctreeSetProperty')
 ops.NotDifferentiable('OctreeBatch')
 ops.NotDifferentiable('TransformPoints')
+ops.NotDifferentiable('CustomTransformPoints')
 ops.NotDifferentiable('NormalizePoints')
 ops.NotDifferentiable('PointsNew')
 ops.NotDifferentiable('PointsSetProperty')

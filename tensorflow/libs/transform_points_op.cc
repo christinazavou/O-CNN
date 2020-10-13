@@ -1,10 +1,16 @@
 #include <tensorflow/core/framework/op.h>
 #include <tensorflow/core/framework/op_kernel.h>
 #include <tensorflow/core/framework/shape_inference.h>
+#include <chrono>
+#include <vector>
+#include <cmath>
 
 #include "math_functions.h"
 #include "points.h"
 #include "transform_points.h"
+
+using std::vector;
+
 
 namespace tensorflow {
 
@@ -39,6 +45,17 @@ REGISTER_OP("NormalizePoints")
     })
     .Doc(R"doc(Move the center to the origin, and normalize input to [-1, 1].)doc");
 
+REGISTER_OP("CustomTransformPoints")
+    .Input("points: string")
+    .Attr("sigma: float")
+    .Attr("clip: float")
+    .Output("points_out: string")
+    .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
+      c->set_output(0, c->input(0));
+      return Status::OK();
+    })
+    .Doc(R"doc(Apply global Gaussian translation to points and clip them.)doc");
+
 REGISTER_OP("BoundingSphere")
     .Input("points: string")
     .Attr("method: string='sphere'")
@@ -50,6 +67,26 @@ REGISTER_OP("BoundingSphere")
       return Status::OK();
     })
     .Doc(R"doc(Compute the bounding sphere of a point cloud.)doc");
+
+void min_max_xyz(vector<float> &min_xyz,vector<float>&max_xyz,const Points pts) {
+  const int npt = pts.info().pt_num();
+  const float* points=pts.points();
+  std::vector<float> x,y,z;
+  for (int i = 0; i < npt; ++i) {
+    x.push_back(points[i*3]);y.push_back(points[i*3+1]);z.push_back(points[i*3+2]);
+  }
+  min_xyz.push_back(*std::min_element(x.begin(),x.end()));
+  min_xyz.push_back(*std::min_element(y.begin(),y.end()));
+  min_xyz.push_back(*std::min_element(z.begin(),z.end()));
+
+  max_xyz.push_back(*std::max_element(x.begin(),x.end()));
+  max_xyz.push_back(*std::max_element(y.begin(),y.end()));
+  max_xyz.push_back(*std::max_element(z.begin(),z.end()));
+//  std::cout<<"min: "<<min_xyz[0]<<" "<<min_xyz[1]<<" "<<min_xyz[2]<<std::endl;
+//  std::cout<<"max: "<<max_xyz[0]<<" "<<max_xyz[1]<<" "<<max_xyz[2]<<std::endl;
+
+};
+
 
 class TransformPointsOp : public OpKernel {
  public:
@@ -188,6 +225,60 @@ class TransformPointsOp : public OpKernel {
   float offset_;
 };
 
+
+class CustomTransformPointsOp : public OpKernel {
+ public:
+  explicit CustomTransformPointsOp(OpKernelConstruction* context)
+      : OpKernel(context) {
+    OP_REQUIRES_OK(context, context->GetAttr("sigma", &sigma_));
+    OP_REQUIRES_OK(context, context->GetAttr("clip", &clip_));
+  }
+
+  void Compute(OpKernelContext* context) override {
+    // input points
+    const Tensor& data_in = context->input(0);
+
+    // copy the data out of the input tensor
+    auto points_array = data_in.flat<string>();
+    vector<char> points_buf(points_array(0).begin(), points_array(0).end());
+
+    // init the points
+    Points pts;
+    pts.set(points_buf.data());
+
+    // check the points
+    string msg;
+    bool succ = pts.info().check_format(msg);
+    CHECK(succ) << msg;
+    vector<float> min_xyz,max_xyz;
+    min_max_xyz(min_xyz,max_xyz,pts);
+//    std::cout<<"min in custom: "<<min_xyz[0]<<" "<<min_xyz[1]<<" "<<min_xyz[2]<<std::endl;
+//    std::cout<<"max in custom: "<<max_xyz[0]<<" "<<max_xyz[1]<<" "<<max_xyz[2]<<std::endl;
+    float diag= sqrt(pow((max_xyz[0]-min_xyz[0]),2)+pow((max_xyz[1]-min_xyz[1]),2)+pow((max_xyz[2]-min_xyz[2]),2));
+//    std::cout<<"diag: "<<diag<<std::endl;
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
+    std::normal_distribution<float> dis_pt(0.0f, sigma_*diag);
+    vector<float> stddev={clamp(dis_pt(generator),-1.0f*clip_,clip_)};
+    for(int i=0; i<2;++i)
+        stddev.push_back(clamp(dis_pt(generator),-1.0f*clip_,clip_));
+//    std::cout<<"stddev: "<<stddev[0]<<" "<<stddev[1]<<" "<<stddev[2]<<std::endl;
+
+    pts.translate(&stddev[0]);
+
+    // output
+    Tensor* out_data = nullptr;
+    const TensorShape& shape = data_in.shape();
+    OP_REQUIRES_OK(context, context->allocate_output(0, shape, &out_data));
+    string& out_str = out_data->flat<string>()(0);
+    out_str.assign(points_buf.begin(), points_buf.end());
+  }
+
+ private:
+  float sigma_;
+  float clip_;
+};
+
 class NormalizePointsOp : public OpKernel {
  public:
   explicit NormalizePointsOp(OpKernelConstruction* context)
@@ -290,6 +381,7 @@ class BoundingSphereOp : public OpKernel {
 };
 
 REGISTER_KERNEL_BUILDER(Name("TransformPoints").Device(DEVICE_CPU), TransformPointsOp);
+REGISTER_KERNEL_BUILDER(Name("CustomTransformPoints").Device(DEVICE_CPU), CustomTransformPointsOp);
 REGISTER_KERNEL_BUILDER(Name("NormalizePoints").Device(DEVICE_CPU), NormalizePointsOp);
 REGISTER_KERNEL_BUILDER(Name("BoundingSphere").Device(DEVICE_CPU), BoundingSphereOp);
 
