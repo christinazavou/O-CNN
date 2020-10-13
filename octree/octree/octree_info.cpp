@@ -187,6 +187,7 @@ void OctreeInfo::set_batch_size(int b) {
 
 void OctreeInfo::set_depth(int d) {
   depth_ = full_layer_ < d ? d : full_layer_;
+  depth_ = depth_ <= 8 ? depth_ : 8;
 }
 
 void OctreeInfo::set_full_layer(int fd) {
