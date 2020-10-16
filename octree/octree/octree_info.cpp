@@ -3,6 +3,7 @@
 #include "types.h"
 
 #include <cstring>
+#include <iostream>
 
 #ifdef KEY64
 const char OctreeInfo::kMagicStr[16] = "_OCTREE_2.0_";

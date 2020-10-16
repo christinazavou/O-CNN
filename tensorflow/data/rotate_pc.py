@@ -3,7 +3,8 @@ import math
 import argparse
 import os
 import multiprocessing as mp
-
+from tqdm import tqdm
+import time
 
 # code from: https://github.com/charlesq34/pointnet2/blob/74bb67f3702e8aec55a7b8765dd728b18456030c/utils/provider.py
 def rotate_point_cloud_by_angle(points, angle=0.0):
@@ -32,15 +33,16 @@ def rotate_point_cloud_by_angle_with_normal(points, angle=0.0):
         Return:
           Nx6 array, rotated point clouds with normal
     """
+    tmp_points=points.copy()
     cosval = np.cos(angle)
     sinval = np.sin(angle)
     rotation_matrix = np.array([[cosval, 0, sinval],
                                 [0, 1, 0],
                                 [-sinval, 0, cosval]])
 
-    points[..., 0:3] = np.dot(points[..., 0:3].reshape((-1, 3)), rotation_matrix)
-    points[..., 3:6] = np.dot(points[..., 3:6].reshape((-1, 3)), rotation_matrix)
-    return points
+    tmp_points[..., 0:3] = np.dot(points[..., 0:3].reshape((-1, 3)), rotation_matrix)
+    tmp_points[..., 3:6] = np.dot(points[..., 3:6].reshape((-1, 3)), rotation_matrix)
+    return tmp_points
 
 
 def save_rot(func, data, id):
@@ -49,9 +51,9 @@ def save_rot(func, data, id):
         startidx = int(open(os.path.join(LOG_DIR, "cur_model_{:03d}.txt".format(id)), "r").read())
 
     d = (2 * math.pi) / float(ARGS.rot_num)
-
+    #print(d)
     print("Starting point cloud rotation process {procID:d}...".format(procID=id))
-    for i in range(startidx, len(data)):
+    for i in tqdm(range(startidx, len(data))):
         filename = data[i].strip()
         if ".ply" in filename:
             lines = open(filename, "r").readlines()
@@ -63,14 +65,16 @@ def save_rot(func, data, id):
         else:
             pc = np.loadtxt(filename)
         fname = os.path.basename(filename).split(".")[0]
+        #t=time.time()
         np.savetxt(os.path.join(ARGS.output, fname + "_000.txt"), pc)
 
         for j in range(1, ARGS.rot_num):
             rot_pc = func(pc, j * d)
             np.savetxt(os.path.join(ARGS.output, fname + "_{:03d}.txt".format(j)), rot_pc)
         open(os.path.join(LOG_DIR, "cur_model_{:03d}.txt".format(id)), "w").write(str(i+1))
-        print("Process {procID:d}: Processed files ({nProc:d}/{nModels:d})".format(procID=id, nProc=i + 1,
-                                                                                   nModels=len(data)))
+        #print(time.time()-t)
+        #print("Process {procID:d}: Processed files ({nProc:d}/{nModels:d})".format(procID=id, nProc=i + 1,
+        #                                                                           nModels=len(data)))
     print("Terminating process {procID:d}".format(procID=id))
 
 

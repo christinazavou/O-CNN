@@ -316,7 +316,6 @@ void Octree::calc_signal(const Points& point_cloud, const vector<float>& pts_sca
   const float* features = point_cloud.ptr(PointsInfo::kFeature);
   const float* labels = point_cloud.ptr(PointsInfo::kLabel);
   const int nnum = oct_info_.node_num(depth);
-
   const vector<int>& children = children_[depth];
   if (normals != nullptr) {
     const int channel = point_cloud.info().channel(PointsInfo::kNormal);
