@@ -292,7 +292,6 @@ class PartNetSolver(TFSolver):
         # checkpoint
         start_iter = 1
         self.tf_saver = tf.train.Saver(max_to_keep=self.flags.ckpt_num)
-        #self.lr_saver = tf.train.Saver(var_list=[self.lr])
 
         ckpt_path = os.path.join(self.flags.logdir, 'model')
         self.best_ckpt_path = os.path.join(self.flags.logdir, 'best_ckpts')
@@ -316,13 +315,19 @@ class PartNetSolver(TFSolver):
             print('Start training ...')
             # option 1: use feed dict to pass the calculated learning rate
             # option 2: use model.compile and pass the optimizer and the callbacks
+            if ckpt:
+                self.flags.defrost()
+                print(self.flags.learning_rate)
+                self.flags.learning_rate=float(sess.run(self.lr))
+                print(self.flags.learning_rate)
+                self.flags.freeze()
 
             self.lr_metric = LRFactory(self.flags)  # OnPlateauLRPy(self.flags)
 
             # variable initialisation
             if self.summ_train_occ != None:
-                summary_alw, summary_occ, _, curr_loss = sess.run(
-                    [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss],
+                summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
+                    [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr],
                 )
                 # summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
                 #     [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr],
@@ -341,8 +346,8 @@ class PartNetSolver(TFSolver):
             for i in tqdm(range(start_iter + 1, self.flags.max_iter + 1), ncols=80):
                 # training
                 if self.summ_train_occ != None:
-                    summary_alw, summary_occ, _, curr_loss = sess.run(
-                        [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss],
+                    summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
+                        [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr],
                     )
                     # summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
                     #     [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr],
@@ -350,8 +355,7 @@ class PartNetSolver(TFSolver):
                     # )
                     summary_writer.add_summary(summary_occ, i)
                     summary_writer.add_summary(summary_alw, i)
-                    print("self.lr: ")
-                    print(sess.run(self.lr))
+                    print("self.lr: ", curr_lr)
                 else:
                     summary_alw, _, curr_loss, curr_lr = sess.run(
                         [self.summ_train_alw, self.train_op, self.total_loss, self.lr],
