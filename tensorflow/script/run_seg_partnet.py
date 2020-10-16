@@ -350,13 +350,13 @@ class PartNetSolver(TFSolver):
                     # )
                     summary_writer.add_summary(summary_occ, i)
                     summary_writer.add_summary(summary_alw, i)
+                    print("self.lr: ")
+                    print(sess.run(self.lr))
                 else:
                     summary_alw, _, curr_loss, curr_lr = sess.run(
                         [self.summ_train_alw, self.train_op, self.total_loss, self.lr],
                         # feed_dict={self.lr: self.lr_metric(curr_loss)}
                     )
-                    print("self.lr: ")
-                    print(sess.run(self.lr))
                     summary_writer.add_summary(summary_alw, i)
                 # testing
                 if i % self.flags.test_every_iter == 0:
