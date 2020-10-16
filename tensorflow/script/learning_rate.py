@@ -135,7 +135,6 @@ class OnPlateauLRPy:
 
         if self.prev_lr - new_lr <= self.flags.eps:
             new_lr = self.prev_lr
-
         self.prev_lr = new_lr
         return new_lr
 
@@ -149,6 +148,7 @@ class LRFactory:
             self.lr = CosLR(flags)
         elif self.flags.lr_type == 'plateau':
             self.lr = OnPlateauLRPy(flags)
+            print("plateau lr")
         else:
             print('Error, unsupported learning rate: ' + self.flags.lr_type)
 

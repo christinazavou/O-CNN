@@ -35,12 +35,12 @@ class TFSolver:
             with tf.device('/cpu:0'):
                 self.train_tensors = average_tensors(self.train_tensors)
                 self.test_tensors = average_tensors(self.test_tensors)
-        self.summaries(train_names + ['lr'], self.train_tensors + [lr, ], self.test_names)
+        self.summaries(train_names + ['lr'], self.train_tensors + [lr, ], self.test_names + ['lr'])
 
     def summaries(self, train_names, train_tensors, test_names):
         self.summ_train = summary_train(train_names, train_tensors)
         self.summ_test, self.summ_holder = summary_test(test_names)
-        self.summ2txt(test_names, 'step', 'w')
+        self.summ2txt(test_names, 'iter', 'w')
 
     def summ2txt(self, values, step, flag='a'):
         test_summ = os.path.join(self.flags.logdir, 'test_summaries.csv')

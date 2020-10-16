@@ -16,7 +16,7 @@ _C.SOLVER.type = 'sgd'  # Choose from sgd or adam
 _C.SOLVER.max_iter = 160000  # Maximum training iterations
 _C.SOLVER.test_iter = 100  # Test steps in testing phase
 _C.SOLVER.test_every_iter = 1000  # Test model every n training steps
-_C.SOLVER.lr_type = 'step'  # Learning rate type: step or cos
+_C.SOLVER.lr_type = 'plateau'  # Learning rate type: step or cos
 _C.SOLVER.learning_rate = 0.1  # Initial learning rate
 _C.SOLVER.gamma = 0.1  # Learning rate step-wise decay
 _C.SOLVER.step_size = (40000,)  # Learning rate step size.
@@ -25,7 +25,7 @@ _C.SOLVER.var_name = ('_name',)  # Variable names used for finetuning
 _C.SOLVER.ignore_var_name = ('_name',)  # Ignore variable names when loading ckpt
 _C.SOLVER.verbose = False  # Whether to output some messages
 _C.SOLVER.mode = 'min'  # ####################
-_C.SOLVER.patience = 1000  # ####################
+_C.SOLVER.patience = 0  # ####################
 _C.SOLVER.threshold = 1e-4  # ####################
 _C.SOLVER.threshold_mode = 'rel'  # ####################
 _C.SOLVER.cooldown = 0  # ####################
@@ -59,8 +59,12 @@ _C.DATA.train.stddev = (0, 0, 0)  # The standard deviation of the random noise
 _C.DATA.train.interval = (1, 1, 1)  # Use interval&angle to generate random angle
 _C.DATA.train.angle = (180, 180, 180)
 
+# _C.DATA.train.rot_num = 1
+_C.DATA.train.sigma = 0.01
+_C.DATA.train.clip = 0.05
+
 _C.DATA.train.location = ''  # The data location
-_C.DATA.train.shuffle = 0#1000  # The shuffle size
+_C.DATA.train.shuffle = 0  # 1000  # The shuffle size
 _C.DATA.train.take = -1  # Use at most `take` elements from this dataset
 _C.DATA.train.batch_size = 32  # Training data batch size
 _C.DATA.train.mask_ratio = 0.0  # Mask out some points for faster training #features
@@ -69,7 +73,9 @@ _C.DATA.train.mask_ratio = 0.0  # Mask out some points for faster training #feat
 _C.DATA.train.return_pts = False  # Also return points
 
 _C.DATA.test = _C.DATA.train.clone()
-
+# _C.DATA.test.rot_num=1
+_C.DATA.test.sigma = 0.0
+_C.DATA.test.clip = 0.0
 # MODEL related parameters
 _C.MODEL = CN()
 _C.MODEL.name = ''  # The name of the model
@@ -88,7 +94,7 @@ _C.MODEL.upsample = 'nearest'  # The method used for upsampling
 # loss related parameters
 _C.LOSS = CN()
 _C.LOSS.num_class = 40  # The class number for the cross-entropy loss
-_C.LOSS.weight_decay = 0.0005# The weight decay on model weights
+_C.LOSS.weight_decay = 0.0005  # The weight decay on model weights
 _C.LOSS.sigma = 0.1  # Use for MID training
 _C.LOSS.momentum = 0.5  # Use for MID training
 _C.LOSS.inst_num = 57449  # The object number in MID training
