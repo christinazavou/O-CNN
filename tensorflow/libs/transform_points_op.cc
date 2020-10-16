@@ -47,8 +47,9 @@ REGISTER_OP("NormalizePoints")
 
 REGISTER_OP("CustomTransformPoints")
     .Input("points: string")
-    .Attr("sigma: float")
-    .Attr("clip: float")
+    .Attr("sigma: float=0.01")
+    .Attr("clip: float=0.05")
+    .Attr("angle: float=0.0")
     .Output("points_out: string")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
       c->set_output(0, c->input(0));
@@ -232,6 +233,8 @@ class CustomTransformPointsOp : public OpKernel {
       : OpKernel(context) {
     OP_REQUIRES_OK(context, context->GetAttr("sigma", &sigma_));
     OP_REQUIRES_OK(context, context->GetAttr("clip", &clip_));
+    OP_REQUIRES_OK(context, context->GetAttr("angle", &angle_));
+
   }
 
   void Compute(OpKernelContext* context) override {
@@ -260,11 +263,17 @@ class CustomTransformPointsOp : public OpKernel {
     std::default_random_engine generator(seed);
     std::normal_distribution<float> dis_pt(0.0f, sigma_*diag);
     vector<float> stddev={clamp(dis_pt(generator),-1.0f*clip_,clip_)};
-    for(int i=0; i<2;++i)
-        stddev.push_back(clamp(dis_pt(generator),-1.0f*clip_,clip_));
+    stddev.push_back(clamp(dis_pt(generator),-1.0f*clip_,clip_));
+    stddev.push_back(clamp(dis_pt(generator),-1.0f*clip_,clip_));
+
+
+//    stddev={0.02,0.02,-0.02};
+
 //    std::cout<<"stddev: "<<stddev[0]<<" "<<stddev[1]<<" "<<stddev[2]<<std::endl;
 
     pts.translate(&stddev[0]);
+//    const float rot[3]= {0.0,angle_,0.0};
+//    pts.rotate(rot);
 
     // output
     Tensor* out_data = nullptr;
@@ -277,6 +286,7 @@ class CustomTransformPointsOp : public OpKernel {
  private:
   float sigma_;
   float clip_;
+  float angle_;
 };
 
 class NormalizePointsOp : public OpKernel {

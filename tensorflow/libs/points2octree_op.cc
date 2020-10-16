@@ -1,6 +1,7 @@
 #include <iterator>
 
 #include "octree.h"
+#include "mesh.h"
 
 #include <tensorflow/core/framework/op.h>
 #include <tensorflow/core/framework/op_kernel.h>
@@ -35,6 +36,8 @@ class PointsToOctreeOp : public OpKernel {
  public:
   explicit PointsToOctreeOp(OpKernelConstruction* context) :
     OpKernel(context) {
+//        std::cout<<"gerajgieojh"<<std::endl;
+
     OP_REQUIRES_OK(context, context->GetAttr("depth", &depth_));
     OP_REQUIRES_OK(context, context->GetAttr("full_depth", &full_depth_));
     OP_REQUIRES_OK(context, context->GetAttr("node_dis", &node_dis_));
@@ -47,12 +50,12 @@ class PointsToOctreeOp : public OpKernel {
     OP_REQUIRES_OK(context, context->GetAttr("extrapolate", &extrapolate_));
     OP_REQUIRES_OK(context, context->GetAttr("save_pts", &save_pts_));
     OP_REQUIRES_OK(context, context->GetAttr("key2xyz", &key2xyz_));
-  }
+ }
 
   void Compute(OpKernelContext* context) override {
+//      std::cout<<"init"<<std::endl;
     const Tensor& data_in = context->input(0);
     CHECK_EQ(data_in.NumElements(), 1);
-
     // init the points
     Points point_cloud_;
     point_cloud_.set(data_in.flat<string>()(0).data());
@@ -60,8 +63,8 @@ class PointsToOctreeOp : public OpKernel {
     // check the points
     string msg;
     bool succ = point_cloud_.info().check_format(msg);
+//    std::cout<<succ<<std::endl;
     CHECK(succ) << msg;
-
     // init the octree info
     OctreeInfo octree_info_;
     octree_info_.initialize(depth_, full_depth_, node_dis_,
@@ -73,8 +76,13 @@ class PointsToOctreeOp : public OpKernel {
     Octree octree_;
     octree_.build(octree_info_, point_cloud_);
     const vector<char>& octree_buf = octree_.buffer();
-
-    // output
+//    vector<float> V;
+//    vector<int> F;
+//    char file_suffix[64];
+//    sprintf(file_suffix, "/media/maria/BigData1/Maria/repos/test_%d.obj", depth_);
+//    octree_.octree2mesh(V,F,full_depth_,depth_,true);
+//    write_obj(file_suffix,V,F);
+   // output
     Tensor* out_data = nullptr;
     OP_REQUIRES_OK(context, context->allocate_output(0, data_in.shape(), &out_data));
     string& out_str = out_data->flat<string>()(0);

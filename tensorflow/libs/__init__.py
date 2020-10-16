@@ -31,6 +31,7 @@ octree_scan         = _tf_ocnn_module.octree_scan
 octree_cast         = _tf_ocnn_module.octree_cast
 octree_batch        = _tf_ocnn_module.octree_batch
 points2octree       = _tf_ocnn_module.points_to_octree
+custom_points2octree       = _tf_ocnn_module.custom_points_to_octree
 octree_property     = _tf_ocnn_module.octree_property
 octree_pad          = _tf_ocnn_module.octree_pad
 octree_depad        = _tf_ocnn_module.octree_depad
@@ -71,6 +72,7 @@ ops.NotDifferentiable('NormalizePoints')
 ops.NotDifferentiable('PointsNew')
 ops.NotDifferentiable('PointsSetProperty')
 ops.NotDifferentiable('PointsToOctree')
+ops.NotDifferentiable('CustomPointsToOctree')
 ops.NotDifferentiable('OctreeProperty')
 ops.NotDifferentiable('OctreeNew')
 ops.NotDifferentiable('OctreeUpdate')
