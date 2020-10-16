@@ -11,7 +11,7 @@ import numpy as np
 from tqdm import tqdm
 import os
 from ocnn import *
-from learning_rate import LRFactory, OnPlateauLRPy
+from learning_rate import LRFactory
 from tensorflow.python.client import timeline
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
@@ -20,7 +20,7 @@ from visualize import vis_confusion_matrix
 
 FLAGS.LOSS.point_wise = True
 # FLAGS.LOSS.point_wise = False
-MASK_LABEL = 0  # metrics are ignored for the points with label 'undefined' ..
+MASK_LABEL = tf.constant([0.0, 32.0, 33.0])  # metrics are ignored for the points with label 'undefined' ..
 CONF_MAT_KEY = 'confusion_matrix'
 CATEGORIES = ANNFASS_LABELS
 # CATEGORIES = LEVEL3_LABELS
@@ -28,12 +28,12 @@ COLOURS = ANNFASS_COLORS
 # COLOURS = LEVEL3_COLORS
 LABEL_WEIGHTS = tf.constant(
     [0.0, 1.0, 1.2607750170843908, 1.5005930826950187, 1.086003196497788, 1.3488467965077944, 1.4618322338667538,
-      1.3174190951492424, 1.539809107718665, 1.1438476294835398, 1.4151902825998448, 1.5083375754995785,
-      1.4857699283179813, 1.5664935071153896, 1.228412737608595, 1.5452717626065522, 1.3300215361581862,
-      1.3954368262559722, 1.3967771547392949, 1.3952685623940035, 1.4588113378317014, 1.587808410098552,
-      1.4549345122678352, 1.3629362751926624, 1.7781427045873794, 1.5798946403464105, 1.5806155176614685,
-      1.6866705953387588, 2.0, 1.659760728786743, 1.757814718996263, 1.8404919947017664, 1.8484978417739655,
-      1.8938132352883477])  # shape (1,C)
+     1.3174190951492424, 1.539809107718665, 1.1438476294835398, 1.4151902825998448, 1.5083375754995785,
+     1.4857699283179813, 1.5664935071153896, 1.228412737608595, 1.5452717626065522, 1.3300215361581862,
+     1.3954368262559722, 1.3967771547392949, 1.3952685623940035, 1.4588113378317014, 1.587808410098552,
+     1.4549345122678352, 1.3629362751926624, 1.7781427045873794, 1.5798946403464105, 1.5806155176614685,
+     1.6866705953387588, 2.0, 1.659760728786743, 1.757814718996263, 1.8404919947017664, 1.8484978417739655,
+     1.8938132352883477])  # shape (1,C)
 best_metric_dict = {"acc": 0.0, "loss": 1e100, "iou": 0.0}
 
 
@@ -47,16 +47,18 @@ def get_point_info(points, mask_ratio=0, mask=-1):
         debug_checks['{}/label'.format(tf.get_variable_scope().name)] = label
         label = tf.reshape(label, [-1])
         label_mask = label > mask  # mask out invalid points, -1
+        debug_checks['label_mask'] = label_mask
         if mask_ratio > 0:  # random drop some points to speed up training
-            print("Droping points with rate: ",mask_ratio)
             rnd_mask = tf.random.uniform(tf.shape(label_mask)) > mask_ratio
             label_mask = tf.logical_and(label_mask, rnd_mask)
             debug_checks['{}/rnd_mask'.format(tf.get_variable_scope().name)] = rnd_mask
 
-        tile_multiples = tf.concat([tf.ones(tf.shape(tf.shape(label)), dtype=tf.int32), tf.shape(mask)], axis=0)
+        tile_multiples = tf.concat([tf.ones(tf.shape(tf.shape(label)), dtype=tf.int32), tf.shape(MASK_LABEL)], axis=0)
         x_tile = tf.tile(tf.expand_dims(label, -1), tile_multiples)
-        ignored = tf.reduce_any(tf.not_equal(x_tile, mask), -1)
-        print(ignored)
+        ignored = tf.reduce_any(tf.equal(x_tile, MASK_LABEL), -1)
+        debug_checks['inverse_ignore'] = tf.logical_not(ignored)
+        label_mask = tf.logical_and(label_mask, tf.logical_not(ignored))
+        debug_checks['label_mask_final'] = label_mask
         pts = tf.boolean_mask(pts, label_mask)
         label = tf.boolean_mask(label, label_mask)
         debug_checks['{}/masked_and_ratio/pts(xyz)'.format(tf.get_variable_scope().name)] = pts
@@ -76,7 +78,7 @@ def tf_IoU_per_shape(pred, label, class_num, mask=-1, debug=False):
                                                              axis=1, output_type=tf.int32)
 
         intsc, union = [None] * class_num, [None] * class_num
-        for k in range(class_num):
+        for k in range(1, class_num):
             pk = tf.equal(debug_checks['prediction_masked_argmax'], k)
             lk = tf.equal(debug_checks['label_masked'], k)
             debug_checks['prediction_{}'.format(k)] = pk
@@ -139,17 +141,19 @@ class ComputeGraphSeg:
                 debug_checks["{}/probabilities".format(tf.get_variable_scope().name)] = get_probabilities(logit)
                 metrics_dict, dc = loss_functions_seg_debug_checks(
                     logit=logit, label_gt=label, num_class=FLAGS.LOSS.num_class, weight_decay=FLAGS.LOSS.weight_decay,
-                    var_name='ocnn', weights=self.weights, mask=MASK_LABEL)
+                    var_name='ocnn', weights=self.weights, mask=0)
                 debug_checks.update(dc)
                 tensors_dict.update(metrics_dict)
                 tensors_dict['total_loss'] = metrics_dict['loss'] + metrics_dict['regularizer']
 
                 if flags_data.batch_size == 1:
                     num_class = FLAGS.LOSS.num_class
-                    intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=MASK_LABEL)
+                    intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=0)
                     iou = tf.constant(0.0)  # placeholder, calc its value later
                     tensors_dict['iou'] = iou
-                    for i in range(num_class):
+                    # tensors_dict['intsc_0']=tf.constant(0.0)
+                    # tensors_dict['union_0']=tf.constant(0.0)
+                    for i in range(1, num_class):
                         tensors_dict['intsc_%d' % i] = intsc[i]
                         tensors_dict['union_%d' % i] = union[i]
                 print(tensors_dict.keys())
@@ -184,7 +188,7 @@ def get_probabilities(logits):
 
 # define the solver
 class PartNetSolver(TFSolver):
-    def __init__(self, flags, compute_graph, build_solver=build_solver_given_lr):
+    def __init__(self, flags, compute_graph, build_solver):
         super(PartNetSolver, self).__init__(flags.SOLVER, compute_graph, build_solver)
         self.num_class = flags.LOSS.num_class  # used to calculate the IoU
 
@@ -203,7 +207,8 @@ class PartNetSolver(TFSolver):
         self.test_tensors_dict, self.test_debug_checks = self.graph(**test_params)
 
         self.total_loss = self.train_tensors_dict['total_loss']
-        self.lr = tf.Variable(initial_value=self.flags.learning_rate, name='plateau_lr', trainable=False)
+        with tf.name_scope('lr'):
+            self.lr = tf.Variable(initial_value=self.flags.learning_rate, name='learning_rate', trainable=False)
         solver_param = [self.total_loss, self.lr]
         if gpu_num > 1:
             solver_param.append(gpu_num)
@@ -216,9 +221,10 @@ class PartNetSolver(TFSolver):
 
         tensor_dict_for_train_summary = {}
         tensor_dict_for_train_summary.update(self.train_tensors_dict)
-        tensor_dict_for_train_summary.update({'lr': self.lr})
+        # tensor_dict_for_train_summary.update({'lr': self.lr})
         tensor_dict_for_test_summary = {}
         tensor_dict_for_test_summary.update(self.test_tensors_dict)
+        tensor_dict_for_test_summary.update({'lr': self.lr})
         self.summaries_dict(tensor_dict_for_train_summary, tensor_dict_for_test_summary)
 
     def summaries_dict(self, train_tensor_dict, test_tensor_dict):
@@ -229,7 +235,7 @@ class PartNetSolver(TFSolver):
         self.summ_train_alw = summary_train_dict(train_tensor_dict)
         self.summ_test, self.summ_holder_dict = summary_test_dict(test_tensor_dict)
         self.summ_test_keys = [key for key in self.summ_holder_dict.keys() if key != CONF_MAT_KEY]
-        self.summ2txt(self.summ_test_keys, 'step', 'w')
+        self.summ2txt(self.summ_test_keys, 'iter', 'w')
 
     def build_test_graph(self):
         gpu_num = len(self.flags.gpu)
@@ -241,6 +247,7 @@ class PartNetSolver(TFSolver):
                 self.test_tensors_dict = average_tensors(self.test_tensors_dict)
 
     def run_k_test_iterations(self, sess):
+        print("eval on val split")
         avg_results_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
         for i in range(self.flags.test_iter):
             iter_results_dict, iter_debug_checks = sess.run([self.test_tensors_dict, self.test_debug_checks])
@@ -251,11 +258,14 @@ class PartNetSolver(TFSolver):
         for key in avg_results_dict.keys():
             avg_results_dict[key] /= self.flags.test_iter
         avg_results = self.result_callback(avg_results_dict)
+        curr_lr = sess.run(self.lr, feed_dict={self.lr: self.lr_metric(avg_results_dict['total_loss'])})
+        sess.run(self.lr.assign(curr_lr))
+        avg_results['lr'] = self.lr
+        avg_results_dict['lr'] = curr_lr
         print(avg_results_dict)
-
         return avg_results
 
-    def save_ckpt(self,dc,sess,iter):
+    def save_ckpt(self, dc, sess, iter):
         if dc['iou'] > best_metric_dict['iou']:
             print(best_metric_dict['iou'], dc['iou'])
             best_metric_dict['iou'] = dc['iou']
@@ -282,11 +292,13 @@ class PartNetSolver(TFSolver):
         # checkpoint
         start_iter = 1
         self.tf_saver = tf.train.Saver(max_to_keep=self.flags.ckpt_num)
+        #self.lr_saver = tf.train.Saver(var_list=[self.lr])
+
         ckpt_path = os.path.join(self.flags.logdir, 'model')
         self.best_ckpt_path = os.path.join(self.flags.logdir, 'best_ckpts')
         if self.flags.ckpt:  # restore from the provided checkpoint
             ckpt = self.flags.ckpt
-        else:  # restore from the breaking point
+        else:  # restore from the breaking pointer
             ckpt = tf.train.latest_checkpoint(ckpt_path)
             if ckpt: start_iter = int(ckpt[ckpt.find("iter") + 5:-5]) + 1
 
@@ -298,40 +310,53 @@ class PartNetSolver(TFSolver):
 
             print('Initialize ...')
             self.initialize(sess)
-            if ckpt: self.restore(sess, ckpt)
+            if ckpt:
+                self.restore(sess, ckpt)
 
             print('Start training ...')
-
             # option 1: use feed dict to pass the calculated learning rate
             # option 2: use model.compile and pass the optimizer and the callbacks
 
-            lr_metric = LRFactory(self.flags)  # OnPlateauLRPy(self.flags)
+            self.lr_metric = LRFactory(self.flags)  # OnPlateauLRPy(self.flags)
 
             # variable initialisation
             if self.summ_train_occ != None:
-                summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
-                    [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr])#,
-                    #feed_dict={self.lr: self.flags.learning_rate})
+                summary_alw, summary_occ, _, curr_loss = sess.run(
+                    [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss],
+                )
+                # summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
+                #     [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr],
+                #      feed_dict={self.lr: self.flags.learning_rate}
+                # )
+                # feed_dict={self.lr: self.flags.learning_rate})
                 summary_writer.add_summary(summary_occ, start_iter)
                 summary_writer.add_summary(summary_alw, start_iter)
             else:
                 summary_alw, _, curr_loss, curr_lr = sess.run(
                     [self.summ_train_alw, self.train_op, self.total_loss, self.lr],
-                    feed_dict={self.lr: self.flags.learning_rate})
+                    # feed_dict={self.lr: self.flags.learning_rate}
+                )
                 summary_writer.add_summary(summary_alw, start_iter)
 
             for i in tqdm(range(start_iter + 1, self.flags.max_iter + 1), ncols=80):
                 # training
                 if self.summ_train_occ != None:
-                    summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
-                        [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr])  # ,
-                    # feed_dict={self.lr: lr_metric(curr_loss)})
+                    summary_alw, summary_occ, _, curr_loss = sess.run(
+                        [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss],
+                    )
+                    # summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
+                    #     [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr],
+                    #      feed_dict={self.lr: self.lr_metric(curr_loss)}
+                    # )
                     summary_writer.add_summary(summary_occ, i)
                     summary_writer.add_summary(summary_alw, i)
                 else:
                     summary_alw, _, curr_loss, curr_lr = sess.run(
                         [self.summ_train_alw, self.train_op, self.total_loss, self.lr],
-                        feed_dict={self.lr: lr_metric(curr_loss)})
+                        # feed_dict={self.lr: self.lr_metric(curr_loss)}
+                    )
+                    print("self.lr: ")
+                    print(sess.run(self.lr))
                     summary_writer.add_summary(summary_alw, i)
                 # testing
                 if i % self.flags.test_every_iter == 0:
@@ -339,9 +364,9 @@ class PartNetSolver(TFSolver):
                     avg_test_dict = self.run_k_test_iterations(sess)
 
                     # save best acc,loss and iou network snapshots
-                    self.save_ckpt(avg_test_dict,sess,i/self.flags.test_every_iter)
+                    self.save_ckpt(avg_test_dict, sess, i / self.flags.test_every_iter)
 
-                        # run testing summary
+                    # run testing summary
                     summary = sess.run(self.summ_test,
                                        feed_dict={pl: avg_test_dict[m]
                                                   for m, pl in self.summ_holder_dict.items()})
@@ -540,5 +565,6 @@ if __name__ == '__main__':
     if FLAGS.DATA.train.depth != FLAGS.DATA.test.depth:
         raise ValueError("Train and test networks must have the same depth!!!\nExiting...")
     compute_graph = ComputeGraphSeg(FLAGS)
-    solver = PartNetSolver(FLAGS, compute_graph)
+    builder_op = build_solver_given_lr if FLAGS.SOLVER.lr_type == 'plateau' else build_solver
+    solver = PartNetSolver(FLAGS, compute_graph, builder_op)
     solver.run()
