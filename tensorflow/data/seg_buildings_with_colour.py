@@ -1,10 +1,14 @@
 import os
 import numpy as np
 import sys
+
 sys.path.append('..')
 from libs import *
 import tensorflow as tf
 import time
+import json
+from tqdm import tqdm
+
 # help(points_new)
 
 
@@ -104,16 +108,69 @@ def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def create_points(files, sess):
+def create_points(files, w_color, label_dir, colour_dir, sess):
     byte_points_tensors = []
     for file in files:
         a = np.loadtxt(file).astype(np.float32)
-        points = a[:, 0:3]  # x,y,z
-        normals = a[:, 3:6]  # nx,ny,nz
-        features = a[:, 6:10]  # r,g,b,a
-        labels = a[:, 10]  # int from 0 to 33
-
+        i = 0
+        points = a[:, i:i + 3]  # x,y,z
+        i += 3
+        normals = a[:, i:i + 3]  # nx,ny,nz
+        i += 3
+        if w_color:
+            if colour_dir:
+                try:
+                    c_file = os.path.basename(file)
+                    lines = open(os.path.join(colour_dir, c_file[:c_file.rfind("_")] + ".ply"), "r").readlines()[14:]
+                    features=np.array([line.strip().split()[-4:] for line in lines],dtype=float)
+                except FileNotFoundError:
+                    print("Colour file {} not found".format(os.path.join(colour_dir, c_file[:c_file.rfind("_")] + ".ply")))
+                    exit()
+            else:
+                features = a[:, i:i + 4]  # r,g,b,a
+                i += 4
+        else:
+            features = 0.0
+        if label_dir:
+            try:
+                l_file = os.path.basename(file)
+                l = json.load(open(os.path.join(label_dir, l_file[0: l_file.rfind("_")] + "_label.json")))
+                labels = np.zeros((len(l), 1))
+                for k, v in l.items():
+                    labels[int(k)] = v
+            except FileNotFoundError:
+                print("Label file {} not found".format(os.path.join(label_dir, os.path.basename(file) + "_label.json")))
+                exit()
+        else:
+            labels = a[:, i]  # int from 0 to 33
         pts_tf = points_new(points, normals, features, labels)
+        # for i in range(4,9):
+        #     t = time.time()
+        #     pts_tf = points_new(points, normals, features, labels)
+        #     # sess.run(pts_tf)
+        #     p_new = int(round((time.time() - t) * 1000))
+        #     print(pts_tf)
+        #     print("Points new: " + str(p_new) + " ms")
+        #     t=time.time()
+        #     x=custom_points2octree(in_points=pts_tf, depth=i)#, full_depth=2,
+        #                            #node_dis=True, node_feature=False,split_label=False, adaptive=False, adp_depth=4,
+        #                            #th_normal=0.1, save_pts=False)
+        #     sess.run(x)
+        #     print("CustomPoints2octree depth {} : {} ms".format(i, int(round((time.time() - t) * 1000))))
+        #     print(x)
+        #
+        #     t=time.time()
+        #     y=custom_transform_points(pts_tf,sigma=0.01,clip=0.05,angle=0.0)
+        #     #sess.run(y)
+        #     p_new = int(round((time.time() - t) * 1000))
+        #     print(y)
+        #     print("Trans points: " + str(p_new) + " ms")
+        #     t=time.time()
+        #     z=points2octree(in_points=y, depth=i, full_depth=2, node_dis=True, node_feature=False,
+        #                           split_label=False, adaptive=False, adp_depth=4, th_normal=0.1, save_pts=False)
+        #     sess.run(z)
+        #     print("Points2octree depth {} : {} ms".format(i,int(round((time.time()-t) * 1000))+p_new))
+        #     print(z)
         byte_points_tensors.append(pts_tf)
 
     return sess.run(byte_points_tensors)
@@ -139,21 +196,24 @@ def get_data_label_index(list_file):
     return file_list, label_list, index_list
 
 
-def write_data_to_tfrecords(file_dir, list_file, records_name, file_type):
-    filenames, label, index = get_data_label_index(list_file)
+def write_data_to_tfrecords(file_dir, list_file, records_name, file_type, label_dir=None, colour_dir=None,
+                            w_color=False):
+    filenames, label, index = get_data_label_index(list_file)  # label of entire model, used for classification only
     s_time = time.time()
-    write_records(file_dir, records_name, file_type, filenames, label, index, 8)
+    write_records(file_dir, records_name, file_type, filenames, label, index, label_dir,colour_dir, 8, w_color)
     e_time = time.time()
-    print("took {} minutes".format((e_time-s_time)//60))
+    print("Time {} m".format((e_time - s_time) // 60))
+    print("Time {} ms: ".format(int(round((e_time - s_time) * 1000))))
 
 
-def write_records(file_dir, records_name, file_type, filenames, label, index, chunk_size=8):
+def write_records(file_dir, records_name, file_type, filenames, label, index, label_dir, colour_dir, chunk_size=8,
+                  w_color=False):
     with tf.Session() as sess:
         with tf.io.TFRecordWriter(records_name) as writer:
             chunk_data = 0
-            for f_chunk, l_chunk, i_chunk in multi_chunks([filenames, label, index], chunk_size):
+            for f_chunk, l_chunk, i_chunk in tqdm(multi_chunks([filenames, label, index], chunk_size)):
                 f_chunk = [os.path.join(file_dir, filename) for filename in f_chunk]
-                points_bytes = create_points(f_chunk, sess)
+                points_bytes = create_points(f_chunk, w_color, label_dir, colour_dir, sess)
                 chunk_data += chunk_size
                 if not chunk_data % (chunk_size * 10):
                     print('data loaded: {}'.format(chunk_data))
@@ -170,7 +230,7 @@ def write_records(file_dir, records_name, file_type, filenames, label, index, ch
                     chunk_idx += 1
 
 
-def split_data_label_indices_in_files(list_file, shuffle_data, count=-1, start_from=0):
+def split_data_label_indices_in_files(list_file, shuffle_data, count=-1, start_from=0, rot_num=0):
     file_list = []
     label_list = []
     with open(list_file) as f:
@@ -180,8 +240,13 @@ def split_data_label_indices_in_files(list_file, shuffle_data, count=-1, start_f
             if count != -1 and i >= count + start_from:
                 break
             file, label = line.split()
-            file_list.append(file)
-            label_list.append(int(label))
+            if rot_num > 0:
+                label_list.extend([int(label)] * rot_num)
+                name, ext = file.split(".")
+                file_list.extend([name + "_{:03d}.".format(i) + ext for i in range(rot_num)])
+            else:
+                file_list.append(file)
+                label_list.append(int(label))
     if count != -1:
         assert len(label_list) == count, "{} lines read != {}".format(len(label_list), count)
     index_list = list(range(len(label_list)))
@@ -207,7 +272,7 @@ def split_data_label_indices_in_files(list_file, shuffle_data, count=-1, start_f
             for f, l, i in zip(filenames, labels, indices):
                 out_file.write('{} {} {}\n'.format(f, l, i))
         chunk_idx += 1
-
+    print("Done.")
 
 if __name__ == '__main__':
     eval(sys.argv[1])
