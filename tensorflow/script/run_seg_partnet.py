@@ -53,9 +53,9 @@ def get_point_info(points, mask_ratio=0, mask=-1):
             label_mask = tf.logical_and(label_mask, rnd_mask)
             debug_checks['{}/rnd_mask'.format(tf.get_variable_scope().name)] = rnd_mask
 
-        tile_multiples = tf.concat([tf.ones(tf.shape(tf.shape(label)), dtype=tf.int32), tf.shape(mask)], axis=0)
+        tile_multiples = tf.concat([tf.ones(tf.shape(tf.shape(label)), dtype=tf.int32), tf.shape(tf.constant([0.0,32.0,33.0]))], axis=0)
         x_tile = tf.tile(tf.expand_dims(label, -1), tile_multiples)
-        ignored = tf.reduce_any(tf.not_equal(x_tile, mask), -1)
+        ignored = tf.reduce_any(tf.not_equal(x_tile, tf.constant([0.0,32.0,33.0])), -1)
         print(ignored)
         pts = tf.boolean_mask(pts, label_mask)
         label = tf.boolean_mask(label, label_mask)
