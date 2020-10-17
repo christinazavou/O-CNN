@@ -65,20 +65,25 @@ def debug():
 
 
 def check_records():
-    records_name = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour' \
-                   '/dataset_points_chunk8/train.shuffle.all.tfrecords'
+    records_name = '/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/test_w_colour_no_rot.tfrecords'
     c = 0
     for record in tf.io.tf_record_iterator(records_name):
         c += 1
+        parsed_record = tf.parse_single_example(
+            record,
+            {'filename': tf.FixedLenFeature([], tf.string), 'data': tf.FixedLenFeature([], tf.string)}
+        )
+        result = tf.Session().run(parsed_record)
+        continue
         if c == 900:
             parsed_record = tf.parse_single_example(
                 record,
                 {'filename': tf.FixedLenFeature([], tf.string)}
             )
             filename = tf.Session().run(parsed_record)['filename']
-            assert "RESIDENTIALhouse_mesh2627_w_label" in filename.decode('utf8')
+            # assert "RESIDENTIALhouse_mesh2627_w_label" in filename.decode('utf8')
 
-    assert c == 1600
+    # assert c == 1600
 
 
 import os
