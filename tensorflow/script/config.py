@@ -25,11 +25,11 @@ _C.SOLVER.var_name = ('_name',)  # Variable names used for finetuning
 _C.SOLVER.ignore_var_name = ('_name',)  # Ignore variable names when loading ckpt
 _C.SOLVER.verbose = False  # Whether to output some messages
 _C.SOLVER.mode = 'min'  # ####################
-_C.SOLVER.patience = 0  # ####################
+_C.SOLVER.patience = 48000  # ####################
 _C.SOLVER.threshold = 1e-4  # ####################
 _C.SOLVER.threshold_mode = 'rel'  # ####################
 _C.SOLVER.cooldown = 0  # ####################
-_C.SOLVER.min_lr = 1e-10  # ####################
+_C.SOLVER.min_lr = 0.0#1e-10  # ####################
 _C.SOLVER.eps = 1e-8  # ####################
 _C.SOLVER.weighted_loss = True
 
@@ -64,7 +64,7 @@ _C.DATA.train.sigma = 0.01
 _C.DATA.train.clip = 0.05
 
 _C.DATA.train.location = ''  # The data location
-_C.DATA.train.shuffle = 0  # 1000  # The shuffle size
+_C.DATA.train.shuffle = 1000  # The shuffle size
 _C.DATA.train.take = -1  # Use at most `take` elements from this dataset
 _C.DATA.train.batch_size = 32  # Training data batch size
 _C.DATA.train.mask_ratio = 0.0  # Mask out some points for faster training #features

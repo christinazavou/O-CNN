@@ -2,44 +2,48 @@
 
 SOLVER:
   gpu: 0,
-  logdir: logs/seg/0505_partnet_bed_pts
-  max_iter: 3000
-  test_iter: 36
-  test_every_iter: 50
-  step_size: (1500, 750)
+  logdir: /media/maria/BigData1/Maria/repos/ocnn_logs/seg/hrnet_no_colour_12_rot_depth7_100epochs_weighted_plateau_sgd
+  max_iter: 960000
+  test_iter: 200
+  test_every_iter: 9600
+  run: train
+  lr_type: 'plateau'
+  #step_size: (1500, 750)
 
 DATA:
   train:
     dtype: points
-    distort: True
-    depth: 6
+    distort: False #True
+    depth: 7
     axis: y 
-    angle: (5, 5, 5)
-    interval: (1, 1, 1)
-    scale: 0.25
-    jitter: 0.125
-    offset: 0.0
-    uniform: True
-    node_dis: True
-    location: dataset/partnet/Bed_train_level3.tfrecords
-    batch_size: 32
+#    angle: (5, 5, 5)
+#    interval: (1, 1, 1)
+#    scale: 0.25
+#    jitter: 0.125
+#    offset: 0.0
+#    uniform: True
+#    node_dis: True
+    shuffle: 1000
+    take: -1
+    location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/tfrecords/train_no_colour_12_rot.shuffle.all.tfrecords
+    batch_size: 2
     x_alias: data
-    mask_ratio: 0.5
+    mask_ratio: 0.0
     return_pts: True
 
   test: 
     dtype: points
     distort: False  # no data augmentation
-    depth: 6
-    axis: y 
-    angle: (1, 1, 1)
-    interval: (1, 1, 1)
-    scale: 0.25
-    jitter: 0.25
-    offset: 0.0
-    node_dis: True
-    location: dataset/partnet/Bed_test_level3.tfrecords
-    shuffle: 0
+    depth: 7
+    axis: y
+#    angle: (1, 1, 1)
+#    interval: (1, 1, 1)
+#    scale: 0.25
+#    jitter: 0.25
+#    offset: 0.0
+#    node_dis: True
+    location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/tfrecords/val/val_no_colour_no_rot.tfrecords
+    shuffle: 200
     batch_size: 1
     x_alias: data
     return_pts: True
@@ -47,13 +51,14 @@ DATA:
 
 MODEL:
   name: hrnet
-  channel: 8
-  nout: 15
-  depth: 6
+  channel: 3 #8
+  nout: 32
+  depth: 7
   factor: 2
   signal_abs: True
-  depth_out: 6
+  depth_out: 7
 
 LOSS:
-  num_class: 15
+  num_class: 32
+  momentum: 0.9
   weight_decay: 0.0005

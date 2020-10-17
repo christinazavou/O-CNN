@@ -1,5 +1,5 @@
 import pickle
-
+import time
 from config import parse_args, FLAGS
 from seg_labels import find_category, LEVEL3_LABELS, LEVEL3_COLORS, decimal_to_rgb, get_level3_category_labels, \
     ANNFASS_COLORS, ANNFASS_LABELS, to_rgb
@@ -113,7 +113,7 @@ class ComputeGraphSeg:
         tensors_dict = {}
 
         FLAGS = self.flags
-        print(FLAGS)
+        #print(FLAGS)
         with tf.device('/cpu:0'):
             flags_data = FLAGS.DATA.train if dataset == 'train' else FLAGS.DATA.test
             data_iter = self.create_dataset(flags_data)
@@ -156,7 +156,7 @@ class ComputeGraphSeg:
                     for i in range(1, num_class):
                         tensors_dict['intsc_%d' % i] = intsc[i]
                         tensors_dict['union_%d' % i] = union[i]
-                print(tensors_dict.keys())
+                #print(tensors_dict.keys())
         return tensors_dict, debug_checks
 
 
@@ -262,20 +262,20 @@ class PartNetSolver(TFSolver):
         sess.run(self.lr.assign(curr_lr))
         avg_results['lr'] = self.lr
         avg_results_dict['lr'] = curr_lr
-        print(avg_results_dict)
+       # print(avg_results_dict)
         return avg_results
 
     def save_ckpt(self, dc, sess, iter):
         if dc['iou'] > best_metric_dict['iou']:
-            print(best_metric_dict['iou'], dc['iou'])
+            #print(best_metric_dict['iou'], dc['iou'])
             best_metric_dict['iou'] = dc['iou']
             self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, 'best_iou.ckpt'))
         if dc['accu'] > best_metric_dict['acc']:
-            print(best_metric_dict['acc'], dc['accu'])
+           # print(best_metric_dict['acc'], dc['accu'])
             best_metric_dict['acc'] = dc['accu']
             self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, "best_acc.ckpt"))
         if dc['total_loss'] < best_metric_dict['loss']:
-            print(best_metric_dict['loss'], dc['total_loss'])
+            #print(best_metric_dict['loss'], dc['total_loss'])
             best_metric_dict['loss'] = dc['total_loss']
             self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, "best_loss.ckpt"))
 
@@ -355,7 +355,7 @@ class PartNetSolver(TFSolver):
                     # )
                     summary_writer.add_summary(summary_occ, i)
                     summary_writer.add_summary(summary_alw, i)
-                    print("self.lr: ", curr_lr)
+                    #print("self.lr: ", curr_lr)
                 else:
                     summary_alw, _, curr_loss, curr_lr = sess.run(
                         [self.summ_train_alw, self.train_op, self.total_loss, self.lr],
@@ -563,6 +563,7 @@ def save_ply(filename, points, normals, colors):
 
 # run the experiments
 if __name__ == '__main__':
+    t=time.time()
     FLAGS = parse_args()
     if FLAGS.DATA.train.depth > 8 or FLAGS.DATA.test.depth > 8:
         raise ValueError("Network depth must be lesser or equal to 8!!!\nExiting...")
@@ -572,3 +573,4 @@ if __name__ == '__main__':
     builder_op = build_solver_given_lr if FLAGS.SOLVER.lr_type == 'plateau' else build_solver
     solver = PartNetSolver(FLAGS, compute_graph, builder_op)
     solver.run()
+    print("Seconds passed {}".format(time.time()-t))
