@@ -47,7 +47,7 @@ DATA:
 
 MODEL:
   name: hrnet
-  channel: 4
+  channel: 8
   nout: 15
   depth: 6
   factor: 2
