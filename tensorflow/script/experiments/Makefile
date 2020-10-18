@@ -138,3 +138,5 @@ try-something:
 			MODEL.nout 34 \
 			LOSS.num_class 34
 
+try-somethin-on-graphicslab:
+    python run_seg_partnet.py --config configs/segmentation/seg_hrnet_partnet_pts.yaml SOLVER.run train SOLVER.gpu 0, SOLVER.logdir /media/graphicslab/Elements/ANNFASS_SOLUTION/seg_out/ourmidhope SOLVER.ckpt '' DATA.train.location /media/graphicslab/Elements/ANNFASS_SOLUTION/seg_data/no_colour/train_points100000.tfrecords DATA.train.batch_size 2 DATA.train.take 1600 DATA.test.location /media/graphicslab/Elements/ANNFASS_SOLUTION/seg_data/no_colour/test_points100000.tfrecords DATA.test.batch_size 1 MODEL.nout 34 LOSS.num_class 34
