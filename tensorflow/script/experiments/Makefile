@@ -118,3 +118,25 @@ train-seg-partnet-hrnet-bottle:
 --config configs/segmentation/seg_hrnet_partnet_pts.yaml SOLVER.run train SOLVER.gpu 0, SOLVER.logdir /media/maria/BigData1/Maria/caffe_ocnn_seg_tf/experiments/todelete SOLVER.test_iter 84 SOLVER.ckpt '' DATA.train.location /media/maria/BigData1/Maria/caffe_ocnn_seg_tf/experiments/Bottle_train_level3.tfrecords DATA.test.location /media/maria/BigData1/Maria/caffe_ocnn_seg_tf/experiments/Bottle_test_level3.tfrecords MODEL.nout 9 MODEL.factor 2 LOSS.num_class 9 DATA.train.take 315 DATA.test.batch_size 1 DATA.train.batch_size 4
 train-seg-hrnet-chair:
 	python run_seg_partnet.py --config configs/segmentation/seg_hrnet_partnet_pts.yaml SOLVER.run train SOLVER.gpu 0, SOLVER.logdir /media/graphicslab/BigData/zavou/ANNFASS_data/seg_out/Chair/hrnet SOLVER.max_iter 20000 SOLVER.test_iter 1217 SOLVER.ckpt '' DATA.train.location /media/graphicslab/BigData/zavou/ANNFASS_data/seg_data/partnet/Chair/Chair_train_level3.tfrecords DATA.test.location /media/graphicslab/BigData/zavou/ANNFASS_data/seg_data/partnet/Chair/Chair_test_level3.tfrecords MODEL.nout 39 MODEL.factor 2 LOSS.num_class 39 DATA.train.take 4489 DATA.test.batch_size 1 DATA.train.batch_size 4
+
+
+try-something:
+	export PATH=/home/christina/miniconda3/bin/:$$PATH \
+		&& source activate OCNN \
+		&& cd .. \
+		&& python run_seg_partnet.py \
+			--config configs/segmentation/seg_hrnet_partnet_pts.yaml \
+			SOLVER.run train \
+			SOLVER.gpu 0, \
+			SOLVER.logdir /media/christina/Elements/ANNFASS_SOLUTION/seg_out/ourmidhope \
+			SOLVER.ckpt '' \
+			DATA.train.location /media/christina/Elements/ANNFASS_SOLUTION/seg_data/no_colour/train_points100000.tfrecords \
+			DATA.train.batch_size 2 \
+			DATA.train.take 1600 \
+			DATA.test.location /media/christina/Elements/ANNFASS_SOLUTION/seg_data/no_colour/test_points100000.tfrecords \
+			DATA.test.batch_size 1 \
+			MODEL.nout 34 \
+			LOSS.num_class 34
+
+try-somethin-on-graphicslab:
+    python run_seg_partnet.py --config configs/segmentation/seg_hrnet_partnet_pts.yaml SOLVER.run train SOLVER.gpu 0, SOLVER.logdir /media/graphicslab/Elements/ANNFASS_SOLUTION/seg_out/ourmidhope SOLVER.ckpt '' DATA.train.location /media/graphicslab/Elements/ANNFASS_SOLUTION/seg_data/no_colour/train_points100000.tfrecords DATA.train.batch_size 2 DATA.train.take 1600 DATA.test.location /media/graphicslab/Elements/ANNFASS_SOLUTION/seg_data/no_colour/test_points100000.tfrecords DATA.test.batch_size 1 MODEL.nout 34 LOSS.num_class 34
