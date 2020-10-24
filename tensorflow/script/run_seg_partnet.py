@@ -71,7 +71,7 @@ def tf_IoU_per_shape(pred, label, class_num, mask=-1, debug=False):
     debug_checks = {}
     with tf.name_scope('IoU'):
         # Set mask to 0 to filter unlabeled points, whose label is 0
-        debug_checks['label_mask'] = label > mask  # mask out label
+        debug_checks['label_mask'] = label > mask  # mask out unwanted label
         debug_checks['prediction_masked'] = tf.boolean_mask(pred, debug_checks['label_mask'])
         debug_checks['label_masked'] = tf.boolean_mask(label, debug_checks['label_mask'])
         debug_checks['prediction_masked_argmax'] = tf.argmax(debug_checks['prediction_masked'],
@@ -467,11 +467,19 @@ class PartNetSolver(TFSolver):
 
                 predictions = np.argmax(logit, axis=1).astype(np.int32)
                 probabilities = iter_tdc['/probabilities']
-
+                print(category)
                 l_colors = np.array([to_rgb(COLOURS[category][int(l)]) if l >= 0 else to_rgb(COLOURS[category][0])
                                      for l in labels])
+                pred=[]
+                cnt=0
+                for l in labels:
+                    if l==0:
+                        pred.append(0)
+                    else:
+                        pred.append(predictions[cnt])
+                        cnt+=1
                 p_colors = np.array([to_rgb(COLOURS[category][int(p)]) if p >= 0 else to_rgb(COLOURS[category][0])
-                                     for p in predictions])
+                                     for p in pred])
 
                 masked_predictions = np.argmax(masked_logit, axis=1).astype(np.int32)
 

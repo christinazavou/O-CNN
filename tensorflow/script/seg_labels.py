@@ -617,7 +617,7 @@ LEVEL3_LABELS = {
 }
 
 ANNFASS_LABELS = {
-    "Building": [
+    "best_ckpts": [
         # "empty",
         "undetermined",
         "wall",
@@ -651,8 +651,8 @@ ANNFASS_LABELS = {
         "arch",
         "awning",
         "shutters",
-        "ramp",
-        "canopy_gazebo"
+      #  "ramp",
+      #  "canopy_gazebo"
     ]
 }
 
@@ -662,7 +662,7 @@ for key, value in LEVEL3_LABELS.items():
     LEVEL3_COLORS[key][0] = 8355711  # grey for 'undefined'
 
 ANNFASS_COLORS = {
-    "Building": [
+    "best_ckpts": [
         # "#000000",  # -1
         "#000000",  # 0
         "#ff4500",  # 1
@@ -696,8 +696,8 @@ ANNFASS_COLORS = {
         "#b24700",  # 29
         "#ffbbdd",  # 30
         "#0dd3ff",  # 31
-        "#00401a",  # 32
-        "#c3e639",  # 33
+      #  "#00401a",  # 32
+      #  "#c3e639",  # 33
     ]
 }
 
