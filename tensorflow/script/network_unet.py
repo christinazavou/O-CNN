@@ -3,6 +3,7 @@ from ocnn import *
 
 
 def network_unet(octree, flags, training, reuse=False):  
+  dc={}
   depth = flags.depth
   nout = [512, 256, 256, 256, 256, 128, 64, 32, 16, 16, 16]
   with tf.variable_scope('ocnn_unet', reuse=reuse):    
@@ -49,4 +50,4 @@ def network_unet(octree, flags, training, reuse=False):
             logit = predict_module(deconv, flags.nout, 64, training)
             logit = tf.transpose(tf.squeeze(logit, [0, 3])) # (1, C, H, 1) -> (H, C)
 
-  return logit
+  return logit, dc
