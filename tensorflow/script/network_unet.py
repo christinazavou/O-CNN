@@ -2,7 +2,7 @@ import tensorflow as tf
 from ocnn import *
 
 
-def network_unet(octree, flags, training, reuse=False):  
+def network_unet(octree, flags, training, reuse=False):
   dc={}
   depth = flags.depth
   nout = [512, 256, 256, 256, 256, 128, 64, 32, 16, 16, 16]

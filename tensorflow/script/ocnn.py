@@ -240,7 +240,7 @@ def predict_signal(data, num_output, num_hidden, training):
 
 
 def softmax_loss(logit, label_gt, num_class, weights=None, label_smoothing=0.0):
-    l_weights=1.0
+    l_weights = 1.0
     with tf.name_scope('softmax_loss'):
         label_gt = tf.cast(label_gt, tf.int32)
         onehot = tf.one_hot(label_gt, depth=num_class)
@@ -249,31 +249,33 @@ def softmax_loss(logit, label_gt, num_class, weights=None, label_smoothing=0.0):
             l_weights = tf.gather(params=weights, indices=label_gt)
 
         loss = tf.losses.softmax_cross_entropy(
-            onehot, logit, label_smoothing=label_smoothing,weights=l_weights)
+            onehot, logit, label_smoothing=label_smoothing, weights=l_weights)
     return loss
 
 
-def softmax_loss_with_conf_mat(logit, label_gt, num_class, weights=None, label_smoothing=0.0):
+def softmax_loss_with_conf_mat(logit, label_gt, num_class, weights=None, ignore=0, label_smoothing=0.0):
     # print(weights);exit()
     dc = {}
     with tf.name_scope('softmax_loss'):
-        label_gt = tf.cast(label_gt, tf.int32)
-        onehot = tf.one_hot(label_gt, depth=num_class)
+        label_mask = label_gt > ignore  # filter ignore undetermined
+        masked_logit = tf.boolean_mask(logit, label_mask)
+        masked_label = tf.boolean_mask(label_gt, label_mask)
+        masked_label = tf.cast(masked_label, tf.int32)
+        onehot = tf.one_hot(masked_label, depth=num_class)
         dc['onehot'] = onehot
         if weights != None:
-            l_weights = tf.gather(params=weights, indices=label_gt)
+            l_weights = tf.gather(params=weights, indices=masked_label)
             dc['weights'] = l_weights
             loss = tf.losses.softmax_cross_entropy(
-                onehot_labels=onehot, logits=logit, label_smoothing=label_smoothing, weights=l_weights)
+                onehot_labels=onehot, logits=masked_logit, label_smoothing=label_smoothing, weights=l_weights)
         else:
             loss = tf.losses.softmax_cross_entropy(
-                onehot_labels=onehot, logits=logit, label_smoothing=label_smoothing)
-        prediction = tf.argmax(logit, axis=1, output_type=tf.int32)
-        dc['logit']=logit
-        dc['pred']=prediction
+                onehot_labels=onehot, logits=masked_logit, label_smoothing=label_smoothing)
+        prediction = tf.argmax(masked_logit, axis=1, output_type=tf.int32)+1
+        dc['logit'] = masked_logit
+        dc['pred'] = prediction
 
-
-        conf_mat = confusion_matrix(prediction, label_gt, num_class, weights=None)
+        conf_mat = confusion_matrix(prediction, masked_label, num_class, weights=None)
 
     return loss, conf_mat, dc
 
@@ -472,20 +474,21 @@ def loss_functions_seg(logit, label_gt, num_class, weight_decay, var_name, mask=
 
         accu = softmax_accuracy(masked_logit, masked_label)
         regularizer = l2_regularizer(var_name, weight_decay)
-    return [loss, accu, regularizer]
+    return {'loss': loss, 'accu': accu, 'regularizer': regularizer}, {}
 
 
-def loss_functions_seg_debug_checks(logit, label_gt, num_class, weight_decay, var_name, weights=None, mask=-1):
+def loss_functions_seg_debug_checks(logit, label_gt, num_class, weight_decay, var_name, weights=None, mask=-1,
+                                    ignore=0):
     debug_checks = {}
     with tf.name_scope('loss_seg'):
-        label_mask = label_gt > mask  # filter label -1
+        label_mask = label_gt > mask  # filter label -1 / empty
         masked_logit = tf.boolean_mask(logit, label_mask)
         masked_label = tf.boolean_mask(label_gt, label_mask)
         debug_checks['{}/masked_logit'.format(tf.get_variable_scope().name)] = masked_logit
         debug_checks['{}/masked_label'.format(tf.get_variable_scope().name)] = masked_label
         loss, conf_mat, dc = softmax_loss_with_conf_mat(logit=masked_logit, label_gt=masked_label,
-                                                                      num_class=num_class,
-                                                                      weights=weights)
+                                                        num_class=num_class,
+                                                        weights=weights, ignore=ignore)
         debug_checks.update(dc)
 
         # print(tf.make_ndarray(logit))

@@ -20,8 +20,9 @@ from visualize import vis_confusion_matrix
 
 FLAGS.LOSS.point_wise = True
 # FLAGS.LOSS.point_wise = False
-MASK_LABEL = tf.constant([0.0, 32.0, 33.0])  # metrics are ignored for the points with label 'undefined' ..
+IGNORE_LABELS = tf.constant([0.0, 32.0, 33.0])  # metrics are ignored for the points with label 'undefined' ..
 CONF_MAT_KEY = 'confusion_matrix'
+TEST_SPLIT="/media/maria/BigData1/Maria/buildnet_data_2k/dataset/test_split.txt"
 CATEGORIES = ANNFASS_LABELS
 # CATEGORIES = LEVEL3_LABELS
 COLOURS = ANNFASS_COLORS
@@ -32,8 +33,8 @@ LABEL_WEIGHTS = tf.constant(
      1.4857699283179813, 1.5664935071153896, 1.228412737608595, 1.5452717626065522, 1.3300215361581862,
      1.3954368262559722, 1.3967771547392949, 1.3952685623940035, 1.4588113378317014, 1.587808410098552,
      1.4549345122678352, 1.3629362751926624, 1.7781427045873794, 1.5798946403464105, 1.5806155176614685,
-     1.6866705953387588, 2.0, 1.659760728786743, 1.757814718996263, 1.8404919947017664])
-#, 1.8484978417739655,    1.8938132352883477])  # shape (1,C)
+     1.6866705953387588, 2.0, 1.659760728786743, 1.757814718996263, 1.8404919947017664, 1.8484978417739655,
+     1.8938132352883477])  # shape (1,C)
 best_metric_dict = {"acc": 0.0, "loss": 1e100, "iou": 0.0}
 
 
@@ -48,19 +49,18 @@ def get_point_info(points, mask_ratio=0, mask=-1):
         label = tf.reshape(label, [-1])
         label_mask = label > mask  # mask out invalid points, -1
         debug_checks['label_mask'] = label_mask
+
         if mask_ratio > 0:  # random drop some points to speed up training
             rnd_mask = tf.random.uniform(tf.shape(label_mask)) > mask_ratio
             label_mask = tf.logical_and(label_mask, rnd_mask)
             debug_checks['{}/rnd_mask'.format(tf.get_variable_scope().name)] = rnd_mask
 
-        tile_multiples = tf.concat([tf.ones(tf.shape(tf.shape(label)), dtype=tf.int32), tf.shape(MASK_LABEL)], axis=0)
+        tile_multiples = tf.concat([tf.ones(tf.shape(tf.shape(label)), dtype=tf.int32), tf.shape(IGNORE_LABELS)], axis=0)
         x_tile = tf.tile(tf.expand_dims(label, -1), tile_multiples)
-        ignored = tf.reduce_any(tf.equal(x_tile, MASK_LABEL), -1)
-        debug_checks['inverse_ignore'] = tf.logical_not(ignored)
-        label_mask = tf.logical_and(label_mask, tf.logical_not(ignored))
-        debug_checks['label_mask_final'] = label_mask
-        pts = tf.boolean_mask(pts, label_mask)
+        keep = tf.reduce_any(tf.equal(x_tile, IGNORE_LABELS), -1)
+        label = tf.where(keep, label, tf.zeros_like(label))
         label = tf.boolean_mask(label, label_mask)
+        pts = tf.boolean_mask(pts, label_mask)
         debug_checks['{}/masked_and_ratio/pts(xyz)'.format(tf.get_variable_scope().name)] = pts
         debug_checks['{}/masked_and_ratio/label'.format(tf.get_variable_scope().name)] = label
     return pts, label, debug_checks
@@ -318,7 +318,7 @@ class PartNetSolver(TFSolver):
             if ckpt:
                 self.flags.defrost()
                 print(self.flags.learning_rate)
-                self.flags.learning_rate=float(sess.run(self.lr))
+                self.flags.learning_rate = float(sess.run(self.lr))
                 print(self.flags.learning_rate)
                 self.flags.freeze()
 
@@ -425,7 +425,10 @@ class PartNetSolver(TFSolver):
         # checkpoint
         assert (self.flags.ckpt)  # the self.flags.ckpt should be provided
         tf_saver = tf.train.Saver(max_to_keep=10)
+        logdir = os.path.join(self.flags.logdir, os.path.basename(self.flags.ckpt).split(".")[0])
 
+        #read test split filenames
+        filenames=open(TEST_SPLIT,"r").readlines()
         # start
         test_metrics_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
         config = tf.ConfigProto(allow_soft_placement=True)
@@ -441,18 +444,18 @@ class PartNetSolver(TFSolver):
 
             category = find_category(self.flags.ckpt, CATEGORIES)
             assert category is not None
-            predicted_ply_dir = os.path.join(self.flags.logdir, "predicted_ply_{}".format(category))
+            predicted_ply_dir = os.path.join(logdir, "predicted_ply_{}".format(category))
             if not os.path.exists(predicted_ply_dir):
                 os.makedirs(predicted_ply_dir)
-            groundtruth_ply_dir = os.path.join(self.flags.logdir, "groundtruth_ply_{}".format(category))
+            groundtruth_ply_dir = os.path.join(logdir, "groundtruth_ply_{}".format(category))
             if not os.path.exists(groundtruth_ply_dir):
                 os.makedirs(groundtruth_ply_dir)
-            predicted_pkl_dir = os.path.join(self.flags.logdir, "predicted_pkl_{}".format(category))
+            predicted_pkl_dir = os.path.join(logdir, "predicted_pkl_{}".format(category))
             if not os.path.exists(predicted_pkl_dir):
                 os.makedirs(predicted_pkl_dir)
-            probabilities_pkl_dir = os.path.join(self.flags.logdir, "probabilities_pkl_{}".format(category))
-            if not os.path.exists(probabilities_pkl_dir):
-                os.makedirs(probabilities_pkl_dir)
+            probabilities_dir = os.path.join(logdir, "probabilities_{}".format(category))
+            if not os.path.exists(probabilities_dir):
+                os.makedirs(probabilities_dir)
 
             print('Start testing ...')
             for i in range(0, self.flags.test_iter):
@@ -470,14 +473,14 @@ class PartNetSolver(TFSolver):
                 print(category)
                 l_colors = np.array([to_rgb(COLOURS[category][int(l)]) if l >= 0 else to_rgb(COLOURS[category][0])
                                      for l in labels])
-                pred=[]
-                cnt=0
+                pred = []
+                cnt = 0
                 for l in labels:
-                    if l==0:
+                    if l == 0:
                         pred.append(0)
                     else:
                         pred.append(predictions[cnt])
-                        cnt+=1
+                        cnt += 1
                 p_colors = np.array([to_rgb(COLOURS[category][int(p)]) if p >= 0 else to_rgb(COLOURS[category][0])
                                      for p in pred])
 
@@ -494,14 +497,15 @@ class PartNetSolver(TFSolver):
                 current_iou = int(self.result_callback(iter_test_result_dict)['iou'] * 100)
                 current_ply_i_f = os.path.join(groundtruth_ply_dir, "i{}.ply".format(i))
                 current_ply_o_f = os.path.join(predicted_ply_dir, "iou{}_i{}.ply".format(current_iou, i))
-                probabilities_o_f = os.path.join(probabilities_pkl_dir, "i{}.pkl".format(i))
+                # probabilities_o_f = os.path.join(probabilities_pkl_dir, "i{}.pkl".format(i))
                 save_ply(current_ply_i_f, points, normals, l_colors)
                 save_ply(current_ply_o_f, points, normals, p_colors)
                 current_pkl_f = os.path.join(predicted_pkl_dir, "p{}_m{}_i{}.pkl".format(predictions.shape[0],
                                                                                          masked_predictions.shape[0],
                                                                                          i))
                 save_pickled(current_pkl_f, labels.ravel(), predictions.ravel())
-                save_pickled_np(probabilities_o_f, probabilities)
+                # save_pickled_np(probabilities_o_f, probabilities)
+                np.save(file=os.path.join(probabilities_dir,filenames[i].strip()),arr=np.array(probabilities));exit()
 
                 # make sure results are sorted before writing them
                 iter_test_result_sorted = []
@@ -525,7 +529,8 @@ class PartNetSolver(TFSolver):
                 avg_test_sorted.append(test_metrics_dict[key])
                 reports += '%s: %0.4f; ' % (key, test_metrics_dict[key])
             else:
-                vis_confusion_matrix(test_metrics_dict[key].reshape(self.num_class, self.num_class),
+                vis_confusion_matrix(os.path.join(logdir, "confusion_matrix.png"),
+                                     test_metrics_dict[key].reshape(self.num_class, self.num_class),
                                      CATEGORIES[category],
                                      COLOURS[category],
                                      "Category: {}, Test samples: {}".format(category, self.flags.test_iter))
@@ -571,7 +576,7 @@ def save_ply(filename, points, normals, colors):
 
 # run the experiments
 if __name__ == '__main__':
-    t=time.time()
+    t = time.time()
     FLAGS = parse_args()
     if FLAGS.DATA.train.depth > 8 or FLAGS.DATA.test.depth > 8:
         raise ValueError("Network depth must be lesser or equal to 8!!!\nExiting...")
@@ -581,4 +586,4 @@ if __name__ == '__main__':
     builder_op = build_solver_given_lr if FLAGS.SOLVER.lr_type == 'plateau' else build_solver
     solver = PartNetSolver(FLAGS, compute_graph, builder_op)
     solver.run()
-    print("Seconds passed {}".format(time.time()-t))
+    print("Seconds passed {}".format(time.time() - t))
