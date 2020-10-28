@@ -22,13 +22,13 @@ FLAGS.LOSS.point_wise = True
 # FLAGS.LOSS.point_wise = False
 IGNORE_LABELS = tf.constant([0.0, 32.0, 33.0])  # metrics are ignored for the points with label 'undefined' ..
 CONF_MAT_KEY = 'confusion_matrix'
-TEST_SPLIT="/media/maria/BigData1/Maria/buildnet_data_2k/dataset/test_split.txt"
+TEST_SPLIT = "/media/maria/BigData1/Maria/buildnet_data_2k/dataset/test_split.txt"
 CATEGORIES = ANNFASS_LABELS
 # CATEGORIES = LEVEL3_LABELS
 COLOURS = ANNFASS_COLORS
 # COLOURS = LEVEL3_COLORS
 LABEL_WEIGHTS = tf.constant(
-    [0.0, 1.0, 1.2607750170843908, 1.5005930826950187, 1.086003196497788, 1.3488467965077944, 1.4618322338667538,
+    [1.0, 1.2607750170843908, 1.5005930826950187, 1.086003196497788, 1.3488467965077944, 1.4618322338667538,
      1.3174190951492424, 1.539809107718665, 1.1438476294835398, 1.4151902825998448, 1.5083375754995785,
      1.4857699283179813, 1.5664935071153896, 1.228412737608595, 1.5452717626065522, 1.3300215361581862,
      1.3954368262559722, 1.3967771547392949, 1.3952685623940035, 1.4588113378317014, 1.587808410098552,
@@ -55,11 +55,12 @@ def get_point_info(points, mask_ratio=0, mask=-1):
             label_mask = tf.logical_and(label_mask, rnd_mask)
             debug_checks['{}/rnd_mask'.format(tf.get_variable_scope().name)] = rnd_mask
 
-        tile_multiples = tf.concat([tf.ones(tf.shape(tf.shape(label)), dtype=tf.int32), tf.shape(IGNORE_LABELS)], axis=0)
-        x_tile = tf.tile(tf.expand_dims(label, -1), tile_multiples)
-        keep = tf.reduce_any(tf.equal(x_tile, IGNORE_LABELS), -1)
-        label = tf.where(keep, label, tf.zeros_like(label))
         label = tf.boolean_mask(label, label_mask)
+        tile_multiples = tf.concat([tf.ones(tf.shape(tf.shape(label)), dtype=tf.int32), tf.shape(IGNORE_LABELS)],
+                                   axis=0)
+        x_tile = tf.tile(tf.expand_dims(label, -1), tile_multiples)
+        ignore = tf.reduce_any(tf.equal(x_tile, IGNORE_LABELS), -1)
+        label = tf.where(ignore, tf.zeros_like(label) + 1000, label) - 1
         pts = tf.boolean_mask(pts, label_mask)
         debug_checks['{}/masked_and_ratio/pts(xyz)'.format(tf.get_variable_scope().name)] = pts
         debug_checks['{}/masked_and_ratio/label'.format(tf.get_variable_scope().name)] = label
@@ -67,18 +68,19 @@ def get_point_info(points, mask_ratio=0, mask=-1):
 
 
 # IoU
-def tf_IoU_per_shape(pred, label, class_num, mask=-1, debug=False):
+def tf_IoU_per_shape(pred, label, class_num, mask=-1, ignore=999, debug=False):
     debug_checks = {}
     with tf.name_scope('IoU'):
         # Set mask to 0 to filter unlabeled points, whose label is 0
-        debug_checks['label_mask'] = label > mask  # mask out unwanted label
+        debug_checks['label_mask'] = tf.logical_and(label > mask, label < ignore)  # mask out unwanted label (empty
+        # and undetermined)
         debug_checks['prediction_masked'] = tf.boolean_mask(pred, debug_checks['label_mask'])
         debug_checks['label_masked'] = tf.boolean_mask(label, debug_checks['label_mask'])
         debug_checks['prediction_masked_argmax'] = tf.argmax(debug_checks['prediction_masked'],
                                                              axis=1, output_type=tf.int32)
 
         intsc, union = [None] * class_num, [None] * class_num
-        for k in range(1, class_num):
+        for k in range(0, class_num):
             pk = tf.equal(debug_checks['prediction_masked_argmax'], k)
             lk = tf.equal(debug_checks['label_masked'], k)
             debug_checks['prediction_{}'.format(k)] = pk
@@ -113,7 +115,7 @@ class ComputeGraphSeg:
         tensors_dict = {}
 
         FLAGS = self.flags
-        #print(FLAGS)
+        # print(FLAGS)
         with tf.device('/cpu:0'):
             flags_data = FLAGS.DATA.train if dataset == 'train' else FLAGS.DATA.test
             data_iter = self.create_dataset(flags_data)
@@ -141,22 +143,22 @@ class ComputeGraphSeg:
                 debug_checks["{}/probabilities".format(tf.get_variable_scope().name)] = get_probabilities(logit)
                 metrics_dict, dc = loss_functions_seg_debug_checks(
                     logit=logit, label_gt=label, num_class=FLAGS.LOSS.num_class, weight_decay=FLAGS.LOSS.weight_decay,
-                    var_name='ocnn', weights=self.weights, mask=0)
+                    var_name='ocnn', weights=self.weights)  # , mask=-1,ignore=0)
                 debug_checks.update(dc)
                 tensors_dict.update(metrics_dict)
                 tensors_dict['total_loss'] = metrics_dict['loss'] + metrics_dict['regularizer']
 
                 if flags_data.batch_size == 1:
                     num_class = FLAGS.LOSS.num_class
-                    intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=0)
+                    intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=-1)
                     iou = tf.constant(0.0)  # placeholder, calc its value later
                     tensors_dict['iou'] = iou
                     # tensors_dict['intsc_0']=tf.constant(0.0)
                     # tensors_dict['union_0']=tf.constant(0.0)
-                    for i in range(1, num_class):
+                    for i in range(0, num_class):
                         tensors_dict['intsc_%d' % i] = intsc[i]
                         tensors_dict['union_%d' % i] = union[i]
-                #print(tensors_dict.keys())
+                # print(tensors_dict.keys())
         return tensors_dict, debug_checks
 
 
@@ -171,7 +173,7 @@ def result_callback_maria(avg_results_dict, num_class):
     # calc part-IoU, update `iou`, this is in correspondence with Line 77
     iou_avg = 0.0
     ious = []
-    for i in range(1, num_class):  # !!! Ignore the first label
+    for i in range(0, num_class):  # !!! Ignore the first label
         instc_i = avg_results_dict['intsc_%d' % i]
         union_i = avg_results_dict['union_%d' % i]
         if union_i > 0.0:
@@ -262,20 +264,20 @@ class PartNetSolver(TFSolver):
         sess.run(self.lr.assign(curr_lr))
         avg_results['lr'] = self.lr
         avg_results_dict['lr'] = curr_lr
-       # print(avg_results_dict)
+        # print(avg_results_dict)
         return avg_results
 
     def save_ckpt(self, dc, sess, iter):
         if dc['iou'] > best_metric_dict['iou']:
-            #print(best_metric_dict['iou'], dc['iou'])
+            # print(best_metric_dict['iou'], dc['iou'])
             best_metric_dict['iou'] = dc['iou']
             self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, 'best_iou.ckpt'))
         if dc['accu'] > best_metric_dict['acc']:
-           # print(best_metric_dict['acc'], dc['accu'])
+            # print(best_metric_dict['acc'], dc['accu'])
             best_metric_dict['acc'] = dc['accu']
             self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, "best_acc.ckpt"))
         if dc['total_loss'] < best_metric_dict['loss']:
-            #print(best_metric_dict['loss'], dc['total_loss'])
+            # print(best_metric_dict['loss'], dc['total_loss'])
             best_metric_dict['loss'] = dc['total_loss']
             self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, "best_loss.ckpt"))
 
@@ -355,7 +357,7 @@ class PartNetSolver(TFSolver):
                     # )
                     summary_writer.add_summary(summary_occ, i)
                     summary_writer.add_summary(summary_alw, i)
-                    #print("self.lr: ", curr_lr)
+                    # print("self.lr: ", curr_lr)
                 else:
                     summary_alw, _, curr_loss, curr_lr = sess.run(
                         [self.summ_train_alw, self.train_op, self.total_loss, self.lr],
@@ -427,8 +429,8 @@ class PartNetSolver(TFSolver):
         tf_saver = tf.train.Saver(max_to_keep=10)
         logdir = os.path.join(self.flags.logdir, os.path.basename(self.flags.ckpt).split(".")[0])
 
-        #read test split filenames
-        filenames=open(TEST_SPLIT,"r").readlines()
+        # read test split filenames
+        filenames = open(TEST_SPLIT, "r").readlines()
         # start
         test_metrics_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
         config = tf.ConfigProto(allow_soft_placement=True)
@@ -444,16 +446,16 @@ class PartNetSolver(TFSolver):
 
             category = find_category(self.flags.ckpt, CATEGORIES)
             assert category is not None
-            predicted_ply_dir = os.path.join(logdir, "predicted_ply_{}".format(category))
+            predicted_ply_dir = os.path.join(logdir, "predicted_ply")
             if not os.path.exists(predicted_ply_dir):
                 os.makedirs(predicted_ply_dir)
-            groundtruth_ply_dir = os.path.join(logdir, "groundtruth_ply_{}".format(category))
+            groundtruth_ply_dir = os.path.join(logdir, "groundtruth_ply")
             if not os.path.exists(groundtruth_ply_dir):
                 os.makedirs(groundtruth_ply_dir)
-            predicted_pkl_dir = os.path.join(logdir, "predicted_pkl_{}".format(category))
+            predicted_pkl_dir = os.path.join(logdir, "predicted_pkl")
             if not os.path.exists(predicted_pkl_dir):
                 os.makedirs(predicted_pkl_dir)
-            probabilities_dir = os.path.join(logdir, "probabilities_{}".format(category))
+            probabilities_dir = os.path.join(logdir, "probabilities")
             if not os.path.exists(probabilities_dir):
                 os.makedirs(probabilities_dir)
 
@@ -471,18 +473,18 @@ class PartNetSolver(TFSolver):
                 predictions = np.argmax(logit, axis=1).astype(np.int32)
                 probabilities = iter_tdc['/probabilities']
                 print(category)
-                l_colors = np.array([to_rgb(COLOURS[category][int(l)]) if l >= 0 else to_rgb(COLOURS[category][0])
+                l_colors = np.array([to_rgb(COLOURS[category][int(l)]) if l > 0 else to_rgb(COLOURS[category][0])
                                      for l in labels])
-                pred = []
-                cnt = 0
-                for l in labels:
-                    if l == 0:
-                        pred.append(0)
-                    else:
-                        pred.append(predictions[cnt])
-                        cnt += 1
-                p_colors = np.array([to_rgb(COLOURS[category][int(p)]) if p >= 0 else to_rgb(COLOURS[category][0])
-                                     for p in pred])
+                # pred = []
+                # cnt = 0
+                # for l in labels:
+                #     if l == 999:
+                #         pred.append(0)
+                #     else:
+                #         pred.append(predictions[cnt])
+                #         cnt += 1
+                p_colors = np.array([to_rgb(COLOURS[category][int(p) + 1]) if p < 999 else to_rgb(COLOURS[category][0])
+                                     for p in predictions])
 
                 masked_predictions = np.argmax(masked_logit, axis=1).astype(np.int32)
 
@@ -505,7 +507,8 @@ class PartNetSolver(TFSolver):
                                                                                          i))
                 save_pickled(current_pkl_f, labels.ravel(), predictions.ravel())
                 # save_pickled_np(probabilities_o_f, probabilities)
-                np.save(file=os.path.join(probabilities_dir,filenames[i].strip()),arr=np.array(probabilities));exit()
+                np.save(file=os.path.join(probabilities_dir, filenames[i].strip()), arr=np.array(probabilities));
+                exit()
 
                 # make sure results are sorted before writing them
                 iter_test_result_sorted = []

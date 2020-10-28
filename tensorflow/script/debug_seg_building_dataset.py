@@ -3,7 +3,7 @@ import sys
 sys.path.append("..")
 from libs import *
 from dataset import *
-
+from run_seg_partnet import get_point_info
 categories = [
     'Bag', 'Bed', 'Bottle', 'Bowl', 'Chair', 'Clock', 'Dishwasher',
     'Display', 'Door', 'Earphone', 'Faucet', 'Hat', 'Keyboard',
@@ -79,7 +79,7 @@ def config_points_buildings_with_colour():
 
 def config_points_buildings_no_colour():
     # data generated with python only
-    filename = '/media/christina/Verbatim/val_no_colour_no_rot.tfrecords'
+    filename = '/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/tfrecords/val/val_no_colour_no_rot.tfrecords'
     depth = 7
     task = 'seg_points_buildings_n_colour'
     octrees = PointDataset(ParseExample(x_alias='data', y_alias='label'),
@@ -196,6 +196,7 @@ def check_properties():
 
         octree, _, points = sess.run(octrees(filename, batch_size=1, shuffle_size=0, return_iter=True, take=10,
                                              return_pts=True).get_next())
+        pts, label, dc = sess.run(get_point_info(points, 0.0))
         octree5, _, points5 = sess.run(octrees(filename, batch_size=5, shuffle_size=0, return_iter=True, take=10,
                                                return_pts=True).get_next())
         DatasetDebug.check_config(octree, octree5, depth, task, sess)
