@@ -38,7 +38,7 @@ class Points2Octree:
                  save_pts=False, **kwargs):
         self.depth = depth
         self.full_depth = full_depth
-        self.node_dis = node_dis
+        self.node_dis = node_dis  # NOTE: If you want feature channel 4 this needs to be True, otherwise False
         self.node_feat = node_feat
         self.split_label = split_label
         self.adaptive = adaptive

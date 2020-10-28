@@ -2,7 +2,7 @@
 
 SOLVER:
   gpu: 0,
-  logdir: /media/yiangos/BigData/Maria/O-CNN/logs/todelete_unet
+  logdir: /media/christina/Data/todelete_unet1
   max_iter: 1000
   test_iter: 200
   test_every_iter: 100
@@ -21,8 +21,8 @@ DATA:
     #jitter: 0.125
    # offset: 0.0
     #uniform: True
-    #node_dis: True
-    location: /media/yiangos/BigData/Maria/O-CNN/tfrecords/test_no_colour_no_rot.tfrecords
+    node_dis: True
+    location: /media/christina/Verbatim/val_no_colour_no_rot.tfrecords
     shuffle: 200
     batch_size: 2
     x_alias: data
@@ -39,8 +39,8 @@ DATA:
     #scale: 0.25
     #jitter: 0.25
     #offset: 0.0
-    #node_dis: True
-    location: /media/christina/Data/ANFASS_data/O-CNN/shapenet_segmentation/datasets/02691156_test.tfrecords
+    node_dis: True
+    location: /media/christina/Verbatim/test_no_colour_no_rot.tfrecords
     shuffle: 0
     batch_size: 1
     x_alias: data
@@ -49,7 +49,7 @@ DATA:
 
 MODEL:
   name: unet
-  channel: 3
+  channel: 4  # NOTE: If you want feature channel 4 then node_dis needs to be True, otherwise False
   nout: 32
   depth: 7
   factor: 2

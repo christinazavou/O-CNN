@@ -77,6 +77,18 @@ def config_points_buildings_with_colour():
     return octrees, filename, depth, task
 
 
+def config_points_buildings_no_colour():
+    # data generated with python only
+    filename = '/media/christina/Verbatim/val_no_colour_no_rot.tfrecords'
+    depth = 7
+    task = 'seg_points_buildings_n_colour'
+    octrees = PointDataset(ParseExample(x_alias='data', y_alias='label'),
+                           NormalizePoints(),
+                           CustomTransformPoints(),
+                           Points2Octree(depth=depth, node_dis=False, ))
+    return octrees, filename, depth, task
+
+
 def config_points_buildings_with_colour_filenames():
     # data generated with python only
     filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points_chunk8/train.shuffle.all.tfrecords'
@@ -98,6 +110,9 @@ class DatasetDebug:
             'split': 0, 'label': 1, 'feature': 8, 'index': 1, 'xyz': 1
             # FIXME: TODO: ask why now features are 8 and not 11
             # nz,ny,nz,dis,r,g,b,a
+        },
+        'seg_points_buildings_n_colour':{
+            'split': 0, 'label': 1, 'feature': 3, 'index': 1, 'xyz': 1
         }
     }
 
@@ -171,10 +186,11 @@ def check_filenames():
 def check_properties():
     # octrees, filename, depth, task = config_points_partnet()
     # octrees, filename, depth, task = config_points_buildings()
-    octrees, filename, depth, task = config_points_buildings_with_colour()
+    # octrees, filename, depth, task = config_points_buildings_with_colour()
+    octrees, filename, depth, task = config_points_buildings_no_colour()
 
-    check_filenames()
-    exit()
+    # check_filenames()
+    # exit()
 
     with tf.Session() as sess:
 
