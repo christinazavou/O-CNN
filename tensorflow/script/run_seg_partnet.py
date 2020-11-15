@@ -28,13 +28,13 @@ CATEGORIES = ANNFASS_LABELS
 COLOURS = ANNFASS_COLORS
 # COLOURS = LEVEL3_COLORS
 LABEL_WEIGHTS = tf.constant(
-    [1.0, 1.2607750170843908, 1.5005930826950187, 1.086003196497788, 1.3488467965077944, 1.4618322338667538,
+    [0.0, 1.0, 1.2607750170843908, 1.5005930826950187, 1.086003196497788, 1.3488467965077944, 1.4618322338667538,
      1.3174190951492424, 1.539809107718665, 1.1438476294835398, 1.4151902825998448, 1.5083375754995785,
      1.4857699283179813, 1.5664935071153896, 1.228412737608595, 1.5452717626065522, 1.3300215361581862,
      1.3954368262559722, 1.3967771547392949, 1.3952685623940035, 1.4588113378317014, 1.587808410098552,
      1.4549345122678352, 1.3629362751926624, 1.7781427045873794, 1.5798946403464105, 1.5806155176614685,
-     1.6866705953387588, 2.0, 1.659760728786743, 1.757814718996263, 1.8404919947017664, 1.8484978417739655,
-     1.8938132352883477])  # shape (1,C)
+     1.6866705953387588, 2.0, 1.659760728786743, 1.757814718996263])#, 1.8404919947017664, 1.8484978417739655,
+     # 1.8938132352883477])  # shape (1,C)
 best_metric_dict = {"acc": 0.0, "loss": 1e100, "iou": 0.0}
 
 
@@ -47,7 +47,7 @@ def get_point_info(points, mask_ratio=0, mask=-1):
         debug_checks['{}/pts(xyz)'.format(tf.get_variable_scope().name)] = pts
         debug_checks['{}/label'.format(tf.get_variable_scope().name)] = label
         label = tf.reshape(label, [-1])
-        label_mask = label > mask  # mask out invalid points, -1
+        label_mask = label != mask  # mask out invalid points, -1
         debug_checks['label_mask'] = label_mask
 
         if mask_ratio > 0:  # random drop some points to speed up training
@@ -56,11 +56,11 @@ def get_point_info(points, mask_ratio=0, mask=-1):
             debug_checks['{}/rnd_mask'.format(tf.get_variable_scope().name)] = rnd_mask
 
         label = tf.boolean_mask(label, label_mask)
-        tile_multiples = tf.concat([tf.ones(tf.shape(tf.shape(label)), dtype=tf.int32), tf.shape(IGNORE_LABELS)],
-                                   axis=0)
-        x_tile = tf.tile(tf.expand_dims(label, -1), tile_multiples)
-        ignore = tf.reduce_any(tf.equal(x_tile, IGNORE_LABELS), -1)
-        label = tf.where(ignore, tf.zeros_like(label) + 1000, label) - 1
+        # tile_multiples = tf.concat([tf.ones(tf.shape(tf.shape(label)), dtype=tf.int32), tf.shape(IGNORE_LABELS)],
+        #                            axis=0)
+        # x_tile = tf.tile(tf.expand_dims(label, -1), tile_multiples)
+        # ignore = tf.reduce_any(tf.equal(x_tile, IGNORE_LABELS), -1)
+        # label = tf.where(ignore, tf.zeros_like(label) + 1000, label) - 1
         pts = tf.boolean_mask(pts, label_mask)
         debug_checks['{}/masked_and_ratio/pts(xyz)'.format(tf.get_variable_scope().name)] = pts
         debug_checks['{}/masked_and_ratio/label'.format(tf.get_variable_scope().name)] = label
@@ -68,19 +68,19 @@ def get_point_info(points, mask_ratio=0, mask=-1):
 
 
 # IoU
-def tf_IoU_per_shape(pred, label, class_num, mask=-1, ignore=999, debug=False):
+def tf_IoU_per_shape(pred, label, class_num, mask=-1, ignore=0, debug=False):
     debug_checks = {}
     with tf.name_scope('IoU'):
         # Set mask to 0 to filter unlabeled points, whose label is 0
-        debug_checks['label_mask'] = tf.logical_and(label > mask, label < ignore)  # mask out unwanted label (empty
+        debug_checks['label_mask'] = tf.logical_and(label != mask, label != ignore)  # mask out unwanted label (empty
         # and undetermined)
         debug_checks['prediction_masked'] = tf.boolean_mask(pred, debug_checks['label_mask'])
         debug_checks['label_masked'] = tf.boolean_mask(label, debug_checks['label_mask'])
         debug_checks['prediction_masked_argmax'] = tf.argmax(debug_checks['prediction_masked'],
                                                              axis=1, output_type=tf.int32)
 
-        intsc, union = [None] * class_num, [None] * class_num
-        for k in range(0, class_num):
+        intsc, union = [0] * class_num, [0] * class_num
+        for k in range(1, class_num):
             pk = tf.equal(debug_checks['prediction_masked_argmax'], k)
             lk = tf.equal(debug_checks['label_masked'], k)
             debug_checks['prediction_{}'.format(k)] = pk
@@ -508,7 +508,6 @@ class PartNetSolver(TFSolver):
                 save_pickled(current_pkl_f, labels.ravel(), predictions.ravel())
                 # save_pickled_np(probabilities_o_f, probabilities)
                 np.save(file=os.path.join(probabilities_dir, filenames[i].strip()), arr=np.array(probabilities));
-                exit()
 
                 # make sure results are sorted before writing them
                 iter_test_result_sorted = []

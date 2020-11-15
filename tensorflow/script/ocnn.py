@@ -259,7 +259,6 @@ def softmax_loss_with_conf_mat(logit, label_gt, num_class, weights=None, label_s
     with tf.name_scope('softmax_loss'):
         labels = tf.cast(label_gt, tf.int32)
         onehot = tf.one_hot(labels, depth=num_class)
-        dc['onehot'] = onehot
         if weights != None:
             l_weights = tf.gather(params=weights, indices=labels)
             dc['weights'] = l_weights
@@ -273,6 +272,7 @@ def softmax_loss_with_conf_mat(logit, label_gt, num_class, weights=None, label_s
         dc['pred'] = prediction
 
         conf_mat = confusion_matrix(prediction, labels, num_class, weights=None)
+        # conf_mat = confusion_matrix(tf.ones(num_class), tf.ones(num_class), num_class, weights=None)
 
     return loss, conf_mat, dc
 
@@ -462,9 +462,11 @@ def loss_functions(logit, label_gt, num_class, weight_decay, var_name, label_smo
     return [loss, accu, regularizer]
 
 
-def loss_functions_seg(logit, label_gt, num_class, weight_decay, var_name, mask=-1):
+def loss_functions_seg(logit, label_gt, num_class, weight_decay, var_name, mask=-1, ignore=999):
     with tf.name_scope('loss_seg'):
-        label_mask = label_gt > mask  # filter label -1
+        label_mask = label_gt > mask  # filter label -1 / empty
+        mask_und = label_gt < ignore  # filter label undetermined
+        label_mask = tf.logical_and(label_mask, mask_und)
         masked_logit = tf.boolean_mask(logit, label_mask)
         masked_label = tf.boolean_mask(label_gt, label_mask)
         loss = softmax_loss(masked_logit, masked_label, num_class)
@@ -475,11 +477,11 @@ def loss_functions_seg(logit, label_gt, num_class, weight_decay, var_name, mask=
 
 
 def loss_functions_seg_debug_checks(logit, label_gt, num_class, weight_decay, var_name, weights=None, mask=-1,
-                                    ignore=999):
+                                    ignore=0):
     debug_checks = {}
     with tf.name_scope('loss_seg'):
-        label_mask = label_gt > mask  # filter label -1 / empty
-        mask_und = label_gt < ignore  # filter label undetermined
+        label_mask = label_gt != mask  # filter label -1 / empty
+        mask_und = label_gt != ignore  # filter label undetermined
         label_mask = tf.logical_and(label_mask, mask_und)
         masked_logit = tf.boolean_mask(logit, label_mask)
         masked_label = tf.boolean_mask(label_gt, label_mask)
@@ -489,10 +491,6 @@ def loss_functions_seg_debug_checks(logit, label_gt, num_class, weight_decay, va
                                                         num_class=num_class,
                                                         weights=weights)
         debug_checks.update(dc)
-
-        # print(tf.make_ndarray(logit))
-        print("------------------")
-        # print(tf.make_ndarray(masked_logit))
 
         accu = softmax_accuracy(masked_logit, masked_label)
         regularizer = l2_regularizer(var_name, weight_decay)
