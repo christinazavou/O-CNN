@@ -1,5 +1,7 @@
 import sys
 
+from config import override_some_flags
+
 sys.path.append("..")
 from libs import *
 from dataset import *
@@ -69,10 +71,7 @@ def config_points_buildings_with_colour():
     task = 'seg_points_buildings_w_colour'
     octrees = PointDataset(ParseExample(x_alias='data', y_alias='label'),
                            NormalizePoints(),
-                           TransformPoints(distort=True, depth=depth, offset=0, axis='y',
-                                           scale=0.25, jitter=0.125, angle=[5, 5, 5],
-                                           uniform=True,
-                                           bounding_sphere=bounding_sphere),
+                           CustomTransformPoints(),
                            Points2Octree(depth=depth, node_dis=True, ))
     return octrees, filename, depth, task
 
@@ -183,11 +182,97 @@ def check_filenames():
         assert 'RESIDENTIALchurch_mesh1845_w_label' in filepath, filepath
 
 
+def check_dataset_properties_with_colour():
+
+    filename = '/media/christina/Data/ANNFASS_data/O-CNN/data/test_w_colour_no_rot.tfrecords'
+    flags = override_some_flags(filename, channels=7)
+
+    dataset_iter = DatasetFactoryDebug(flags.DATA.test)(return_iter=True)
+    # dataset_iter = DatasetFactory(flags.DATA.test)(return_iter=True)
+
+    with tf.Session() as sess:
+        for i in [0,1,2]:
+            octree, _labels, points_init, points_trans, _filenames = dataset_iter.get_next()
+
+            # pts_init_n, labels_n, normal_n, features_n, \
+            # pts_trans_n, labels_trans_n, normal_trans_n, features_trans_n, \
+            # filenames = sess.run([
+            #     points_property(points_init, property_name='xyz', channel=4),
+            #     points_property(points_init, property_name='label', channel=1),
+            #     points_property(points_init, property_name='normal', channel=3),
+            #     points_property(points_init, property_name="feature", channel=4),
+            #
+            #     points_property(points_trans, property_name='xyz', channel=4),
+            #     points_property(points_trans, property_name='label', channel=1),
+            #     points_property(points_trans, property_name='normal', channel=3),
+            #     points_property(points_trans, property_name="feature", channel=4),
+            #     #
+            #     _filenames
+            #
+            # ])
+            #
+            # print("filenames: ", filenames, "\n")
+            # print("pts_init_n: ", pts_init_n[0:3], "\n")
+            # print("labels_n: ", labels_n[0:3], "\n")
+            # print("normal_n: ", normal_n[0:3], "\n")
+            # print("features_n: ", features_n[0:3], "\n")
+            #
+            # print("pts_trans_n: ", pts_trans_n[0:3], "\n")
+            # print("labels_trans_n: ", labels_trans_n[0:3], "\n")
+            # print("normal_trans_n: ", normal_trans_n[0:3], "\n")
+            # print("features_trans_n: ", features_trans_n[0:3], "\n")
+            #
+            # print(pts_trans_n - pts_init_n)
+
+            of7 = sess.run(octree_property(octree, property_name='feature', dtype=tf.float32, depth=7, channel=7))
+            print("of7: ", of7, "\n")
+
+
+def check_dataset_properties_no_colour():
+
+    filename = '/media/christina/Data/ANNFASS_data/O-CNN/data/test_no_colour_no_rot.tfrecords'
+    flags = override_some_flags(filename, channels=3)
+
+    dataset_iter = DatasetFactoryDebug(flags.DATA.test)(return_iter=True)
+    # dataset_iter = DatasetFactory(flags.DATA.test)(return_iter=True)
+
+    with tf.Session() as sess:
+        for i in [0,1,2]:
+            octree, _labels, points_init, points_trans, _filenames = dataset_iter.get_next()
+
+            pts_init_n, labels_n, normal_n, \
+            pts_trans_n, labels_trans_n, normal_trans_n, \
+            filenames = sess.run([
+                points_property(points_init, property_name='xyz', channel=4),
+                points_property(points_init, property_name='label', channel=1),
+                points_property(points_init, property_name='normal', channel=3),
+
+                points_property(points_trans, property_name='xyz', channel=4),
+                points_property(points_trans, property_name='label', channel=1),
+                points_property(points_trans, property_name='normal', channel=3),
+                #
+                _filenames
+
+            ])
+
+            print("filenames: ", filenames, "\n")
+            print("pts_init_n: ", pts_init_n[0:3], "\n")
+            print("labels_n: ", labels_n[0:3], "\n")
+            print("normal_n: ", normal_n[0:3], "\n")
+
+            print("pts_trans_n: ", pts_trans_n[0:3], "\n")
+            print("labels_trans_n: ", labels_trans_n[0:3], "\n")
+            print("normal_trans_n: ", normal_trans_n[0:3], "\n")
+
+            of = sess.run(octree_property(octree, property_name='feature', dtype=tf.float32, depth=7, channel=3))
+            print("of: ", of, "\n")
+
+
 def check_properties():
     # octrees, filename, depth, task = config_points_partnet()
     # octrees, filename, depth, task = config_points_buildings()
-    # octrees, filename, depth, task = config_points_buildings_with_colour()
-    octrees, filename, depth, task = config_points_buildings_no_colour()
+    octrees, filename, depth, task = config_points_buildings_with_colour()
+    # octrees, filename, depth, task = config_points_buildings_no_colour()
 
     # check_filenames()
     # exit()
@@ -261,4 +346,6 @@ def check_properties():
         #     print(categories[cat_idx], minl, maxl)
 
 
-check_properties()
+# check_properties()
+# check_dataset_properties_with_colour()
+check_dataset_properties_no_colour()

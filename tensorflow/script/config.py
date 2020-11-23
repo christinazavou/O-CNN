@@ -154,6 +154,22 @@ def parse_args(backup=True):
     return FLAGS
 
 
+def override_some_flags(filename, channels):
+    FLAGS.MODEL.depth = 7
+    FLAGS.MODEL.channel = channels
+    FLAGS.DATA.test.node_dis = False
+    FLAGS.DATA.test.location = filename
+    FLAGS.DATA.test.batch_size = 1
+    FLAGS.DATA.test.shuffle = 0
+    # 'return_iter': True,
+    FLAGS.DATA.test.take= -1
+    FLAGS.DATA.test.return_pts = True
+    FLAGS.DATA.test.dtype = 'points'
+    FLAGS.DATA.test.sigma = 0.01
+    FLAGS.DATA.test.clip = 0.05
+    return FLAGS
+
+
 if __name__ == '__main__':
     flags = parse_args(backup=False)
     print(flags)

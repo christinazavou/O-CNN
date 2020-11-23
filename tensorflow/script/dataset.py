@@ -24,12 +24,14 @@ class ParseExample:
 class ParseExampleDebug:
     def __init__(self, **kwargs):
         self.features = {
+            'data': tf.FixedLenFeature([], tf.string),
+            'label': tf.FixedLenFeature([], tf.int64),
             'filename': tf.FixedLenFeature([], tf.string)
         }
 
     def __call__(self, record):
         parsed = tf.parse_single_example(record, self.features)
-        return parsed['filename']
+        return parsed['data'], parsed['label'], parsed['filename']
 
 
 class Points2Octree:
@@ -178,6 +180,37 @@ class PointDataset:
         return itr if return_iter else itr.get_next()
 
 
+class PointDatasetDebug2:
+    def __init__(self, parse_example, normalize_points, transform_points, points2octree):
+        self.parse_example = parse_example
+        self.normalize_points = normalize_points
+        self.transform_points = transform_points
+        self.points2octree = points2octree
+
+    def __call__(self, record_names, batch_size, shuffle_size=1000,
+                 return_iter=False, take=-1, return_pts=False, **kwargs):
+        with tf.name_scope('points_dataset'):
+            def preprocess(record):
+                points_init, label, filenames = self.parse_example(record)
+                # points = self.normalize_points(points)
+                points_trans = self.transform_points(points_init)
+                octree = self.points2octree(points_trans)
+                outputs = (octree, label)
+                if return_pts: outputs += (points_init, points_trans, filenames)
+                return outputs
+
+            def merge_octrees(octrees, *args):
+                octree = octree_batch(octrees)
+                return (octree,) + args
+
+            dataset = tf.data.TFRecordDataset(record_names).take(take).repeat()
+            if shuffle_size > 1: dataset = dataset.shuffle(shuffle_size)
+            itr = dataset.map(preprocess, num_parallel_calls=16) \
+                .batch(batch_size).map(merge_octrees, num_parallel_calls=8) \
+                .prefetch(8).make_one_shot_iterator()
+        return itr if return_iter else itr.get_next()
+
+
 class OctreeDataset:
     def __init__(self, parse_example):
         self.parse_example = parse_example
@@ -204,6 +237,25 @@ class DatasetFactory:
         self.flags = flags
         if flags.dtype == 'points':
             self.dataset = point_dataset(ParseExample(**flags), normalize_points(),
+                                         transform_points(**flags), Points2Octree(**flags))
+        elif flags.dtype == 'octree':
+            self.dataset = OctreeDataset(ParseExample(**flags))
+        else:
+            print('Error: unsupported datatype ' + flags.dtype)
+
+    def __call__(self, return_iter=False):
+        return self.dataset(
+            record_names=self.flags.location, batch_size=self.flags.batch_size,
+            shuffle_size=self.flags.shuffle, return_iter=return_iter,
+            take=self.flags.take, return_pts=self.flags.return_pts)
+
+
+class DatasetFactoryDebug:
+    def __init__(self, flags, normalize_points=NormalizePoints,
+                 point_dataset=PointDatasetDebug2, transform_points=CustomTransformPoints):
+        self.flags = flags
+        if flags.dtype == 'points':
+            self.dataset = point_dataset(ParseExampleDebug(**flags), normalize_points(),
                                          transform_points(**flags), Points2Octree(**flags))
         elif flags.dtype == 'octree':
             self.dataset = OctreeDataset(ParseExample(**flags))
