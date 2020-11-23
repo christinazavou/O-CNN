@@ -15,6 +15,7 @@ set(VCPKG "<Set VCPKG path>" CACHE PATH "The VCPKG path, containing glog and gte
 
 # set languanges
 if(USE_CUDA)
+  set(CMAKE_CUDA_COMPILER "/usr/local/cuda-10.1/bin/nvcc")
   message(STATUS "octree: USE_CUDA")
   project(Octree LANGUAGES CUDA CXX C)
   add_definitions(-DUSE_CUDA)
