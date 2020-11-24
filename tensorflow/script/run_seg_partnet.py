@@ -47,7 +47,7 @@ def get_point_info(points, mask_ratio=0, mask=-1):
         debug_checks['{}/pts(xyz)'.format(tf.get_variable_scope().name)] = pts
         debug_checks['{}/label'.format(tf.get_variable_scope().name)] = label
         label = tf.reshape(label, [-1])
-        label_mask = label != mask  # mask out invalid points, -1
+        label_mask = tf.not_equal(label, mask)  # mask out invalid points, -1
         debug_checks['label_mask'] = label_mask
 
         if mask_ratio > 0:  # random drop some points to speed up training
@@ -72,7 +72,7 @@ def tf_IoU_per_shape(pred, label, class_num, mask=-1, ignore=0, debug=False):
     debug_checks = {}
     with tf.name_scope('IoU'):
         # Set mask to 0 to filter unlabeled points, whose label is 0
-        debug_checks['label_mask'] = tf.logical_and(label != mask, label != ignore)  # mask out unwanted label (empty
+        debug_checks['label_mask'] = tf.logical_and(tf.not_equal(label, mask), tf.not_equal(label, ignore))  # mask out unwanted label (empty
         # and undetermined)
         debug_checks['prediction_masked'] = tf.boolean_mask(pred, debug_checks['label_mask'])
         debug_checks['label_masked'] = tf.boolean_mask(label, debug_checks['label_mask'])
@@ -80,7 +80,7 @@ def tf_IoU_per_shape(pred, label, class_num, mask=-1, ignore=0, debug=False):
                                                              axis=1, output_type=tf.int32)
 
         intsc, union = [0] * class_num, [0] * class_num
-        for k in range(1, class_num):
+        for k in range(0, class_num):
             pk = tf.equal(debug_checks['prediction_masked_argmax'], k)
             lk = tf.equal(debug_checks['label_masked'], k)
             debug_checks['prediction_{}'.format(k)] = pk

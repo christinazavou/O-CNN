@@ -480,8 +480,8 @@ def loss_functions_seg_debug_checks(logit, label_gt, num_class, weight_decay, va
                                     ignore=0):
     debug_checks = {}
     with tf.name_scope('loss_seg'):
-        label_mask = label_gt != mask  # filter label -1 / empty
-        mask_und = label_gt != ignore  # filter label undetermined
+        label_mask = tf.not_equal(label_gt, mask)  # filter label -1 / empty
+        mask_und = tf.not_equal(label_gt, ignore)  # filter label undetermined
         label_mask = tf.logical_and(label_mask, mask_und)
         masked_logit = tf.boolean_mask(logit, label_mask)
         masked_label = tf.boolean_mask(label_gt, label_mask)
