@@ -151,6 +151,13 @@ def parse_args(backup=True):
     _update_config(FLAGS, args)
     if backup: _backup_config(FLAGS, args)
     _set_env_var(FLAGS)
+
+    if FLAGS.MODEL.name == 'hrnet':
+        if FLAGS.DATA.train.depth > 8 or FLAGS.DATA.test.depth > 8:
+            raise ValueError("Network depth must be lesser or equal to 8!!!\nExiting...")
+        if FLAGS.DATA.train.depth != FLAGS.DATA.test.depth:
+            raise ValueError("Train and test networks must have the same depth!!!\nExiting...")
+
     return FLAGS
 
 
