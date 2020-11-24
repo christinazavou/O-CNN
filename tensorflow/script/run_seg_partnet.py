@@ -55,30 +55,20 @@ def get_point_info(points, mask_ratio=0, mask=-1):
     return pts, label, debug_checks
 
 
-# IoU
-def tf_IoU_per_shape(pred, label, class_num, mask=-1, ignore=0, debug=False):
-    debug_checks = {}
+def tf_IoU_per_shape(logits, label, class_num, mask=-1, ignore=0):
+    # -1 CAN EXIST IF LABELS COME FROM OCTREE_PROPERTY('LABEL') ...
     with tf.name_scope('IoU'):
-        # Set mask to 0 to filter unlabeled points, whose label is 0
-        debug_checks['label_mask'] = tf.logical_and(tf.not_equal(label, mask), tf.not_equal(label, ignore))  # mask out unwanted label (empty
-        # and undetermined)
-        debug_checks['prediction_masked'] = tf.boolean_mask(pred, debug_checks['label_mask'])
-        debug_checks['label_masked'] = tf.boolean_mask(label, debug_checks['label_mask'])
-        debug_checks['prediction_masked_argmax'] = tf.argmax(debug_checks['prediction_masked'],
-                                                             axis=1, output_type=tf.int32)
+        # mask out unwanted labels (empty and undetermined)
+        label_mask = tf.logical_and(tf.not_equal(label, mask), tf.not_equal(label, ignore))
+        masked_label = tf.boolean_mask(label, label_mask)
+        prediction = tf.argmax(tf.boolean_mask(logits, label_mask), axis=1, output_type=tf.int32)
 
         intsc, union = [0] * class_num, [0] * class_num
         for k in range(0, class_num):
-            pk = tf.equal(debug_checks['prediction_masked_argmax'], k)
-            lk = tf.equal(debug_checks['label_masked'], k)
-            debug_checks['prediction_{}'.format(k)] = pk
-            debug_checks['label_{}'.format(k)] = lk
+            pk = tf.equal(prediction, k)
+            lk = tf.equal(masked_label, k)
             intsc[k] = tf.reduce_sum(tf.cast(pk & lk, dtype=tf.float32))
             union[k] = tf.reduce_sum(tf.cast(pk | lk, dtype=tf.float32))
-        debug_checks['intsc'] = intsc
-        debug_checks['union'] = union
-    if debug:
-        return debug_checks
     return intsc, union
 
 
@@ -122,24 +112,20 @@ class ComputeGraphSeg:
 
                 debug_checks["{}/probabilities".format(tf.get_variable_scope().name)] = get_probabilities(logit)
 
-                metrics_dict, dc = loss_functions_seg(
-                    logit=logit, label_gt=label, num_class=FLAGS.LOSS.num_class, weight_decay=FLAGS.LOSS.weight_decay,
-                    var_name='ocnn', weights=self.weights)  # , mask=-1,ignore=0)
-                debug_checks.update(dc)
+                metrics_dict = loss_functions_seg(logit=logit, label_gt=label, num_class=FLAGS.LOSS.num_class,
+                                                  weight_decay=FLAGS.LOSS.weight_decay, var_name='ocnn',
+                                                  weights=self.weights)  # , mask=-1,ignore=0)
                 tensors_dict.update(metrics_dict)
                 tensors_dict['total_loss'] = metrics_dict['loss'] + metrics_dict['regularizer']
 
                 if flags_data.batch_size == 1:
                     num_class = FLAGS.LOSS.num_class
-                    intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=-1)
-                    iou = tf.constant(0.0)  # placeholder, calc its value later
-                    tensors_dict['iou'] = iou
-                    # tensors_dict['intsc_0']=tf.constant(0.0)
-                    # tensors_dict['union_0']=tf.constant(0.0)
+                    intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=-1, ignore=0)
+                    tensors_dict['iou'] = tf.constant(0.0)  # placeholder, calc its value later
                     for i in range(0, num_class):
                         tensors_dict['intsc_%d' % i] = intsc[i]
                         tensors_dict['union_%d' % i] = union[i]
-                # print(tensors_dict.keys())
+
         return tensors_dict, debug_checks
 
 
@@ -152,16 +138,13 @@ def result_callback(avg_results_dict, num_class):
 
 def result_callback_maria(avg_results_dict, num_class):
     # calc part-IoU, update `iou`, this is in correspondence with Line 77
-    iou_avg = 0.0
-    ious = []
+    ious = [0] * num_class
     for i in range(0, num_class):  # !!! Ignore the first label
         instc_i = avg_results_dict['intsc_%d' % i]
         union_i = avg_results_dict['union_%d' % i]
         if union_i > 0.0:
-            ious.append(instc_i / union_i)
-    if len(ious) > 0:
-        iou_avg = sum(ious) / len(ious)
-    avg_results_dict['iou'] = iou_avg
+            ious[i] = instc_i / union_i
+    avg_results_dict['iou'] = sum(ious) / (num_class - 1)
     return avg_results_dict
 
 
@@ -238,6 +221,7 @@ class PartNetSolver(TFSolver):
             for key, value in iter_results_dict.items():
                 avg_results_dict[key] += value
 
+        # FIXME : dont average i and u with the number of the models. call result_callback before forloop
         for key in avg_results_dict.keys():
             avg_results_dict[key] /= self.flags.test_iter
         avg_results = self.result_callback(avg_results_dict)
@@ -497,6 +481,7 @@ class PartNetSolver(TFSolver):
                         iter_test_result_sorted.append(iter_test_result_dict[key])
                 self.summ2txt(iter_test_result_sorted, i)
 
+        # FIXME
         # Final testing results
         for key, value in test_metrics_dict.items():
             if key != CONF_MAT_KEY:

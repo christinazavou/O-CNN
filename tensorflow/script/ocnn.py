@@ -457,9 +457,10 @@ def loss_functions_seg(logit, label_gt, num_class, weight_decay, var_name, weigh
         label_mask = tf.logical_and(label_mask, mask_und)
         masked_logit = tf.boolean_mask(logit, label_mask)
         masked_label = tf.boolean_mask(label_gt, label_mask)
-        loss, conf_mat = softmax_loss_with_conf_mat(logit=masked_logit, label_gt=masked_label,
-                                                        num_class=num_class,
-                                                        weights=weights)
+        loss, conf_mat = softmax_loss_with_conf_mat(logit=masked_logit,
+                                                    label_gt=masked_label,
+                                                    num_class=num_class,
+                                                    weights=weights)
 
         accu = softmax_accuracy(masked_logit, masked_label)
         regularizer = l2_regularizer(var_name, weight_decay)
