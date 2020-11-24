@@ -5,68 +5,15 @@ from config import override_some_flags
 sys.path.append("..")
 from libs import *
 from dataset import *
-from run_seg_partnet import get_point_info
-categories = [
-    'Bag', 'Bed', 'Bottle', 'Bowl', 'Chair', 'Clock', 'Dishwasher',
-    'Display', 'Door', 'Earphone', 'Faucet', 'Hat', 'Keyboard',
-    'Knife', 'Lamp', 'Laptop', 'Microwave', 'Mug', 'Refrigerator',
-    'Scissors', 'StorageFurniture', 'Table', 'TrashCan', 'Vase'
-]
-labels = [
-    -1, 15, 9, -1,
-    39, 11, 7, 4,
-    5, 10, 12, -1,
-    -1, 10, 41, -1,
-    6, -1, 7, -1,
-    24, 51, 11, 6
-]
-take = [
-    -1, 37, 84, -1,
-    1217, 98, 51, 191,
-    51, 53, 132, -1,
-    -1, 77, 419, -1,
-    39, -1, 31, -1,
-    451, 1668, 63, 233
-]
+
 categories = ['Buildings']
 labels = [34],
 take = [200]
 
 
-def config_points_partnet(category="Bottle"):
-    filename = '/media/christina/Data/ANFASS_data/O-CNN/data/partnet_data/dataset/{}_train_level3.tfrecords' \
-        .format(category)
-    depth = 6
-    task = 'seg_points_partnet'
-
-    octrees = PointDataset(ParseExample(x_alias='data', y_alias='label'),
-                           NormalizePoints(),
-                           TransformPoints(distort=True, depth=depth, offset=0, axis='y',
-                                           scale=0.25, jitter=0.125, angle=[5, 5, 5],
-                                           uniform=True,
-                                           bounding_sphere=bounding_sphere),
-                           Points2Octree(depth=depth, node_dis=True))#,ignore_labels=tf.constant([0.0,32.0,33.0])))
-
-    return octrees, filename, depth, task
-
-
-def config_points_buildings():
-    filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points_tuesday/test_points100000.tfrecords'
-    depth = 7
-    task = 'seg_points_buildings'
-    octrees = PointDataset(ParseExample(x_alias='data', y_alias='label'),
-                           NormalizePoints(),
-                           TransformPoints(distort=True, depth=depth, offset=0, axis='y',
-                                           scale=0.25, jitter=0.125, angle=[5, 5, 5],
-                                           uniform=True,
-                                           bounding_sphere=bounding_sphere),
-                           Points2Octree(depth=depth, node_dis=True, ))
-    return octrees, filename, depth, task
-
-
 def config_points_buildings_with_colour():
     # data generated with python only
-    filename = '/media/christina/Elements/ANNFASS_DATA/RGBA_uniform/with_colour/dataset_points_chunk8/train.shuffle.all.tfrecords'
+    filename = '/media/christina/Data/ANNFASS_data/O-CNN/data/test_w_colour_no_rot.tfrecords'
     depth = 7
     task = 'seg_points_buildings_w_colour'
     octrees = PointDataset(ParseExample(x_alias='data', y_alias='label'),
@@ -78,7 +25,7 @@ def config_points_buildings_with_colour():
 
 def config_points_buildings_no_colour():
     # data generated with python only
-    filename = '/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/tfrecords/val/val_no_colour_no_rot.tfrecords'
+    filename = '/media/christina/Data/ANNFASS_data/O-CNN/data/test_no_colour_no_rot.tfrecords'
     depth = 7
     task = 'seg_points_buildings_n_colour'
     octrees = PointDataset(ParseExample(x_alias='data', y_alias='label'),
@@ -127,9 +74,6 @@ class DatasetDebug:
     def check(octree, property_name, max_depth, task, session):
         for d in range(0, max_depth + 1):
             DatasetDebug.check_d(octree, property_name, d, max_depth, task, session)
-        # if property_name == "label":
-        #     labels_max_depth = DatasetDebug.check_d(octree, property_name, max_depth, max_depth, task, session)
-        #     labels_minus_depth = DatasetDebug.check_d(octree, property_name, -1, max_depth, task, session)
 
     @staticmethod
     def check_d(octree, property_name, d, max_depth, task, session):
@@ -139,9 +83,6 @@ class DatasetDebug:
         print("depth {} {} {}".format(d, property_name, result.shape))
         assert result.shape[0] == DatasetDebug.channels[task][property_name]
         assert d == -1 or result.shape[1] <= 8 ** d
-        # if property_name == "label" and 0 < d < max_depth and task == 'seg_points_partnet':
-        #     assert set(result.reshape((-1))) <= {-1, 1}  # if d=max_depth then we have label in (-1, #categories)
-        # return result
 
     @staticmethod
     def check_config(octree, octree5, depth, task, sess=None):
@@ -150,12 +91,9 @@ class DatasetDebug:
         DatasetDebug.check(octree, 'split', depth, task, sess)
         DatasetDebug.check(octree, 'label', depth, task, sess)
 
-        # "feature" must be the input signal..i.e. in last depth is the nx,ny,nz and then in each preceding
-        # depth is the average of its children nodes
         DatasetDebug.check(octree, 'feature', depth, task, sess)
         DatasetDebug.check(octree, 'index', depth, task, sess)
 
-        # "xyz" is the shuffle key
         DatasetDebug.check(octree, "xyz", depth, task, sess)
 
         try:
@@ -185,103 +123,69 @@ def check_filenames():
 def check_dataset_properties_with_colour():
 
     filename = '/media/christina/Data/ANNFASS_data/O-CNN/data/test_w_colour_no_rot.tfrecords'
-    flags = override_some_flags(filename, channels=7)
+    flags = override_some_flags(filename)
 
-    dataset_iter = DatasetFactoryDebug(flags.DATA.test)(return_iter=True)
-    # dataset_iter = DatasetFactory(flags.DATA.test)(return_iter=True)
+    dataset_iter = DatasetFactory(flags.DATA.test)(return_iter=True)
 
     with tf.Session() as sess:
         for i in [0,1,2]:
-            octree, _labels, points_init, points_trans, _filenames = dataset_iter.get_next()
+            octree, labels, points = dataset_iter.get_next()
 
-            # pts_init_n, labels_n, normal_n, features_n, \
-            # pts_trans_n, labels_trans_n, normal_trans_n, features_trans_n, \
-            # filenames = sess.run([
-            #     points_property(points_init, property_name='xyz', channel=4),
-            #     points_property(points_init, property_name='label', channel=1),
-            #     points_property(points_init, property_name='normal', channel=3),
-            #     points_property(points_init, property_name="feature", channel=4),
-            #
-            #     points_property(points_trans, property_name='xyz', channel=4),
-            #     points_property(points_trans, property_name='label', channel=1),
-            #     points_property(points_trans, property_name='normal', channel=3),
-            #     points_property(points_trans, property_name="feature", channel=4),
-            #     #
-            #     _filenames
-            #
-            # ])
-            #
-            # print("filenames: ", filenames, "\n")
-            # print("pts_init_n: ", pts_init_n[0:3], "\n")
-            # print("labels_n: ", labels_n[0:3], "\n")
-            # print("normal_n: ", normal_n[0:3], "\n")
-            # print("features_n: ", features_n[0:3], "\n")
-            #
-            # print("pts_trans_n: ", pts_trans_n[0:3], "\n")
-            # print("labels_trans_n: ", labels_trans_n[0:3], "\n")
-            # print("normal_trans_n: ", normal_trans_n[0:3], "\n")
-            # print("features_trans_n: ", features_trans_n[0:3], "\n")
-            #
-            # print(pts_trans_n - pts_init_n)
+            pts_init_n, labels_n, normal_n = sess.run([
+                points_property(points, property_name='xyz', channel=4),
+                points_property(points, property_name='label', channel=1),
+                points_property(points, property_name='normal', channel=3),
+            ])
 
-            of7 = sess.run(octree_property(octree, property_name='feature', dtype=tf.float32, depth=7, channel=7))
+            print("pts_init_n: ", pts_init_n[0:3], "\n")
+            print("labels_n: ", labels_n[0:3], "\n")
+            print("normal_n: ", normal_n[0:3], "\n")
+
+            of7 = sess.run(octree_property(octree, property_name='feature', dtype=tf.float32, depth=7, channel=8))
             print("of7: ", of7, "\n")
+            l = sess.run(octree_property(octree, property_name='label', dtype=tf.float32, depth=7, channel=1))
+            print("l: ", l, "\n")
+            xyz = sess.run(octree_property(octree, property_name='xyz', dtype=tf.uint32, depth=7, channel=1))
+            print("xyz: ", xyz, "\n")
 
 
 def check_dataset_properties_no_colour():
 
     filename = '/media/christina/Data/ANNFASS_data/O-CNN/data/test_no_colour_no_rot.tfrecords'
-    flags = override_some_flags(filename, channels=3)
+    flags = override_some_flags(filename)
 
-    dataset_iter = DatasetFactoryDebug(flags.DATA.test)(return_iter=True)
-    # dataset_iter = DatasetFactory(flags.DATA.test)(return_iter=True)
+    dataset_iter = DatasetFactory(flags.DATA.test)(return_iter=True)
 
     with tf.Session() as sess:
         for i in [0,1,2]:
-            octree, _labels, points_init, points_trans, _filenames = dataset_iter.get_next()
+            octree, labels, points = dataset_iter.get_next()
 
-            pts_init_n, labels_n, normal_n, \
-            pts_trans_n, labels_trans_n, normal_trans_n, \
-            filenames = sess.run([
-                points_property(points_init, property_name='xyz', channel=4),
-                points_property(points_init, property_name='label', channel=1),
-                points_property(points_init, property_name='normal', channel=3),
-
-                points_property(points_trans, property_name='xyz', channel=4),
-                points_property(points_trans, property_name='label', channel=1),
-                points_property(points_trans, property_name='normal', channel=3),
-                #
-                _filenames
-
+            pts_init_n, labels_n, normal_n = sess.run([
+                points_property(points, property_name='xyz', channel=4),
+                points_property(points, property_name='label', channel=1),
+                points_property(points, property_name='normal', channel=3),
             ])
 
-            print("filenames: ", filenames, "\n")
             print("pts_init_n: ", pts_init_n[0:3], "\n")
             print("labels_n: ", labels_n[0:3], "\n")
             print("normal_n: ", normal_n[0:3], "\n")
 
-            print("pts_trans_n: ", pts_trans_n[0:3], "\n")
-            print("labels_trans_n: ", labels_trans_n[0:3], "\n")
-            print("normal_trans_n: ", normal_trans_n[0:3], "\n")
-
             of = sess.run(octree_property(octree, property_name='feature', dtype=tf.float32, depth=7, channel=3))
             print("of: ", of, "\n")
+            l = sess.run(octree_property(octree, property_name='label', dtype=tf.float32, depth=7, channel=1))
+            print("l: ", l, "\n")
+            xyz = sess.run(octree_property(octree, property_name='xyz', dtype=tf.uint32, depth=7, channel=1))
+            print("xyz: ", xyz, "\n")
 
 
 def check_properties():
-    # octrees, filename, depth, task = config_points_partnet()
-    # octrees, filename, depth, task = config_points_buildings()
     octrees, filename, depth, task = config_points_buildings_with_colour()
     # octrees, filename, depth, task = config_points_buildings_no_colour()
-
-    # check_filenames()
-    # exit()
 
     with tf.Session() as sess:
 
         octree, _, points = sess.run(octrees(filename, batch_size=1, shuffle_size=0, return_iter=True, take=10,
                                              return_pts=True).get_next())
-        pts, label, dc = sess.run(get_point_info(points, 0.0))
         octree5, _, points5 = sess.run(octrees(filename, batch_size=5, shuffle_size=0, return_iter=True, take=10,
                                                return_pts=True).get_next())
         DatasetDebug.check_config(octree, octree5, depth, task, sess)
@@ -301,51 +205,17 @@ def check_properties():
         pnormal = sess.run(points_normal)
         print("points_normal: ", pnormal.shape)
 
-        # points_feature = points_property(points, property_name='feature', channel=4)
-        # pfeature = sess.run(points_feature)
-        # print("points_feature: ", pfeature.shape)
-
         octree_feature = octree_property(octree, property_name="feature", depth=depth, dtype=tf.float32,
-                                         channel=DatasetDebug.channels[task]['feature'])
+                                         # channel=DatasetDebug.channels[task]['feature'])
+                                         channel=7)
         ofeature = sess.run(octree_feature)
         print("octree_feature: ", ofeature.shape)
 
         points5_xyzd_tf = points_property(points5, property_name='xyz', channel=4)
         print("points5_xyzd ", sess.run(points5_xyzd_tf).shape)
 
-        # x,y,z,d,nx,ny,nz,r,g,b,a,l
 
-        # ----------------------------------------------------------------------------------
-
-        # for cat_idx in range(len(categories)):
-        #     minl = 100
-        #     maxl = -1
-        #     if labels[cat_idx] == -1:
-        #         continue
-        #
-        #     # octrees, filename, depth, task = config_points_partnet(categories[cat_idx])
-        #     octrees, filename, depth, task = config_points_buildings()
-        #     _, _, points = octrees(filename, batch_size=1, shuffle_size=0,
-        #                            return_iterator=False, take=take[cat_idx], return_pts=True)
-        #     points_label = points_property(points, property_name='label', channel=1)
-        #     points_xyzd = points_property(points, property_name='xyz', channel=4)
-        #
-        #     # points_label = points_property(octrees(filename, batch_size=1, shuffle_size=0,
-        #     #                                        return_iterator=False, take=take[cat_idx],
-        #     #                                        return_pts=True)[2], property_name='label',
-        #     #                                channel=1)
-        #     for i in range(take[cat_idx]):
-        #         pl, xyz = sess.run([points_label, points_xyzd])
-        #         minl = min(minl, pl.min())
-        #         maxl = max(maxl, pl.max())
-        #
-        #         if pl.shape[0] != 10000:
-        #             assert pl.shape[0] < 10000
-        #             assert pl.shape[0] == xyz.shape[0]
-        #
-        #     print(categories[cat_idx], minl, maxl)
-
-
+# check_filenames()
 # check_properties()
-# check_dataset_properties_with_colour()
-check_dataset_properties_no_colour()
+check_dataset_properties_with_colour()
+# check_dataset_properties_no_colour()

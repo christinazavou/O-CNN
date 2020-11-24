@@ -24,14 +24,12 @@ class ParseExample:
 class ParseExampleDebug:
     def __init__(self, **kwargs):
         self.features = {
-            'data': tf.FixedLenFeature([], tf.string),
-            'label': tf.FixedLenFeature([], tf.int64),
             'filename': tf.FixedLenFeature([], tf.string)
         }
 
     def __call__(self, record):
         parsed = tf.parse_single_example(record, self.features)
-        return parsed['data'], parsed['label'], parsed['filename']
+        return parsed['filename']
 
 
 class Points2Octree:
@@ -249,21 +247,3 @@ class DatasetFactory:
             shuffle_size=self.flags.shuffle, return_iter=return_iter,
             take=self.flags.take, return_pts=self.flags.return_pts)
 
-
-class DatasetFactoryDebug:
-    def __init__(self, flags, normalize_points=NormalizePoints,
-                 point_dataset=PointDatasetDebug2, transform_points=CustomTransformPoints):
-        self.flags = flags
-        if flags.dtype == 'points':
-            self.dataset = point_dataset(ParseExampleDebug(**flags), normalize_points(),
-                                         transform_points(**flags), Points2Octree(**flags))
-        elif flags.dtype == 'octree':
-            self.dataset = OctreeDataset(ParseExample(**flags))
-        else:
-            print('Error: unsupported datatype ' + flags.dtype)
-
-    def __call__(self, return_iter=False):
-        return self.dataset(
-            record_names=self.flags.location, batch_size=self.flags.batch_size,
-            shuffle_size=self.flags.shuffle, return_iter=return_iter,
-            take=self.flags.take, return_pts=self.flags.return_pts)

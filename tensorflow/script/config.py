@@ -154,10 +154,9 @@ def parse_args(backup=True):
     return FLAGS
 
 
-def override_some_flags(filename, channels):
+def override_some_flags(filename):
     FLAGS.MODEL.depth = 7
-    FLAGS.MODEL.channel = channels
-    FLAGS.DATA.test.node_dis = False
+    FLAGS.DATA.test.node_dis = True
     FLAGS.DATA.test.location = filename
     FLAGS.DATA.test.batch_size = 1
     FLAGS.DATA.test.shuffle = 0
