@@ -36,26 +36,22 @@ def get_point_info(points, mask_ratio=0, mask=-1):
     with tf.name_scope('points_info'):
         pts = points_property(points, property_name='xyz', channel=4)
         label = points_property(points, property_name='label', channel=1)
+
         debug_checks['{}/pts(xyz)'.format(tf.get_variable_scope().name)] = pts
         debug_checks['{}/label'.format(tf.get_variable_scope().name)] = label
+
         label = tf.reshape(label, [-1])
         label_mask = tf.not_equal(label, mask)  # mask out invalid points, -1
-        debug_checks['label_mask'] = label_mask
 
         if mask_ratio > 0:  # random drop some points to speed up training
             rnd_mask = tf.random.uniform(tf.shape(label_mask)) > mask_ratio
             label_mask = tf.logical_and(label_mask, rnd_mask)
-            debug_checks['{}/rnd_mask'.format(tf.get_variable_scope().name)] = rnd_mask
 
         label = tf.boolean_mask(label, label_mask)
-        # tile_multiples = tf.concat([tf.ones(tf.shape(tf.shape(label)), dtype=tf.int32), tf.shape(IGNORE_LABELS)],
-        #                            axis=0)
-        # x_tile = tf.tile(tf.expand_dims(label, -1), tile_multiples)
-        # ignore = tf.reduce_any(tf.equal(x_tile, IGNORE_LABELS), -1)
-        # label = tf.where(ignore, tf.zeros_like(label) + 1000, label) - 1
         pts = tf.boolean_mask(pts, label_mask)
-        debug_checks['{}/masked_and_ratio/pts(xyz)'.format(tf.get_variable_scope().name)] = pts
-        debug_checks['{}/masked_and_ratio/label'.format(tf.get_variable_scope().name)] = label
+
+        debug_checks['{}/masked_and_dropped/pts(xyz)'.format(tf.get_variable_scope().name)] = pts
+        debug_checks['{}/masked_and_dropped/label'.format(tf.get_variable_scope().name)] = label
     return pts, label, debug_checks
 
 
@@ -111,26 +107,22 @@ class ComputeGraphSeg:
 
         with tf.device('/gpu:0'):
             with tf.name_scope('device_0'):
-                octree, _labels, points = data_iter.get_next()
-                debug_checks["{}/octree".format(tf.get_variable_scope().name)] = octree
-                debug_checks["{}/points".format(tf.get_variable_scope().name)] = points
-                debug_checks["{}/labels".format(tf.get_variable_scope().name)] = _labels
+                octree, _, points = data_iter.get_next()
 
                 print("mask ratio for {} is {}".format(dataset, flags_data.mask_ratio))
                 pts, label, dc = get_point_info(points, flags_data.mask_ratio)
                 debug_checks.update(dc)
-                debug_checks["{}/normals".format(tf.get_variable_scope().name)] = points_property(
-                    points, property_name='normal', channel=3)
 
-                if not FLAGS.LOSS.point_wise:
+                if not FLAGS.LOSS.point_wise:  # octree-wise loss
                     pts, label = None, get_seg_label(octree, FLAGS.MODEL.depth_out)
                     debug_checks["{}/seg_label/label(pts=None)".format(tf.get_variable_scope().name)] = label
 
                 logit, dc = seg_network(octree, FLAGS.MODEL, training, reuse, pts=pts)
                 debug_checks.update(dc)
-                debug_checks["{}/logit".format(tf.get_variable_scope().name)] = logit
+
                 debug_checks["{}/probabilities".format(tf.get_variable_scope().name)] = get_probabilities(logit)
-                metrics_dict, dc = loss_functions_seg_debug_checks(
+
+                metrics_dict, dc = loss_functions_seg(
                     logit=logit, label_gt=label, num_class=FLAGS.LOSS.num_class, weight_decay=FLAGS.LOSS.weight_decay,
                     var_name='ocnn', weights=self.weights)  # , mask=-1,ignore=0)
                 debug_checks.update(dc)
