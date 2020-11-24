@@ -4,6 +4,7 @@ import shutil
 import argparse
 from yacs.config import CfgNode as CN
 import json
+import numpy as np
 
 _C = CN()
 
@@ -166,10 +167,10 @@ def parse_class_weights(flags):
     if flags.SOLVER.class_weights == "":
         return [1. for _ in range(flags.MODEL.nout)]
     data = json.load(open(flags.SOLVER.class_weights))
-    data = {int(key): value for key, value in data.items()}
+    data = {int(key): float(value) for key, value in data.items()}
     data = {key: value for key, value in sorted(data.items(), key=lambda item: item[0])}
     assert len(data) == flags.MODEL.nout, "Number of weights does not match number of outputs"
-    return data.values()
+    return list(data.values())
 
 
 def override_some_flags(filename):

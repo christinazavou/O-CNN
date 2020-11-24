@@ -17,7 +17,6 @@ class OctreeUpsample:
 def branch(data, octree, depth, channel, block_num, training):
     debug_checks = {}
     if depth > 5: block_num = block_num // 2  # !!! whether should we add this !!!
-    print("branch with depth ={}, channel = {}, (res)block_num = {}".format(depth, channel, block_num))
     for i in range(block_num):
         with tf.variable_scope('resblock_d%d_%d' % (depth, i)):
             # data = octree_resblock2(data, octree, depth, channel, training)

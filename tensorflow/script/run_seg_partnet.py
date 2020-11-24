@@ -89,6 +89,8 @@ class ComputeGraphSeg:
         debug_checks = {}
         tensors_dict = {}
 
+        train_mode = True if dataset == 'train' else False
+
         FLAGS = self.flags
         # print(FLAGS)
         with tf.device('/cpu:0'):
@@ -114,7 +116,7 @@ class ComputeGraphSeg:
 
                 metrics_dict = loss_functions_seg(logit=logit, label_gt=label, num_class=FLAGS.LOSS.num_class,
                                                   weight_decay=FLAGS.LOSS.weight_decay, var_name='ocnn',
-                                                  weights=self.weights)  # , mask=-1,ignore=0)
+                                                  weights=self.weights, mask=-1, ignore=0, train_mode=train_mode)
                 tensors_dict.update(metrics_dict)
                 tensors_dict['total_loss'] = metrics_dict['loss'] + metrics_dict['regularizer']
 
@@ -178,23 +180,16 @@ class PartNetSolver(TFSolver):
                 self.train_tensors_dict = average_tensors(self.train_tensors_dict)
                 self.test_tensors_dict = average_tensors(self.test_tensors_dict)
 
-        tensor_dict_for_train_summary = {}
-        tensor_dict_for_train_summary.update(self.train_tensors_dict)
-        # tensor_dict_for_train_summary.update({'lr': self.lr})
         tensor_dict_for_test_summary = {}
         tensor_dict_for_test_summary.update(self.test_tensors_dict)
         tensor_dict_for_test_summary.update({'lr': self.lr})
-        self.summaries_dict(tensor_dict_for_train_summary, tensor_dict_for_test_summary)
+        self.summaries_dict(self.train_tensors_dict, tensor_dict_for_test_summary)
 
     def summaries_dict(self, train_tensor_dict, test_tensor_dict):
-        self.summ_train_occ = None
-        if CONF_MAT_KEY in train_tensor_dict:
-            self.summ_train_occ = summary_train_dict({CONF_MAT_KEY: train_tensor_dict[CONF_MAT_KEY]})
-            del train_tensor_dict[CONF_MAT_KEY]
-        self.summ_train_alw = summary_train_dict(train_tensor_dict)
+        self.summ_train = summary_train_dict(train_tensor_dict)
         self.summ_test, self.summ_holder_dict = summary_test_dict(test_tensor_dict)
-        self.summ_test_keys = [key for key in self.summ_holder_dict.keys() if key != CONF_MAT_KEY]
-        self.summ2txt(self.summ_test_keys, 'iter', 'w')
+        self.csv_summ_test_keys = [key for key in self.summ_holder_dict.keys() if key != CONF_MAT_KEY]
+        self.summ2txt(self.csv_summ_test_keys, 'iter', 'w')
 
     def build_test_graph(self):
         gpu_num = len(self.flags.gpu)
@@ -206,23 +201,25 @@ class PartNetSolver(TFSolver):
                 self.test_tensors_dict = average_tensors(self.test_tensors_dict)
 
     def run_k_test_iterations(self, sess):
-        print("eval on val split")
+        print("Evaluation (val split)")
         avg_results_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
         for i in range(self.flags.test_iter):
-            iter_results_dict, iter_debug_checks = sess.run([self.test_tensors_dict, self.test_debug_checks])
+            # iter_results_dict, iter_debug_checks = sess.run([self.test_tensors_dict, self.test_debug_checks])
+            iter_results_dict = sess.run(self.test_tensors_dict)
 
             for key, value in iter_results_dict.items():
                 avg_results_dict[key] += value
 
-        # FIXME : dont average i and u with the number of the models. call result_callback before forloop
+        do_not_avg = ["intsc_", "union_", "iou"]
         for key in avg_results_dict.keys():
-            avg_results_dict[key] /= self.flags.test_iter
+            if not any(k in key for k in do_not_avg):
+                avg_results_dict[key] /= self.flags.test_iter
+        # calculate iou
         avg_results = self.result_callback(avg_results_dict)
+
         curr_lr = sess.run(self.lr, feed_dict={self.lr: self.lr_metric(avg_results_dict['total_loss'])})
         sess.run(self.lr.assign(curr_lr))
         avg_results['lr'] = self.lr
-        avg_results_dict['lr'] = curr_lr
-        # print(avg_results_dict)
         return avg_results
 
     def save_ckpt(self, dc, sess, iter):
@@ -284,44 +281,12 @@ class PartNetSolver(TFSolver):
 
             self.lr_metric = LRFactory(self.flags)  # OnPlateauLRPy(self.flags)
 
-            # variable initialisation
-            if self.summ_train_occ != None:
-                summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
-                    [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr],
-                )
-                # summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
-                #     [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr],
-                #      feed_dict={self.lr: self.flags.learning_rate}
-                # )
-                # feed_dict={self.lr: self.flags.learning_rate})
-                summary_writer.add_summary(summary_occ, start_iter)
-                summary_writer.add_summary(summary_alw, start_iter)
-            else:
-                summary_alw, _, curr_loss, curr_lr = sess.run(
-                    [self.summ_train_alw, self.train_op, self.total_loss, self.lr],
-                    # feed_dict={self.lr: self.flags.learning_rate}
-                )
-                summary_writer.add_summary(summary_alw, start_iter)
-
-            for i in tqdm(range(start_iter + 1, self.flags.max_iter + 1), ncols=80):
+            for i in tqdm(range(start_iter, self.flags.max_iter + 1), ncols=80):
                 # training
-                if self.summ_train_occ != None:
-                    summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
-                        [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr],
-                    )
-                    # summary_alw, summary_occ, _, curr_loss, curr_lr = sess.run(
-                    #     [self.summ_train_alw, self.summ_train_occ, self.train_op, self.total_loss, self.lr],
-                    #      feed_dict={self.lr: self.lr_metric(curr_loss)}
-                    # )
-                    summary_writer.add_summary(summary_occ, i)
-                    summary_writer.add_summary(summary_alw, i)
-                    # print("self.lr: ", curr_lr)
-                else:
-                    summary_alw, _, curr_loss, curr_lr = sess.run(
-                        [self.summ_train_alw, self.train_op, self.total_loss, self.lr],
-                        # feed_dict={self.lr: self.lr_metric(curr_loss)}
-                    )
-                    summary_writer.add_summary(summary_alw, i)
+                summary_train, _, curr_loss, curr_lr = sess.run(
+                    [self.summ_train, self.train_op, self.total_loss, self.lr])
+                summary_writer.add_summary(summary_train, i)
+
                 # testing
                 if i % self.flags.test_every_iter == 0:
                     # run testing average
@@ -335,10 +300,8 @@ class PartNetSolver(TFSolver):
                                        feed_dict={pl: avg_test_dict[m]
                                                   for m, pl in self.summ_holder_dict.items()})
                     summary_writer.add_summary(summary, i)
-                    avg_test_ordered = []
-                    for key in self.summ_test_keys:
-                        avg_test_ordered.append(avg_test_dict[key])
-                    self.summ2txt(avg_test_ordered, i)
+                    csv_avg_tests = [avg_test_dict[key] for key in self.csv_summ_test_keys]
+                    self.summ2txt(csv_avg_tests, i)
 
                     # save session
                     ckpt_name = os.path.join(ckpt_path, 'iter_%06d.ckpt' % i)
@@ -364,9 +327,9 @@ class PartNetSolver(TFSolver):
             print('Start profiling ...')
             for i in tqdm(range(0, timeline_skip + timeline_iter), ncols=80):
                 if i < timeline_skip:
-                    summary_alw, _ = sess.run([self.summ_train_alw, self.train_op])
+                    summary_alw, _ = sess.run([self.summ_train, self.train_op])
                 else:
-                    summary, _ = sess.run([self.summ_train_alw, self.train_op],
+                    summary, _ = sess.run([self.summ_train, self.train_op],
                                           options=options, run_metadata=run_metadata)
                     if (i == timeline_skip + timeline_iter - 1):
                         # summary_writer.add_run_metadata(run_metadata, 'step_%d'%i, i)

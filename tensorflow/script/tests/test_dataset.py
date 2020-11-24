@@ -15,7 +15,7 @@ def test_dataset_factory_no_filenames():
                 "DATA.test.shuffle", "0"]
     with patch.object(sys, 'argv', testargs):
         FLAGS = parse_args()
-    dataset = DatasetFactory(FLAGS.DATA.test)(return_iter=True, return_fnames=False)
+    dataset = DatasetFactory(FLAGS.DATA.test)(return_iter=True)
     data_tuple = dataset.get_next()
     assert len(data_tuple) == 3
 

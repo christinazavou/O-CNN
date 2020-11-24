@@ -240,16 +240,12 @@ def predict_signal(data, num_output, num_hidden, training):
 
 
 def softmax_loss(logit, label_gt, num_class, weights=None, label_smoothing=0.0):
-    l_weights = 1.0
     with tf.name_scope('softmax_loss'):
-        label_gt = tf.cast(label_gt, tf.int32)
-        onehot = tf.one_hot(label_gt, depth=num_class)
-
-        if weights != None:
-            l_weights = tf.gather(params=weights, indices=label_gt)
-
+        labels = tf.cast(label_gt, tf.int32)
+        onehot = tf.one_hot(labels, depth=num_class)
+        l_weights = tf.gather(params=weights, indices=labels)
         loss = tf.losses.softmax_cross_entropy(
-            onehot, logit, label_smoothing=label_smoothing, weights=l_weights)
+            onehot_labels=onehot, logits=logit, label_smoothing=label_smoothing, weights=l_weights)
     return loss
 
 
@@ -450,21 +446,30 @@ def loss_functions(logit, label_gt, num_class, weight_decay, var_name, label_smo
     return [loss, accu, regularizer]
 
 
-def loss_functions_seg(logit, label_gt, num_class, weight_decay, var_name, weights=None, mask=-1, ignore=0):
+def loss_functions_seg(logit, label_gt, num_class, weight_decay, var_name, weights=None, mask=-1, ignore=0,
+                       train_mode=True):
     with tf.name_scope('loss_seg'):
         label_mask = tf.not_equal(label_gt, mask)  # filter label -1 / empty
         mask_und = tf.not_equal(label_gt, ignore)  # filter label undetermined
         label_mask = tf.logical_and(label_mask, mask_und)
         masked_logit = tf.boolean_mask(logit, label_mask)
         masked_label = tf.boolean_mask(label_gt, label_mask)
-        loss, conf_mat = softmax_loss_with_conf_mat(logit=masked_logit,
-                                                    label_gt=masked_label,
-                                                    num_class=num_class,
-                                                    weights=weights)
 
         accu = softmax_accuracy(masked_logit, masked_label)
         regularizer = l2_regularizer(var_name, weight_decay)
-    return {'loss': loss, 'accu': accu, 'regularizer': regularizer, 'confusion_matrix': conf_mat}
+
+        if train_mode:
+            loss = softmax_loss(logit=masked_logit,
+                                label_gt=masked_label,
+                                num_class=num_class,
+                                weights=weights)
+            return {'loss': loss, 'accu': accu, 'regularizer': regularizer}
+        else:
+            loss, conf_mat = softmax_loss_with_conf_mat(logit=masked_logit,
+                                                        label_gt=masked_label,
+                                                        num_class=num_class,
+                                                        weights=weights)
+            return {'loss': loss, 'accu': accu, 'regularizer': regularizer, 'confusion_matrix': conf_mat}
 
 
 def get_seg_label(octree, depth):
