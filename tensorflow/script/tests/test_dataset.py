@@ -9,7 +9,18 @@ from dataset import DatasetFactory
 from libs import octree_property, points_property
 
 
-def test_dataset_factory():
+def test_dataset_factory_no_filenames():
+    testargs = ["python test_config.py",
+                "--config", "../configs/segmentation/seg_hrnet_partnet_pts.yaml",
+                "DATA.test.shuffle", "0"]
+    with patch.object(sys, 'argv', testargs):
+        FLAGS = parse_args()
+    dataset = DatasetFactory(FLAGS.DATA.test)(return_iter=True, return_fnames=False)
+    data_tuple = dataset.get_next()
+    assert len(data_tuple) == 3
+
+
+def test_dataset_factory_with_filenames():
     testargs = ["python test_config.py",
                 "--config", "../configs/segmentation/seg_hrnet_partnet_pts.yaml",
                 "DATA.test.shuffle", "0"]
