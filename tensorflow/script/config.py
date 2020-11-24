@@ -3,6 +3,7 @@ import sys
 import shutil
 import argparse
 from yacs.config import CfgNode as CN
+import json
 
 _C = CN()
 
@@ -31,7 +32,7 @@ _C.SOLVER.threshold_mode = 'rel'  # ####################
 _C.SOLVER.cooldown = 0  # ####################
 _C.SOLVER.min_lr = 0.0#1e-10  # ####################
 _C.SOLVER.eps = 1e-8  # ####################
-_C.SOLVER.weighted_loss = True
+_C.SOLVER.class_weights = ""
 
 # DATA related parameters
 _C.DATA = CN()
@@ -159,6 +160,16 @@ def parse_args(backup=True):
             raise ValueError("Train and test networks must have the same depth!!!\nExiting...")
 
     return FLAGS
+
+
+def parse_class_weights(flags):
+    if flags.SOLVER.class_weights == "":
+        return [1. for _ in range(flags.MODEL.nout)]
+    data = json.load(open(flags.SOLVER.class_weights))
+    data = {int(key): value for key, value in data.items()}
+    data = {key: value for key, value in sorted(data.items(), key=lambda item: item[0])}
+    assert len(data) == flags.MODEL.nout, "Number of weights does not match number of outputs"
+    return data.values()
 
 
 def override_some_flags(filename):

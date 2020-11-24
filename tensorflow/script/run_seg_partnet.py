@@ -1,6 +1,6 @@
 import pickle
 import time
-from config import parse_args, FLAGS
+from config import parse_args, FLAGS, parse_class_weights
 from seg_labels import find_category, LEVEL3_LABELS, LEVEL3_COLORS, decimal_to_rgb, get_level3_category_labels, \
     ANNFASS_COLORS, ANNFASS_LABELS, to_rgb
 from tfsolver import TFSolver
@@ -27,14 +27,6 @@ CATEGORIES = ANNFASS_LABELS
 # CATEGORIES = LEVEL3_LABELS
 COLOURS = ANNFASS_COLORS
 # COLOURS = LEVEL3_COLORS
-LABEL_WEIGHTS = tf.constant(
-    [0.0, 1.0, 1.2607750170843908, 1.5005930826950187, 1.086003196497788, 1.3488467965077944, 1.4618322338667538,
-     1.3174190951492424, 1.539809107718665, 1.1438476294835398, 1.4151902825998448, 1.5083375754995785,
-     1.4857699283179813, 1.5664935071153896, 1.228412737608595, 1.5452717626065522, 1.3300215361581862,
-     1.3954368262559722, 1.3967771547392949, 1.3952685623940035, 1.4588113378317014, 1.587808410098552,
-     1.4549345122678352, 1.3629362751926624, 1.7781427045873794, 1.5798946403464105, 1.5806155176614685,
-     1.6866705953387588, 2.0, 1.659760728786743, 1.757814718996263])#, 1.8404919947017664, 1.8484978417739655,
-     # 1.8938132352883477])  # shape (1,C)
 best_metric_dict = {"acc": 0.0, "loss": 1e100, "iou": 0.0}
 
 
@@ -98,10 +90,7 @@ def tf_IoU_per_shape(pred, label, class_num, mask=-1, ignore=0, debug=False):
 class ComputeGraphSeg:
     def __init__(self, flags):
         self.flags = flags
-        if self.flags.SOLVER.weighted_loss:
-            self.weights = LABEL_WEIGHTS
-        else:
-            self.weights = None
+        self.weights = tf.constant(parse_class_weights(flags))
 
     def create_dataset(self, flags_data):
         return DatasetFactory(flags_data)(return_iter=True)

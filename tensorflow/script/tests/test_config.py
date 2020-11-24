@@ -1,7 +1,6 @@
-from config import parse_args
+from config import parse_args, parse_class_weights
 import sys
 import pytest
-
 
 try:
     from unittest.mock import patch
@@ -27,3 +26,25 @@ def test_parse_args_depth_size():
         with patch.object(sys, 'argv', testargs):
             FLAGS = parse_args()
     assert "Network depth must be lesser or equal to 8" in str(e)
+
+
+def test_parse_class_weights():
+    testargs = ["python test_config.py",
+                "--config", "../configs/segmentation/seg_hrnet_partnet_pts.yaml",
+                "MODEL.nout", "31"]
+    with patch.object(sys, 'argv', testargs):
+        FLAGS = parse_args()
+    weights = parse_class_weights(FLAGS)
+    assert len(weights) == 31 and all(weights) == 1
+
+
+def test_parse_class_weights_fails():
+    with pytest.raises(AssertionError) as e:
+        testargs = ["python test_config.py",
+                    "--config", "../configs/segmentation/seg_hrnet_partnet_pts.yaml",
+                    "SOLVER.class_weights", "../configs/class_weights.json",
+                    "MODEL.nout", "32"]
+        with patch.object(sys, 'argv', testargs):
+            FLAGS = parse_args()
+        weights = parse_class_weights(FLAGS)
+    assert "Number of weights does not match number of outputs" in str(e)
