@@ -4,7 +4,7 @@ from tfsolver import TFSolver
 from dataset import DatasetFactory
 from learning_rate import LRFactory
 from network_hrnet import HRNet
-from mid_loss import ShapeLoss, PointLoss
+from deprecated.mid_loss import ShapeLoss, PointLoss
 from ocnn import l2_regularizer, build_solver, get_seg_label
 from libs import octree_property
 

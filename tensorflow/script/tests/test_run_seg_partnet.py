@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
-from run_seg_partnet import tf_IoU_per_shape, result_callback, result_callback_maria, get_probabilities
+from run_seg_partnet import tf_IoU_per_shape, result_callback, get_probabilities
 
 
 def test_tf_iou_per_shape():
@@ -44,7 +44,7 @@ def test_result_callback():
         }
         # sum of ious over the 4 labels = 16/15
         expected_iou = (16 / 15) / (5-1)
-        assert result_callback_maria(intersections_and_unions, 5)['iou'] == expected_iou
+        assert result_callback(intersections_and_unions, 5)['iou'] == expected_iou
 
 
 def test_get_probabilities():

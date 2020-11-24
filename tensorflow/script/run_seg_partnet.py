@@ -130,13 +130,6 @@ class ComputeGraphSeg:
 
 
 def result_callback(avg_results_dict, num_class):
-    try:
-        return result_callback_maria(avg_results_dict, num_class)
-    except Exception as e:
-        raise Exception("Got exception: {}. Maybe you didnt use 'DATA.test.batch_size 1'".format(e))
-
-
-def result_callback_maria(avg_results_dict, num_class):
     # calc part-IoU, update `iou`, this is in correspondence with Line 77
     ious = [0] * num_class
     for i in range(0, num_class):  # !!! Ignore the first label
@@ -165,7 +158,7 @@ class PartNetSolver(TFSolver):
         gpu_num = len(self.flags.gpu)
         train_params = {'dataset': 'train', 'training': True, 'reuse': False}
         test_params = {'dataset': 'test', 'training': False, 'reuse': True}
-        if gpu_num > 1:
+        if gpu_num > 1:  # TODO: check / remove / clean
             train_params['gpu_num'] = gpu_num
             test_params['gpu_num'] = gpu_num
 

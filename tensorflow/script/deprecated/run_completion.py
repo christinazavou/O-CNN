@@ -1,4 +1,3 @@
-import os
 import sys
 import pickle
 import numpy as np
@@ -8,9 +7,9 @@ from tqdm import tqdm
 from config import parse_args, FLAGS
 from tfsolver import TFSolver
 from dataset import DatasetFactory
-from network_completion import CompletionResnet
+from deprecated.network_completion import CompletionResnet
 from ocnn import l2_regularizer
-sys.path.append('..')
+sys.path.append('../..')
 from libs import octree_scan, octree_batch, normalize_points
 
 
