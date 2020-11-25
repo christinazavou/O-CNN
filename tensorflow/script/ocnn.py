@@ -243,7 +243,7 @@ def softmax_loss(logit, label_gt, num_class, weights=None, label_smoothing=0.0):
     with tf.name_scope('softmax_loss'):
         labels = tf.cast(label_gt, tf.int32)
         onehot = tf.one_hot(labels, depth=num_class)
-        l_weights = tf.gather(params=weights, indices=labels)
+        l_weights = tf.gather(params=weights, indices=labels)  # TODO check how these shapes work ..
         loss = tf.losses.softmax_cross_entropy(
             onehot_labels=onehot, logits=logit, label_smoothing=label_smoothing, weights=l_weights)
     return loss
@@ -455,20 +455,21 @@ def loss_functions_seg(logit, label_gt, num_class, weight_decay, var_name, weigh
         masked_logit = tf.boolean_mask(logit, label_mask)
         masked_label = tf.boolean_mask(label_gt, label_mask)
 
-        accu = softmax_accuracy(masked_logit, masked_label)
-        regularizer = l2_regularizer(var_name, weight_decay)
-
         if train_mode:
             loss = softmax_loss(logit=masked_logit,
                                 label_gt=masked_label,
                                 num_class=num_class,
                                 weights=weights)
+            accu = softmax_accuracy(masked_logit, masked_label)
+            regularizer = l2_regularizer(var_name, weight_decay)
             return {'loss': loss, 'accu': accu, 'regularizer': regularizer}
         else:
             loss, conf_mat = softmax_loss_with_conf_mat(logit=masked_logit,
                                                         label_gt=masked_label,
                                                         num_class=num_class,
                                                         weights=weights)
+            accu = softmax_accuracy(masked_logit, masked_label)
+            regularizer = l2_regularizer(var_name, weight_decay)
             return {'loss': loss, 'accu': accu, 'regularizer': regularizer, 'confusion_matrix': conf_mat}
 
 

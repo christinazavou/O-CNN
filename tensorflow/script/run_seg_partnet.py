@@ -76,7 +76,12 @@ def tf_IoU_per_shape(logits, label, class_num, mask=-1, ignore=0):
 class ComputeGraphSeg:
     def __init__(self, flags):
         self.flags = flags
-        self.weights = tf.constant(parse_class_weights(flags))
+        self.weights=ComputeGraphSeg.set_weights(parse_class_weights(flags))
+
+    @staticmethod
+    def set_weights( w_list):
+        weights = tf.constant([w_list])
+        return weights
 
     def create_dataset(self, flags_data):
         return DatasetFactory(flags_data)(return_iter=True)
