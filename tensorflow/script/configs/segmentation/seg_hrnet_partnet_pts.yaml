@@ -6,9 +6,10 @@ SOLVER:
   max_iter: 960000
   test_iter: 10
   test_every_iter: 10
-  run: train
+  run: test
   lr_type: 'plateau'
   #step_size: (1500, 750)
+  ckpt: './logs/best_ckpts/best_acc.ckpt'
 
 DATA:
   train:

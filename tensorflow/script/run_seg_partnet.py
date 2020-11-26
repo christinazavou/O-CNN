@@ -1,9 +1,8 @@
 import pickle
 import time
 from config import parse_args, FLAGS, parse_class_weights
-from seg_labels import find_category, LEVEL3_LABELS, LEVEL3_COLORS, decimal_to_rgb, get_level3_category_labels, \
-    ANNFASS_COLORS, ANNFASS_LABELS, to_rgb
-from tfsolver import TFSolver
+from seg_helper import decimal_to_rgb, ANNFASS_COLORS, ANNFASS_LABELS, to_rgb, save_ply
+from tfsolver import TFSolver, DELIMITER
 from network_factory import seg_network
 from dataset import DatasetFactory
 from libs import points_property, octree_property, octree_decode_key
@@ -22,12 +21,11 @@ FLAGS.LOSS.point_wise = True
 # FLAGS.LOSS.point_wise = False
 IGNORE_LABELS = tf.constant([0.0, 32.0, 33.0])  # metrics are ignored for the points with label 'undefined' ..
 CONF_MAT_KEY = 'confusion_matrix'
-TEST_SPLIT = "/media/maria/BigData1/Maria/buildnet_data_2k/dataset/test_split.txt"
+TEST_SPLIT = "./configs/test_split.txt"
 CATEGORIES = ANNFASS_LABELS
-# CATEGORIES = LEVEL3_LABELS
 COLOURS = ANNFASS_COLORS
-# COLOURS = LEVEL3_COLORS
 best_metric_dict = {"acc": 0.0, "loss": 1e100, "iou": 0.0}
+DO_NOT_AVG = ["intsc_", "union_", "iou"]
 
 
 # get the label and pts
@@ -80,7 +78,7 @@ class ComputeGraphSeg:
 
     @staticmethod
     def set_weights( w_list):
-        weights = tf.constant([w_list])
+        weights = tf.constant(w_list)
         return weights
 
     def create_dataset(self, flags_data):
@@ -215,16 +213,15 @@ class PartNetSolver(TFSolver):
             for key, value in iter_results_dict.items():
                 avg_results_dict[key] += value
 
-        do_not_avg = ["intsc_", "union_", "iou"]
         for key in avg_results_dict.keys():
-            if not any(k in key for k in do_not_avg):
+            if not any(k in key for k in DO_NOT_AVG):
                 avg_results_dict[key] /= self.flags.test_iter
         # calculate iou
         avg_results = self.result_callback(avg_results_dict)
 
         curr_lr = sess.run(self.lr, feed_dict={self.lr: self.lr_metric(avg_results_dict['total_loss'])})
         sess.run(self.lr.assign(curr_lr))
-        avg_results['lr'] = self.lr
+        avg_results['lr'] = curr_lr
         return avg_results
 
     def save_ckpt(self, dc, sess, iter):
@@ -362,25 +359,17 @@ class PartNetSolver(TFSolver):
         config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allow_growth = True
         with tf.Session(config=config) as sess:
-            test_keys = list(self.test_tensors_dict.keys())
-            self.summ2txt([key for key in test_keys if key != CONF_MAT_KEY], 'batch')
+            self.summ2txt_line(self.flags.ckpt)
+            self.summ2txt_line(DELIMITER.join(['iteration'] + [key for key in self.test_tensors_dict.keys() if key != CONF_MAT_KEY]))
 
             # restore and initialize
             self.initialize(sess)
             print('Restore from checkpoint: %s' % self.flags.ckpt)
             tf_saver.restore(sess, self.flags.ckpt)
 
-            category = find_category(self.flags.ckpt, CATEGORIES)
-            assert category is not None
             predicted_ply_dir = os.path.join(logdir, "predicted_ply")
             if not os.path.exists(predicted_ply_dir):
                 os.makedirs(predicted_ply_dir)
-            groundtruth_ply_dir = os.path.join(logdir, "groundtruth_ply")
-            if not os.path.exists(groundtruth_ply_dir):
-                os.makedirs(groundtruth_ply_dir)
-            predicted_pkl_dir = os.path.join(logdir, "predicted_pkl")
-            if not os.path.exists(predicted_pkl_dir):
-                os.makedirs(predicted_pkl_dir)
             probabilities_dir = os.path.join(logdir, "probabilities")
             if not os.path.exists(probabilities_dir):
                 os.makedirs(probabilities_dir)
@@ -390,117 +379,51 @@ class PartNetSolver(TFSolver):
                 iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks])
                 iter_test_result_dict = self.result_callback(iter_test_result_dict)
 
-                points, labels, normals, logit, masked_logit = iter_tdc['/pts(xyz)'][:, 0:3], \
-                                                               iter_tdc['/label'], \
-                                                               iter_tdc["/normals"], \
-                                                               iter_tdc["/logit"], \
-                                                               iter_tdc['/masked_logit']
+                points, labels, probabilities = iter_tdc['/pts(xyz)'][:, 0:3], iter_tdc['/label'], iter_tdc['/probabilities']
 
-                predictions = np.argmax(logit, axis=1).astype(np.int32)
-                probabilities = iter_tdc['/probabilities']
-                print(category)
-                l_colors = np.array([to_rgb(COLOURS[category][int(l)]) if l > 0 else to_rgb(COLOURS[category][0])
-                                     for l in labels])
-                # pred = []
-                # cnt = 0
-                # for l in labels:
-                #     if l == 999:
-                #         pred.append(0)
-                #     else:
-                #         pred.append(predictions[cnt])
-                #         cnt += 1
-                p_colors = np.array([to_rgb(COLOURS[category][int(p) + 1]) if p < 999 else to_rgb(COLOURS[category][0])
-                                     for p in predictions])
+                predictions = np.argmax(probabilities, axis=1).astype(np.int32)
+                prediction_colors = np.array([to_rgb(COLOURS[int(p)]) for p in predictions])
 
-                masked_predictions = np.argmax(masked_logit, axis=1).astype(np.int32)
-
-                # run testing average and print the results
-                reports = 'batch: %04d; ' % i
+                reports = filenames[i].strip()+": "
                 for key, value in iter_test_result_dict.items():
                     test_metrics_dict[key] += value
                     if key != CONF_MAT_KEY:
                         reports += '%s: %0.4f; ' % (key, value)
                 print(reports)
 
-                current_iou = int(self.result_callback(iter_test_result_dict)['iou'] * 100)
-                current_ply_i_f = os.path.join(groundtruth_ply_dir, "i{}.ply".format(i))
+                current_iou = int(iter_test_result_dict['iou'] * 100)
                 current_ply_o_f = os.path.join(predicted_ply_dir, "iou{}_i{}.ply".format(current_iou, i))
-                # probabilities_o_f = os.path.join(probabilities_pkl_dir, "i{}.pkl".format(i))
-                save_ply(current_ply_i_f, points, normals, l_colors)
-                save_ply(current_ply_o_f, points, normals, p_colors)
-                current_pkl_f = os.path.join(predicted_pkl_dir, "p{}_m{}_i{}.pkl".format(predictions.shape[0],
-                                                                                         masked_predictions.shape[0],
-                                                                                         i))
-                save_pickled(current_pkl_f, labels.ravel(), predictions.ravel())
-                # save_pickled_np(probabilities_o_f, probabilities)
-                np.save(file=os.path.join(probabilities_dir, filenames[i].strip()), arr=np.array(probabilities));
+                save_ply(current_ply_o_f, points, prediction_colors)
 
-                # make sure results are sorted before writing them
-                iter_test_result_sorted = []
-                for key in test_keys:
-                    if key != CONF_MAT_KEY:
-                        iter_test_result_sorted.append(iter_test_result_dict[key])
-                self.summ2txt(iter_test_result_sorted, i)
+                np.save(file=os.path.join(probabilities_dir, filenames[i].strip()), arr=np.array(probabilities))
 
-        # FIXME
-        # Final testing results
+                self.summ2txt([value for key, value in iter_test_result_dict.items() if key != CONF_MAT_KEY], i)
+
+        # Average test results
         for key, value in test_metrics_dict.items():
-            if key != CONF_MAT_KEY:
-                test_metrics_dict[key] /= self.flags.test_iter
+            test_metrics_dict[key] /= self.flags.test_iter
         test_metrics_dict = self.result_callback(test_metrics_dict)
 
         # print the results
         print('Testing done!\n')
         reports = 'ALL: %04d; ' % self.flags.test_iter
         avg_test_sorted = []
-        for key in test_keys:
+        for key in iter_test_result_dict.keys():
             if key != CONF_MAT_KEY:
                 avg_test_sorted.append(test_metrics_dict[key])
                 reports += '%s: %0.4f; ' % (key, test_metrics_dict[key])
             else:
                 vis_confusion_matrix(os.path.join(logdir, "confusion_matrix.png"),
                                      test_metrics_dict[key].reshape(self.num_class, self.num_class),
-                                     CATEGORIES[category],
-                                     COLOURS[category],
-                                     "Category: {}, Test samples: {}".format(category, self.flags.test_iter))
+                                     CATEGORIES,
+                                     COLOURS,
+                                     "Test samples: {}".format(self.flags.test_iter))
         print(reports)
         self.summ2txt(avg_test_sorted, 'ALL')
 
 
-def save_pickled(filename, ground_truth, prediction):
-    # assert len(ground_truth.shape) == 1 and len(prediction.shape) == 1
-    with open(filename, 'wb') as fout:
-        pickle.dump({'orig': list(ground_truth), 'pred': list(prediction)}, fout)
-
-
 def save_pickled_np(filename, probabilities):
     pickle.dump(probabilities, open(filename, 'wb'))
-
-
-def save_ply(filename, points, normals, colors):
-    pts_num = points.shape[0]
-
-    header = "ply\n" \
-             "format ascii 1.0\n" \
-             "element vertex %d\n" \
-             "property float x\n" \
-             "property float y\n" \
-             "property float z\n" \
-             "property float nx\n" \
-             "property float ny\n" \
-             "property float nz\n" \
-             "property uchar r\n" \
-             "property uchar g\n" \
-             "property uchar b\n" \
-             "element face 0\n" \
-             "property list uchar int vertex_indices\n" \
-             "end_header\n"
-    with open(filename, 'w') as fid:
-        fid.write(header % pts_num)
-        for point, normal, color in zip(points, normals, colors):
-            fid.write(" ".join([str(i) for i in point]) + " " +
-                      " ".join([str(i) for i in normal]) + " " +
-                      " ".join([str(int(i)) for i in color]) + "\n")
 
 
 # run the experiments
@@ -511,4 +434,4 @@ if __name__ == '__main__':
     builder_op = build_solver_given_lr if FLAGS.SOLVER.lr_type == 'plateau' else build_solver
     solver = PartNetSolver(FLAGS, compute_graph, builder_op)
     solver.run()
-    print("Seconds passed {}".format(time.time() - t))
+    print("Minutes passed {}".format((time.time() - t)/60))

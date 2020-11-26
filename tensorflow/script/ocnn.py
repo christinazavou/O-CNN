@@ -239,7 +239,15 @@ def predict_signal(data, num_output, num_hidden, training):
     return tf.nn.tanh(predict_module(data, num_output, num_hidden, training))
 
 
-def softmax_loss(logit, label_gt, num_class, weights=None, label_smoothing=0.0):
+def softmax_loss(logit, label_gt, num_class, label_smoothing=0.0):
+    with tf.name_scope('softmax_loss'):
+        labels = tf.cast(label_gt, tf.int32)
+        onehot = tf.one_hot(labels, depth=num_class)
+        loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot, logits=logit, label_smoothing=label_smoothing)
+    return loss
+
+
+def weighted_softmax_loss(logit, label_gt, num_class, weights=None, label_smoothing=0.0):
     with tf.name_scope('softmax_loss'):
         labels = tf.cast(label_gt, tf.int32)
         onehot = tf.one_hot(labels, depth=num_class)
@@ -249,7 +257,7 @@ def softmax_loss(logit, label_gt, num_class, weights=None, label_smoothing=0.0):
     return loss
 
 
-def softmax_loss_with_conf_mat(logit, label_gt, num_class, weights=None, label_smoothing=0.0):
+def weighted_softmax_loss_with_conf_mat(logit, label_gt, num_class, weights=None, label_smoothing=0.0):
     with tf.name_scope('softmax_loss'):
         labels = tf.cast(label_gt, tf.int32)
         onehot = tf.one_hot(labels, depth=num_class)
@@ -456,7 +464,7 @@ def loss_functions_seg(logit, label_gt, num_class, weight_decay, var_name, weigh
         masked_label = tf.boolean_mask(label_gt, label_mask)
 
         if train_mode:
-            loss = softmax_loss(logit=masked_logit,
+            loss = weighted_softmax_loss(logit=masked_logit,
                                 label_gt=masked_label,
                                 num_class=num_class,
                                 weights=weights)
@@ -464,13 +472,13 @@ def loss_functions_seg(logit, label_gt, num_class, weight_decay, var_name, weigh
             regularizer = l2_regularizer(var_name, weight_decay)
             return {'loss': loss, 'accu': accu, 'regularizer': regularizer}
         else:
-            loss, conf_mat = softmax_loss_with_conf_mat(logit=masked_logit,
+            loss, conf_mat = weighted_softmax_loss_with_conf_mat(logit=masked_logit,
                                                         label_gt=masked_label,
                                                         num_class=num_class,
                                                         weights=weights)
             accu = softmax_accuracy(masked_logit, masked_label)
             regularizer = l2_regularizer(var_name, weight_decay)
-            return {'loss': loss, 'accu': accu, 'regularizer': regularizer, 'confusion_matrix': conf_mat}
+            return {'loss': loss, 'accu': accu, 'regularizer': regularizer}
 
 
 def get_seg_label(octree, depth):

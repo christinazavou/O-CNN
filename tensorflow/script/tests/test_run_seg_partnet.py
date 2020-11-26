@@ -66,4 +66,4 @@ def test_get_probabilities():
 
 def test_set_weights():
     tf_w = ComputeGraphSeg.set_weights([1, 2, 3, 4.])
-    assert tf_w.get_shape() == (1, 4)
+    assert tf_w.get_shape() == (4,)

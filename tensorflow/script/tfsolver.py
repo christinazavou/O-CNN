@@ -7,6 +7,7 @@ from tensorflow.python.client import timeline
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
+DELIMITER = ', '
 
 class TFSolver:
     def __init__(self, flags, compute_graph=None, build_solver=build_solver):
@@ -42,12 +43,17 @@ class TFSolver:
         self.summ_test, self.summ_holder = summary_test(test_names)
         self.summ2txt(test_names, 'iter', 'w')
 
-    def summ2txt(self, values, step, flag='a'):
+    def summ2txt_line(self, message, flag='a'):
         test_summ = os.path.join(self.flags.logdir, 'test_summaries.csv')
         with open(test_summ, flag) as fid:
-            msg = '{}'.format(step)
+            fid.write(message + '\n')
+
+    def summ2txt(self, values, iteration, flag='a'):
+        test_summ = os.path.join(self.flags.logdir, 'test_summaries.csv')
+        with open(test_summ, flag) as fid:
+            msg = '{}'.format(iteration)
             for v in values:
-                msg += ', {}'.format(v)
+                msg += '{}{}'.format(DELIMITER, v)
             fid.write(msg + '\n')
 
     def build_test_graph(self):
@@ -193,7 +199,8 @@ class TFSolver:
         config.gpu_options.allow_growth = True
         with tf.Session(config=config) as sess:
             summary_writer = tf.summary.FileWriter(self.flags.logdir, sess.graph)
-            self.summ2txt(self.test_names, 'batch')
+            self.summ2txt_line(self.flags.SOLVER.ckpt)
+            self.summ2txt_line(DELIMITER.join(['iteration'] + self.test_names))
 
             # restore and initialize
             self.initialize(sess)

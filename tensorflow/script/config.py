@@ -4,7 +4,7 @@ import shutil
 import argparse
 from yacs.config import CfgNode as CN
 import json
-import numpy as np
+import warnings
 
 _C = CN()
 
@@ -31,7 +31,7 @@ _C.SOLVER.patience = 10  # ####################
 _C.SOLVER.threshold = 1e-4  # ####################
 _C.SOLVER.threshold_mode = 'rel'  # ####################
 _C.SOLVER.cooldown = 0  # ####################
-_C.SOLVER.min_lr = 0.0#1e-10  # ####################
+_C.SOLVER.min_lr = 0.0  # 1e-10  # ####################
 _C.SOLVER.eps = 1e-8  # ####################
 _C.SOLVER.class_weights = ""
 
@@ -160,6 +160,16 @@ def parse_args(backup=True):
         if FLAGS.DATA.train.depth != FLAGS.DATA.test.depth:
             raise ValueError("Train and test networks must have the same depth!!!\nExiting...")
 
+    if FLAGS.SOLVER.run == 'test':
+        FLAGS.defrost()
+        if FLAGS.DATA.test.shuffle != 0:
+            warnings.warn("Running test phase with non zero shuffle. Setting shuffle to 0!!!")
+            FLAGS.DATA.test.shuffle = 0
+        if FLAGS.DATA.test.batch_size != 1:
+            warnings.warn(
+                "Running test phase with batch size > 1. Setting batch size to 1 (to log results per model)!!!")
+            FLAGS.DATA.test.batch_size = 1
+        FLAGS.freeze()
     return FLAGS
 
 
@@ -180,7 +190,7 @@ def override_some_flags(filename):
     FLAGS.DATA.test.batch_size = 1
     FLAGS.DATA.test.shuffle = 0
     # 'return_iter': True,
-    FLAGS.DATA.test.take= -1
+    FLAGS.DATA.test.take = -1
     FLAGS.DATA.test.return_pts = True
     FLAGS.DATA.test.dtype = 'points'
     FLAGS.DATA.test.sigma = 0.01

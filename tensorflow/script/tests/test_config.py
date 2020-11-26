@@ -1,5 +1,5 @@
 from config import parse_args, parse_class_weights
-import sys
+import sys, warnings
 import pytest
 
 try:
@@ -59,3 +59,13 @@ def test_parse_class_weights_read():
         FLAGS = parse_args()
     weights = parse_class_weights(FLAGS)
     assert len(weights) == FLAGS.MODEL.nout
+
+
+def test_parse_args_warnings():
+    testargs = ["python test_config.py",
+                "--config", "../configs/segmentation/seg_hrnet_partnet_pts.yaml",
+                "SOLVER.run", "test", "DATA.test.shuffle", "10", "DATA.test.batch_size", "10"]
+    with patch.object(sys, 'argv', testargs):
+        with warnings.catch_warnings(record=True) as w:
+            FLAGS = parse_args()
+            assert len(w) == 2
