@@ -44,7 +44,7 @@ def test_parse_class_weights_fails():
         testargs = ["python test_config.py",
                     "--config", "../configs/segmentation/seg_hrnet_partnet_pts.yaml",
                     "SOLVER.class_weights", "../configs/class_weights.json",
-                    "MODEL.nout", "31"]
+                    "MODEL.nout", "32"]
         with patch.object(sys, 'argv', testargs):
             FLAGS = parse_args()
         weights = parse_class_weights(FLAGS)
@@ -55,12 +55,11 @@ def test_parse_class_weights_read():
     testargs = ["python test_config.py",
                 "--config", "../configs/segmentation/seg_hrnet_partnet_pts.yaml",
                 "SOLVER.class_weights", "../configs/class_weights.json",
-                "MODEL.nout", "32"]
+                "MODEL.nout", "31"]
     with patch.object(sys, 'argv', testargs):
         FLAGS = parse_args()
     weights = parse_class_weights(FLAGS)
     assert len(weights) == FLAGS.MODEL.nout
-    assert weights[0] == weights[1] == 0
 
 
 def test_parse_args_warnings():

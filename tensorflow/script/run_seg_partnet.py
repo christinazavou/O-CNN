@@ -123,7 +123,7 @@ class ComputeGraphSeg:
                 tensors_dict.update(metrics_dict)
                 tensors_dict['total_loss'] = metrics_dict['loss'] + metrics_dict['regularizer']
 
-                if flags_data.batch_size == 1:
+                if flags_data.batch_size == 1: #TODO make it work for different batch sizes
                     num_class = FLAGS.LOSS.num_class
                     intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=-1, ignore=0)
                     tensors_dict['iou'] = tf.constant(0.0)  # placeholder, calc its value later
