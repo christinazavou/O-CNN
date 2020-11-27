@@ -160,15 +160,19 @@ def parse_args(backup=True):
         if FLAGS.DATA.train.depth != FLAGS.DATA.test.depth:
             raise ValueError("Train and test networks must have the same depth!!!\nExiting...")
 
+    if FLAGS.DATA.test.batch_size != 1:
+        FLAGS.defrost()
+        # in test phase we want to report metrics per model, and in train phase we want to include iou for test tensors
+        warnings.warn(
+            "Running with test.batch_size != 1. Setting batch size to 1!!!")
+        FLAGS.DATA.test.batch_size = 1
+        FLAGS.freeze()
+
     if FLAGS.SOLVER.run == 'test':
         FLAGS.defrost()
         if FLAGS.DATA.test.shuffle != 0:
             warnings.warn("Running test phase with non zero shuffle. Setting shuffle to 0!!!")
             FLAGS.DATA.test.shuffle = 0
-        if FLAGS.DATA.test.batch_size != 1:
-            warnings.warn(
-                "Running test phase with batch size > 1. Setting batch size to 1 (to log results per model)!!!")
-            FLAGS.DATA.test.batch_size = 1
         FLAGS.freeze()
     return FLAGS
 
