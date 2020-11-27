@@ -31,6 +31,7 @@ def test_parse_args_depth_size():
 def test_parse_class_weights():
     testargs = ["python test_config.py",
                 "--config", "../configs/segmentation/seg_hrnet_partnet_pts.yaml",
+                "SOLVER.class_weights", "",
                 "MODEL.nout", "31"]
     with patch.object(sys, 'argv', testargs):
         FLAGS = parse_args()
