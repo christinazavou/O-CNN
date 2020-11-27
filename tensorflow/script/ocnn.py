@@ -478,7 +478,7 @@ def loss_functions_seg(logit, label_gt, num_class, weight_decay, var_name, weigh
                                                         weights=weights)
             accu = softmax_accuracy(masked_logit, masked_label)
             regularizer = l2_regularizer(var_name, weight_decay)
-            return {'loss': loss, 'accu': accu, 'regularizer': regularizer}
+            return {'loss': loss, 'accu': accu, 'regularizer': regularizer, 'confusion_matrix': conf_mat}
 
 
 def get_seg_label(octree, depth):
