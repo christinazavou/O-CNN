@@ -463,22 +463,13 @@ def loss_functions_seg(logit, label_gt, num_class, weight_decay, var_name, weigh
         masked_logit = tf.boolean_mask(logit, label_mask)
         masked_label = tf.boolean_mask(label_gt, label_mask)
 
-        if train_mode:
-            loss = weighted_softmax_loss(logit=masked_logit,
-                                label_gt=masked_label,
-                                num_class=num_class,
-                                weights=weights)
-            accu = softmax_accuracy(masked_logit, masked_label)
-            regularizer = l2_regularizer(var_name, weight_decay)
-            return {'loss': loss, 'accu': accu, 'regularizer': regularizer}
-        else:
-            loss, conf_mat = weighted_softmax_loss_with_conf_mat(logit=masked_logit,
-                                                        label_gt=masked_label,
-                                                        num_class=num_class,
-                                                        weights=weights)
-            accu = softmax_accuracy(masked_logit, masked_label)
-            regularizer = l2_regularizer(var_name, weight_decay)
-            return {'loss': loss, 'accu': accu, 'regularizer': regularizer}
+        loss = weighted_softmax_loss(logit=masked_logit,
+                            label_gt=masked_label,
+                            num_class=num_class,
+                            weights=weights)
+        accu = softmax_accuracy(masked_logit, masked_label)
+        regularizer = l2_regularizer(var_name, weight_decay)
+        return {'loss': loss, 'accu': accu, 'regularizer': regularizer}
 
 
 def get_seg_label(octree, depth):

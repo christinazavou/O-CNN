@@ -15,12 +15,10 @@ from tensorflow.python.client import timeline
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Add config
-from visualize import vis_confusion_matrix
 
 FLAGS.LOSS.point_wise = True
 # FLAGS.LOSS.point_wise = False
 IGNORE_LABELS = tf.constant([0.0, 32.0, 33.0])  # metrics are ignored for the points with label 'undefined' ..
-CONF_MAT_KEY = 'confusion_matrix'
 TEST_SPLIT = "./configs/test_split.txt"
 CATEGORIES = ANNFASS_LABELS
 COLOURS = ANNFASS_COLORS
@@ -387,8 +385,7 @@ class PartNetSolver(TFSolver):
                 reports = filenames[i].strip()+": "
                 for key, value in iter_test_result_dict.items():
                     test_metrics_dict[key] += value
-                    if key != CONF_MAT_KEY:
-                        reports += '%s: %0.4f; ' % (key, value)
+                    reports += '%s: %0.4f; ' % (key, value)
                 print(reports)
 
                 current_iou = int(iter_test_result_dict['iou'] * 100)
@@ -409,15 +406,8 @@ class PartNetSolver(TFSolver):
         reports = 'ALL: %04d; ' % self.flags.test_iter
         avg_test_sorted = []
         for key in iter_test_result_dict.keys():
-            if key != CONF_MAT_KEY:
-                avg_test_sorted.append(test_metrics_dict[key])
-                reports += '%s: %0.4f; ' % (key, test_metrics_dict[key])
-            else:
-                vis_confusion_matrix(os.path.join(logdir, "confusion_matrix.png"),
-                                     test_metrics_dict[key].reshape(self.num_class, self.num_class),
-                                     CATEGORIES,
-                                     COLOURS,
-                                     "Test samples: {}".format(self.flags.test_iter))
+            avg_test_sorted.append(test_metrics_dict[key])
+            reports += '%s: %0.4f; ' % (key, test_metrics_dict[key])
         print(reports)
         self.summ2txt(avg_test_sorted, 'ALL')
 
