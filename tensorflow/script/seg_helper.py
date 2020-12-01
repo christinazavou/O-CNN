@@ -104,11 +104,9 @@ def save_ply(filename, points, colors):
              "property float x\n" \
              "property float y\n" \
              "property float z\n" \
-             "property uchar r\n" \
-             "property uchar g\n" \
-             "property uchar b\n" \
-             "element face 0\n" \
-             "property list uchar int vertex_indices\n" \
+             "property uchar red\n" \
+             "property uchar green\n" \
+             "property uchar blue\n" \
              "end_header\n"
     with open(filename, 'w') as fid:
         fid.write(header % pts_num)

@@ -72,15 +72,15 @@ def tf_IoU_per_shape(logits, label, class_num, mask=-1, ignore=0):
 class ComputeGraphSeg:
     def __init__(self, flags):
         self.flags = flags
-        self.weights=ComputeGraphSeg.set_weights(parse_class_weights(flags))
+        self.weights = ComputeGraphSeg.set_weights(parse_class_weights(flags))
 
     @staticmethod
-    def set_weights( w_list):
+    def set_weights(w_list):
         weights = tf.constant(w_list)
         return weights
 
     def create_dataset(self, flags_data):
-        return DatasetFactory(flags_data)(return_iter=True)
+        return DatasetFactory(flags_data)(return_iter=True, return_fnames=False)
 
     def __call__(self, dataset='train', training=True, reuse=False, gpu_num=1):
 
@@ -121,7 +121,7 @@ class ComputeGraphSeg:
                 tensors_dict.update(metrics_dict)
                 tensors_dict['total_loss'] = metrics_dict['loss'] + metrics_dict['regularizer']
 
-                if flags_data.batch_size == 1: #TODO make it work for different batch sizes
+                if flags_data.batch_size == 1:  # TODO make it work for different batch sizes
                     num_class = FLAGS.LOSS.num_class
                     intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=-1, ignore=0)
                     tensors_dict['iou'] = tf.constant(0.0)  # placeholder, calc its value later
@@ -134,13 +134,13 @@ class ComputeGraphSeg:
 
 def result_callback(avg_results_dict, num_class):
     # calc part-IoU, update `iou`, this is in correspondence with Line 77
-    ious = [0] * num_class
-    for i in range(0, num_class):  # !!! Ignore the first label
+    ious = {}#[0] * num_class
+    for i in range(1, num_class):  # !!! Ignore the first label, undetermined
         instc_i = avg_results_dict['intsc_%d' % i]
         union_i = avg_results_dict['union_%d' % i]
         if union_i > 0.0:
             ious[i] = instc_i / union_i
-    avg_results_dict['iou'] = sum(ious) / (num_class - 1)
+    avg_results_dict['iou'] = sum(ious.values()) / len(ious)#(num_class - 1)
     return avg_results_dict
 
 
@@ -189,7 +189,7 @@ class PartNetSolver(TFSolver):
     def summaries_dict(self, train_tensor_dict, test_tensor_dict):
         self.summ_train = summary_train_dict(train_tensor_dict)
         self.summ_test, self.summ_holder_dict = summary_test_dict(test_tensor_dict)
-        self.csv_summ_test_keys = [key for key in self.summ_holder_dict.keys() if key != CONF_MAT_KEY]
+        self.csv_summ_test_keys = [key for key in self.summ_holder_dict.keys()]  # if key != CONF_MAT_KEY]
         self.summ2txt(self.csv_summ_test_keys, 'iter', 'w')
 
     def build_test_graph(self):
@@ -358,7 +358,7 @@ class PartNetSolver(TFSolver):
         config.gpu_options.allow_growth = True
         with tf.Session(config=config) as sess:
             self.summ2txt_line(self.flags.ckpt)
-            self.summ2txt_line(DELIMITER.join(['iteration'] + [key for key in self.test_tensors_dict.keys() if key != CONF_MAT_KEY]))
+            self.summ2txt_line(DELIMITER.join(['iteration'] + [key for key in self.test_tensors_dict.keys()]))
 
             # restore and initialize
             self.initialize(sess)
@@ -377,12 +377,13 @@ class PartNetSolver(TFSolver):
                 iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks])
                 iter_test_result_dict = self.result_callback(iter_test_result_dict)
 
-                points, labels, probabilities = iter_tdc['/pts(xyz)'][:, 0:3], iter_tdc['/label'], iter_tdc['/probabilities']
+                points, labels, probabilities = iter_tdc['/pts(xyz)'][:, 0:3], iter_tdc['/label'], iter_tdc[
+                    '/probabilities']
 
                 predictions = np.argmax(probabilities, axis=1).astype(np.int32)
                 prediction_colors = np.array([to_rgb(COLOURS[int(p)]) for p in predictions])
 
-                reports = filenames[i].strip()+": "
+                reports = filenames[i].strip() + ": "
                 for key, value in iter_test_result_dict.items():
                     test_metrics_dict[key] += value
                     reports += '%s: %0.4f; ' % (key, value)
@@ -394,7 +395,7 @@ class PartNetSolver(TFSolver):
 
                 np.save(file=os.path.join(probabilities_dir, filenames[i].strip()), arr=np.array(probabilities))
 
-                self.summ2txt([value for key, value in iter_test_result_dict.items() if key != CONF_MAT_KEY], i)
+                self.summ2txt([value for key, value in iter_test_result_dict.items()], i)
 
         # Average test results
         for key, value in test_metrics_dict.items():
@@ -424,4 +425,4 @@ if __name__ == '__main__':
     builder_op = build_solver_given_lr if FLAGS.SOLVER.lr_type == 'plateau' else build_solver
     solver = PartNetSolver(FLAGS, compute_graph, builder_op)
     solver.run()
-    print("Minutes passed {}".format((time.time() - t)/60))
+    print("Minutes passed {}".format((time.time() - t) / 60))

@@ -43,7 +43,7 @@ def test_result_callback():
         'intsc_4': 40.0, 'union_4': 60.0  # iou = 2/3
     }
     # sum of ious over the 4 labels = 16/15
-    expected_iou = (16 / 15) / (5 - 1)
+    expected_iou = (16 / 15) / 3
     assert result_callback(intersections_and_unions, 5)['iou'] == expected_iou
 
 

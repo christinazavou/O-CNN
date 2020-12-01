@@ -23,6 +23,9 @@ def test_dataset_factory_no_filenames():
 def test_dataset_factory_with_filenames():
     testargs = ["python test_config.py",
                 "--config", "../configs/segmentation/seg_hrnet_partnet_pts.yaml",
+                "DATA.test.location",
+                "/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/tfrecords/test"
+                "/test_no_colour_no_rot.tfrecords",
                 "DATA.test.shuffle", "0"]
     with patch.object(sys, 'argv', testargs):
         FLAGS = parse_args()
@@ -38,6 +41,12 @@ def test_dataset_factory_with_filenames():
 def test_dataset_factory_octree_properties():
     testargs = ["python test_config.py",
                 "--config", "../configs/segmentation/seg_hrnet_partnet_pts.yaml",
+                "DATA.test.location",
+                "/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/tfrecords/test"
+                "/test_w_colour_no_rot.tfrecords",
+                "DATA.test.node_dis","True",
+                "MODEL.channel","8",
+                "MODEL.depth","7",
                 "DATA.test.shuffle", "0"]
     with patch.object(sys, 'argv', testargs):
         FLAGS = parse_args()
@@ -59,6 +68,12 @@ def test_dataset_factory_octree_properties():
 def test_dataset_factory_points_properties():
     testargs = ["python test_config.py",
                 "--config", "../configs/segmentation/seg_hrnet_partnet_pts.yaml",
+                "DATA.test.location",
+                "/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/tfrecords/test"
+                "/test_w_colour_no_rot.tfrecords",
+                "DATA.test.node_dis", "True",
+                "MODEL.channel", "8",
+                "MODEL.depth", "7",
                 "DATA.test.shuffle", "0"]
     with patch.object(sys, 'argv', testargs):
         FLAGS = parse_args()
