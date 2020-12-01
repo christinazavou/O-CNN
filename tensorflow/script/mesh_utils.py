@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from scipy import spatial
 
 
 def read_obj(obj_fn):
@@ -167,3 +168,23 @@ def calculate_face_area(vertices, faces):
     face_area = cross_prod_len / 2.0
 
     return face_area[:, np.newaxis]
+
+
+def compute_face_centers(faces, unsampled, vertices):
+    v0 = vertices[faces[unsampled, 0]]
+    v1 = vertices[faces[unsampled, 1]]
+    v2 = vertices[faces[unsampled, 2]]
+    face_centers = np.array([[v0[:, 0] + v1[:, 0] + v2[:, 0]],
+                             [v0[:, 1] + v1[:, 1] + v2[:, 1]],
+                             [v0[:, 2] + v1[:, 2] + v2[:, 2]]]) / 3.0
+
+    return np.squeeze(face_centers).T
+
+
+def nearest_neighbour_of_face_centers(face_centers, face_feat_from_tr,
+                                      face_point_index,  point_feat, points, face_indices):
+    p_tree = spatial.cKDTree(points)
+    _, k_nn_idx = p_tree.query(face_centers)
+    for idx, face in enumerate(face_indices):
+        face_feat_from_tr[face] = point_feat[k_nn_idx[idx]]
+        face_point_index[face] = int(k_nn_idx[idx])

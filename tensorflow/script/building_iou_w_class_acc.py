@@ -4,7 +4,7 @@ import json
 import sys
 from scipy import spatial
 from tqdm import tqdm
-from mesh_utils import read_obj, read_ply, calculate_face_area
+from mesh_utils import read_obj, read_ply, calculate_face_area, compute_face_centers, nearest_neighbour_of_face_centers
 
 # Majority labels (exclude ramp and canopy_gazebo)
 toplabels = {0: "undetermined", 1: "wall", 2: "window", 3: "vehicle", 4: "roof", 5: "plant_tree", 6: "door",
@@ -256,24 +256,14 @@ def transfer_point_predictions(vertices, faces, components, points, point_feat, 
     sampled = set(point_face_index.flatten())
     unsampled = list(set(np.arange(len(faces))) - sampled)  # faces with no sample points
 
-    # Compute center for unsampled faces
-    v0 = vertices[faces[unsampled, 0]]
-    v1 = vertices[faces[unsampled, 1]]
-    v2 = vertices[faces[unsampled, 2]]
-    face_centers = np.array([[v0[:, 0] + v1[:, 0] + v2[:, 0]],
-                             [v0[:, 1] + v1[:, 1] + v2[:, 1]],
-                             [v0[:, 2] + v1[:, 2] + v2[:, 2]]]) / 3.0
-    face_centers = np.squeeze(face_centers).T
+    face_centers = compute_face_centers(faces, unsampled, vertices)
 
-    ## Transfer point predictions to triangles
+    # Transfer point predictions to triangles
     # Find nearest point and assign its point feature to each unsampled face
-    p_tree = spatial.cKDTree(points)
-    _, k_nn_idx = p_tree.query(face_centers)
-    for idx, face in enumerate(unsampled):
-        face_feat_from_tr_avg_pool[face] = point_feat[k_nn_idx[idx]]
-        if max_pool:
-            face_feat_from_tr_max_pool[face] = point_feat[k_nn_idx[idx]]
-        face_point_index[face] = int(k_nn_idx[idx])
+    nearest_neighbour_of_face_centers(face_centers, face_feat_from_tr_avg_pool, face_point_index,
+                                      point_feat, points, unsampled)
+    if max_pool:  # unsampled faces have only one point, so max == avg. feat. , that of the nearest point
+        face_feat_from_tr_max_pool = np.copy(face_feat_from_tr_avg_pool)
 
     # Use avg pooling for sampled faces
     for face in sampled:
@@ -284,7 +274,7 @@ def transfer_point_predictions(vertices, faces, components, points, point_feat, 
             face_feat_from_tr_max_pool[face] = np.amax(point_feat[mask], axis=0)
         face_point_index[face] = mask.nonzero()[0].tolist()
 
-    ## Transfer point predictions to components
+    # Transfer point predictions to components
     for comp_idx in range(comp_feat_avg_pool.shape[0]):
         face_idx = np.squeeze(components == comp_idx).nonzero()[0]
         point_idx = []
