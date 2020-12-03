@@ -9,6 +9,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 DELIMITER = ', '
 
+
 class TFSolver:
     def __init__(self, flags, compute_graph=None, build_solver=build_solver):
         self.flags = flags
@@ -44,12 +45,14 @@ class TFSolver:
         self.summ2txt(test_names, 'iter', 'w')
 
     def summ2txt_line(self, message, flag='a'):
-        test_summ = os.path.join(self.flags.logdir, 'test_summaries.csv')
+        test_summ = os.path.join(os.path.join(self.flags.logdir, os.path.basename(self.flags.ckpt).split(".")[0])
+                                 if self.flags.run == 'test' else self.flags.logdir, 'test_summaries.csv')
         with open(test_summ, flag) as fid:
             fid.write(message + '\n')
 
     def summ2txt(self, values, iteration, flag='a'):
-        test_summ = os.path.join(self.flags.logdir, 'test_summaries.csv')
+        test_summ = os.path.join(os.path.join(self.flags.logdir, os.path.basename(self.flags.ckpt).split(".")[0])
+                                 if self.flags.run == 'test' else self.flags.logdir, 'test_summaries.csv')
         with open(test_summ, flag) as fid:
             msg = '{}'.format(iteration)
             for v in values:

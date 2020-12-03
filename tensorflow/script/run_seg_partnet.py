@@ -1,7 +1,6 @@
-import pickle
 import time
 from config import parse_args, FLAGS, parse_class_weights
-from seg_helper import decimal_to_rgb, ANNFASS_COLORS, ANNFASS_LABELS, to_rgb, save_ply
+from seg_helper import *
 from tfsolver import TFSolver, DELIMITER
 from network_factory import seg_network
 from dataset import DatasetFactory
@@ -16,10 +15,8 @@ from tensorflow.python.client import timeline
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Add config
 
-FLAGS.LOSS.point_wise = True
+# FLAGS.LOSS.point_wise = True
 # FLAGS.LOSS.point_wise = False
-IGNORE_LABELS = tf.constant([0.0, 32.0, 33.0])  # metrics are ignored for the points with label 'undefined' ..
-TEST_SPLIT = "./configs/test_split.txt"
 CATEGORIES = ANNFASS_LABELS
 COLOURS = ANNFASS_COLORS
 best_metric_dict = {"acc": 0.0, "loss": 1e100, "iou": 0.0}
@@ -80,7 +77,8 @@ class ComputeGraphSeg:
         return weights
 
     def create_dataset(self, flags_data):
-        return DatasetFactory(flags_data)(return_iter=True, return_fnames=False)
+        return DatasetFactory(flags_data)(return_iter=True,
+                                          return_fnames=False if self.flags.SOLVER.run == 'train' else True)
 
     def __call__(self, dataset='train', training=True, reuse=False, gpu_num=1):
 
@@ -93,14 +91,17 @@ class ComputeGraphSeg:
         train_mode = True if dataset == 'train' else False
 
         FLAGS = self.flags
-        # print(FLAGS)
         with tf.device('/cpu:0'):
             flags_data = FLAGS.DATA.train if dataset == 'train' else FLAGS.DATA.test
             data_iter = self.create_dataset(flags_data)
 
         with tf.device('/gpu:0'):
             with tf.name_scope('device_0'):
-                octree, _, points = data_iter.get_next()
+                if self.flags.SOLVER.run == 'train':
+                    octree, _, points = data_iter.get_next()
+                else:
+                    octree, _, points, filenames = data_iter.get_next()
+                    debug_checks["{}/filenames".format(tf.get_variable_scope().name)] = filenames
 
                 print("mask ratio for {} is {}".format(dataset, flags_data.mask_ratio))
                 pts, label, dc = get_point_info(points, flags_data.mask_ratio)
@@ -134,13 +135,13 @@ class ComputeGraphSeg:
 
 def result_callback(avg_results_dict, num_class):
     # calc part-IoU, update `iou`, this is in correspondence with Line 77
-    ious = {}#[0] * num_class
+    ious = {}
     for i in range(1, num_class):  # !!! Ignore the first label, undetermined
         instc_i = avg_results_dict['intsc_%d' % i]
-        union_i = avg_results_dict['union_%d' % i]
+        union_i = avg_results_dict['union_%d' % i]  # max value of union is the # of determined points
         if union_i > 0.0:
             ious[i] = instc_i / union_i
-    avg_results_dict['iou'] = sum(ious.values()) / len(ious)#(num_class - 1)
+    avg_results_dict['iou'] = sum(ious.values()) / len(ious)
     return avg_results_dict
 
 
@@ -189,13 +190,14 @@ class PartNetSolver(TFSolver):
     def summaries_dict(self, train_tensor_dict, test_tensor_dict):
         self.summ_train = summary_train_dict(train_tensor_dict)
         self.summ_test, self.summ_holder_dict = summary_test_dict(test_tensor_dict)
-        self.csv_summ_test_keys = [key for key in self.summ_holder_dict.keys()]  # if key != CONF_MAT_KEY]
+        self.csv_summ_test_keys = [key for key in self.summ_holder_dict.keys()]
         self.summ2txt(self.csv_summ_test_keys, 'iter', 'w')
 
     def build_test_graph(self):
         gpu_num = len(self.flags.gpu)
         test_params = {'dataset': 'test', 'training': False, 'reuse': False}
         if gpu_num > 1: test_params['gpu_num'] = gpu_num
+        self.verbose = self.flags.verbose
         self.test_tensors_dict, self.test_debug_checks = self.graph(**test_params)
         if gpu_num > 1:  # average the tensors from different gpus
             with tf.device('/cpu:0'):
@@ -224,15 +226,12 @@ class PartNetSolver(TFSolver):
 
     def save_ckpt(self, dc, sess, iter):
         if dc['iou'] > best_metric_dict['iou']:
-            # print(best_metric_dict['iou'], dc['iou'])
             best_metric_dict['iou'] = dc['iou']
             self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, 'best_iou.ckpt'))
         if dc['accu'] > best_metric_dict['acc']:
-            # print(best_metric_dict['acc'], dc['accu'])
             best_metric_dict['acc'] = dc['accu']
             self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, "best_acc.ckpt"))
         if dc['total_loss'] < best_metric_dict['loss']:
-            # print(best_metric_dict['loss'], dc['total_loss'])
             best_metric_dict['loss'] = dc['total_loss']
             self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, "best_loss.ckpt"))
 
@@ -279,7 +278,7 @@ class PartNetSolver(TFSolver):
                 print(self.flags.learning_rate)
                 self.flags.freeze()
 
-            self.lr_metric = LRFactory(self.flags)  # OnPlateauLRPy(self.flags)
+            self.lr_metric = LRFactory(self.flags)
 
             for i in tqdm(range(start_iter, self.flags.max_iter + 1), ncols=80):
                 # training
@@ -331,7 +330,7 @@ class PartNetSolver(TFSolver):
                 else:
                     summary, _ = sess.run([self.summ_train, self.train_op],
                                           options=options, run_metadata=run_metadata)
-                    if (i == timeline_skip + timeline_iter - 1):
+                    if i == timeline_skip + timeline_iter - 1:
                         # summary_writer.add_run_metadata(run_metadata, 'step_%d'%i, i)
                         # write timeline to a json file
                         fetched_timeline = timeline.Timeline(run_metadata.step_stats)
@@ -350,8 +349,6 @@ class PartNetSolver(TFSolver):
         tf_saver = tf.train.Saver(max_to_keep=10)
         logdir = os.path.join(self.flags.logdir, os.path.basename(self.flags.ckpt).split(".")[0])
 
-        # read test split filenames
-        filenames = open(TEST_SPLIT, "r").readlines()
         # start
         test_metrics_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
         config = tf.ConfigProto(allow_soft_placement=True)
@@ -377,25 +374,26 @@ class PartNetSolver(TFSolver):
                 iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks])
                 iter_test_result_dict = self.result_callback(iter_test_result_dict)
 
-                points, labels, probabilities = iter_tdc['/pts(xyz)'][:, 0:3], iter_tdc['/label'], iter_tdc[
-                    '/probabilities']
-
+                points, labels, probabilities, filename = iter_tdc['/pts(xyz)'][:, 0:3], iter_tdc['/label'], iter_tdc[
+                    '/probabilities'], str(iter_tdc['/filenames'][0])
+                filename = os.path.basename(filename)
+                filename = filename[0:filename.rfind("_")]
                 predictions = np.argmax(probabilities, axis=1).astype(np.int32)
                 prediction_colors = np.array([to_rgb(COLOURS[int(p)]) for p in predictions])
 
-                reports = filenames[i].strip() + ": "
-                for key, value in iter_test_result_dict.items():
-                    test_metrics_dict[key] += value
-                    reports += '%s: %0.4f; ' % (key, value)
-                print(reports)
+                if self.verbose:
+                    reports = str(i) + "-" + filename + ": "
+                    for key, value in iter_test_result_dict.items():
+                        test_metrics_dict[key] += value
+                        reports += '%s: %0.4f; ' % (key, value)
+                    print(reports)
 
-                current_iou = int(iter_test_result_dict['iou'] * 100)
-                current_ply_o_f = os.path.join(predicted_ply_dir, "iou{}_i{}.ply".format(current_iou, i))
+                # current_iou = round(iter_test_result_dict['iou'] * 100)
+                current_ply_o_f = os.path.join(predicted_ply_dir, "{}.ply".format(filename))
                 save_ply(current_ply_o_f, points, prediction_colors)
 
-                np.save(file=os.path.join(probabilities_dir, filenames[i].strip()), arr=np.array(probabilities))
-
-                self.summ2txt([value for key, value in iter_test_result_dict.items()], i)
+                np.save(file=os.path.join(probabilities_dir, filename), arr=np.array(probabilities))
+                self.summ2txt([value for key, value in iter_test_result_dict.items()], str(i) + "-" + filename)
 
         # Average test results
         for key, value in test_metrics_dict.items():
@@ -411,10 +409,6 @@ class PartNetSolver(TFSolver):
             reports += '%s: %0.4f; ' % (key, test_metrics_dict[key])
         print(reports)
         self.summ2txt(avg_test_sorted, 'ALL')
-
-
-def save_pickled_np(filename, probabilities):
-    pickle.dump(probabilities, open(filename, 'wb'))
 
 
 # run the experiments
