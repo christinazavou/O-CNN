@@ -1,4 +1,4 @@
-from iou_calculations import *
+from evaluation.iou_calculations import *
 
 
 def test_get_building_point_iou():
