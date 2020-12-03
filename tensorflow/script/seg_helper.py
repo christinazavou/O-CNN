@@ -75,7 +75,7 @@ ANNFASS_COLORS = [
     "#b24700",  # 29
     "#ffbbdd",  # 30
     "#0dd3ff",  # 31
-    "#000000",  # -1
+    "#ffffff",  # -1
 ]
 
 
