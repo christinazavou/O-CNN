@@ -1,4 +1,4 @@
-from mesh_utils import compute_face_centers, nearest_neighbour_of_face_centers
+from evaluation.mesh_utils import compute_face_centers, nearest_neighbour_of_face_centers
 import numpy as np
 
 

@@ -1,9 +1,8 @@
 import os
-import numpy as np
 import json
 import sys
 from tqdm import tqdm
-from mesh_utils import read_obj, read_ply, calculate_face_area, compute_face_centers, nearest_neighbour_of_face_centers
+from evaluation.mesh_utils import read_obj, read_ply, calculate_face_area, compute_face_centers, nearest_neighbour_of_face_centers
 from iou_calculations import *
 
 # BuildNet directories
