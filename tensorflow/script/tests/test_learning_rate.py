@@ -22,11 +22,8 @@ class DatasetTest(tf.test.TestCase):
     def test_lr(self):
         flags = make_flags()
         global_step = tf.Variable(0, trainable=False)
-        lr_factory = LRFactory(**flags)
+        lr_factory = LRFactory(flags)
         self.assertTrue(isinstance(lr_factory.lr, StepLR))
-        self.assertEqual(lr_factory.lr.gamma, flags.gamma)
-        self.assertEqual(lr_factory.lr.step_size, flags.step_size)
-        self.assertEqual(lr_factory.lr.learning_rate, flags.learning_rate)
         lr_step = lr_factory(global_step)
 
         with tf.Session() as sess:
