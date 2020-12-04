@@ -1,0 +1,44 @@
+# Parameters for the airplane
+
+SOLVER:
+  gpu: 0,
+  max_iter: 960000
+  test_iter: 200
+  test_every_iter: 9600
+  run: train
+  lr_type: 'plateau'
+
+DATA:
+  train:
+    dtype: points
+    distort: False
+    axis: y
+    shuffle: 1000
+    take: -1
+    batch_size: 2
+    x_alias: data
+    mask_ratio: 0.0
+    return_pts: True
+
+  test: 
+    dtype: points
+    distort: False  # no data augmentation
+    depth: 7
+    axis: y
+    shuffle: 200
+    batch_size: 1
+    x_alias: data
+    return_pts: True
+
+
+MODEL:
+  name: hrnet
+  nout: 32
+  factor: 2
+  signal_abs: True
+
+LOSS:
+  num_class: 32
+  momentum: 0.9
+  weight_decay: 0.0005
+  point_wise: True
