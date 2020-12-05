@@ -33,7 +33,7 @@ _C.SOLVER.threshold_mode = 'rel'  # ####################
 _C.SOLVER.cooldown = 0  # ####################
 _C.SOLVER.min_lr = 0.0  # 1e-10  # ####################
 _C.SOLVER.eps = 1e-8  # ####################
-_C.SOLVER.class_weights = "None"
+_C.SOLVER.class_weights = "none"
 
 # DATA related parameters
 _C.DATA = CN()
@@ -180,7 +180,7 @@ def parse_args(backup=True):
 
 
 def parse_class_weights(flags):
-    if flags.SOLVER.class_weights == "None":
+    if flags.SOLVER.class_weights == "none":
         return [1. for _ in range(flags.MODEL.nout)]
     data = json.load(open(flags.SOLVER.class_weights))
     data = {int(key): float(value) for key, value in data.items()}
