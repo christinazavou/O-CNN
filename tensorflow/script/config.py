@@ -180,7 +180,7 @@ def parse_args(backup=True):
 
 
 def parse_class_weights(flags):
-    if flags.SOLVER.class_weights == None:
+    if flags.SOLVER.class_weights is None:
         return [1. for _ in range(flags.MODEL.nout)]
     data = json.load(open(flags.SOLVER.class_weights))
     data = {int(key): float(value) for key, value in data.items()}
