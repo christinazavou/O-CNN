@@ -33,7 +33,7 @@ _C.SOLVER.threshold_mode = 'rel'  # ####################
 _C.SOLVER.cooldown = 0  # ####################
 _C.SOLVER.min_lr = 0.0  # 1e-10  # ####################
 _C.SOLVER.eps = 1e-8  # ####################
-_C.SOLVER.class_weights = ""
+_C.SOLVER.class_weights = "None"
 
 # DATA related parameters
 _C.DATA = CN()
@@ -103,7 +103,7 @@ _C.LOSS.inst_num = 57449  # The object number in MID training
 _C.LOSS.seg_num = 100  # The clustering number in MID training
 _C.LOSS.weights = (1.0, 1.0)  # The weight factors for different losses
 _C.LOSS.label_smoothing = 0.0  # The factor of label smoothing
-_C.LOSS.point_wise = True # whether to compute loss on points or octrants
+_C.LOSS.point_wise = True  # whether to compute loss on points or octrants
 
 # backup the commands
 _C.SYS = CN()
@@ -123,7 +123,8 @@ def _update_config(FLAGS, args):
 
 
 def _backup_config(FLAGS, args):
-    logdir = os.path.join(FLAGS.SOLVER.logdir,"" if FLAGS.SOLVER.run=='train' else os.path.basename(FLAGS.SOLVER.ckpt).split(".")[0])
+    logdir = os.path.join(FLAGS.SOLVER.logdir,
+                          "" if FLAGS.SOLVER.run == 'train' else os.path.basename(FLAGS.SOLVER.ckpt).split(".")[0])
     if not os.path.exists(logdir):
         os.makedirs(logdir)
     # copy the file to logdir
@@ -179,7 +180,7 @@ def parse_args(backup=True):
 
 
 def parse_class_weights(flags):
-    if flags.SOLVER.class_weights == "":
+    if flags.SOLVER.class_weights == "None":
         return [1. for _ in range(flags.MODEL.nout)]
     data = json.load(open(flags.SOLVER.class_weights))
     data = {int(key): float(value) for key, value in data.items()}
