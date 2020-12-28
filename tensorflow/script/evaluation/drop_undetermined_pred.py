@@ -1,10 +1,10 @@
 import os
 import numpy as np
 
-IN_DIR = "/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/cluster_exp_results/Seg_2k_hrnet_w_colour_depth_5_unweighted_adam_8_0.5/best_iou/probabilities"
+IN_DIR = "/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/cluster_exp_results/Seg_2k_hrnet_no_colour_depth_5_weighted_sgd_3_0.0/best_iou/probabilities"
 assert (os.path.exists(IN_DIR))
 
-OUT_DIR = "/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/cluster_exp_results/Seg_2k_hrnet_w_colour_depth_5_unweighted_adam_8_0.5/best_iou/probabilities_no_und"
+OUT_DIR = "/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/cluster_exp_results/Seg_2k_hrnet_no_colour_depth_5_weighted_sgd_3_0.0/best_iou/probabilities_no_und"
 
 if not os.path.exists(OUT_DIR):
     os.mkdir(OUT_DIR)
