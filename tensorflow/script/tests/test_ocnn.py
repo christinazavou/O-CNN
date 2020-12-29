@@ -53,7 +53,6 @@ def softmax_cross_entropy(onehot_labels, logits, reduction='sum'):
 
 
 def test_tf_same_as_np():
-
     with tf.Session() as sess:
         for test_idx in range(5):
             # Create 2D or 3D arrays/tensors
@@ -114,10 +113,16 @@ def test_loss_functions_seg():
     var_name = 'ocnn'
     dc = loss_functions_seg(logit=logit, label_gt=label_gt, num_class=num_class, var_name=var_name,
                             weight_decay=0.005, weights=tf.Variable([1., 1, 1, 1]))
+    dc1 = loss_functions_seg(logit=logit, label_gt=label_gt, num_class=num_class, var_name=var_name,
+                             weight_decay=0.005, weights=tf.Variable([1., 2, 3, 4]))
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         dc_n = sess.run(dc)
         assert dc_n['accu'] == 0.5
+        print(dc_n['loss'])
+        dc1_n = sess.run(dc1)
+        print(dc_n)
+        print(dc1_n)
         # assert np.sum(dc_n['confusion_matrix']) == 2
 
 
@@ -132,4 +137,34 @@ def test_tf_gather():
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         l_weights_n = sess.run(l_weights)
-        assert l_weights_n.shape == (6, )
+        assert l_weights_n.shape == (6,)
+
+
+def test_weighted_softmax_loss():
+    label_gt = tf.Variable(initial_value=np.array([1, 2]))
+    weights = tf.Variable([1., 2, 3, 4])
+    unit_weights = tf.Variable([1., 1, 1, 1])
+    logit = tf.Variable(
+        initial_value=np.array([
+            [1, 1.5, 0.2, 0.6],
+            [1, 0.5, 0.2, 0.6]
+        ]),
+        name="ocnn/logits", trainable=True)
+
+    labels = tf.cast(label_gt, tf.int32)
+    onehot = tf.one_hot(labels, depth=4)
+    l_weights = tf.gather(params=weights, indices=labels)
+    l_unit_weights = tf.gather(params=unit_weights, indices=labels)
+    loss = tf.losses.softmax_cross_entropy(
+        onehot_labels=onehot, logits=logit, label_smoothing=0.0, weights=l_weights)
+    unit_loss = tf.losses.softmax_cross_entropy(
+        onehot_labels=onehot, logits=logit, label_smoothing=0.0, weights=l_unit_weights)
+
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        loss_n, unit_loss_n, onehot_n, logit_n, weights_n, unit_weights_n = sess.run(
+            [loss, unit_loss, onehot, logit, weights, unit_weights])
+        cus_loss = softmax_cross_entropy(onehot_n * weights_n, logit_n, reduction='mean')
+        cus_unit_loss = softmax_cross_entropy(onehot_n * unit_weights_n, logit_n, reduction='mean')
+        assert np.isclose(cus_unit_loss, unit_loss_n)
+        assert np.isclose(cus_loss, loss_n)
