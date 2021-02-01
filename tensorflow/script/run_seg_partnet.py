@@ -3,7 +3,7 @@ from config import parse_args, FLAGS, parse_class_weights
 from seg_helper import *
 from tfsolver import TFSolver, DELIMITER
 from network_factory import seg_network
-from dataset import DatasetFactory
+from dataset_preloader_tf import *
 from libs import points_property, octree_property, octree_decode_key
 import numpy as np
 from tqdm import tqdm
@@ -11,6 +11,8 @@ import os
 from ocnn import *
 from learning_rate import LRFactory
 from tensorflow.python.client import timeline
+
+# tf.compat.v1.enable_eager_execution()
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Add config
@@ -77,8 +79,7 @@ class ComputeGraphSeg:
         return weights
 
     def create_dataset(self, flags_data):
-        return DatasetFactory(flags_data)(return_iter=True,
-                                          return_fnames=False if self.flags.SOLVER.run == 'train' else True)
+        return DataLoader(flags_data).getter()  # (return_iter=True)
 
     def __call__(self, dataset='train', training=True, reuse=False, gpu_num=1):
 
@@ -93,14 +94,22 @@ class ComputeGraphSeg:
         FLAGS = self.flags
         with tf.device('/cpu:0'):
             flags_data = FLAGS.DATA.train if dataset == 'train' else FLAGS.DATA.test
-            data_iter = self.create_dataset(flags_data)
+            data_container = self.create_dataset(flags_data)
+            data_iter = data_container()
 
         with tf.device('/gpu:0'):
             with tf.name_scope('device_0'):
+                batch = data_iter.get_next()
+                print(batch)
+                batch = tf.map_fn(lambda x: get_octree(data_container, x), batch,
+                                  dtype=(tf.string, tf.int64, tf.string, tf.string))
+                print(len(batch))
+                octree = merge_octrees(batch[0])
                 if self.flags.SOLVER.run == 'train':
-                    octree, _, points = data_iter.get_next()
+                    _, points, _ = batch[1:]
+                    # print(octree);print(points);exit()
                 else:
-                    octree, _, points, filenames = data_iter.get_next()
+                    _, points, filenames = batch[1:]
                     debug_checks["{}/filenames".format(tf.get_variable_scope().name)] = filenames
 
                 print("mask ratio for {} is {}".format(dataset, flags_data.mask_ratio))
@@ -415,6 +424,33 @@ class PartNetSolver(TFSolver):
 if __name__ == '__main__':
     t = time.time()
     FLAGS = parse_args()
+    # train_data_loader = DataLoader(FLAGS.DATA.train)
+    # # points,f=train_data_loader()
+    # # print(points.shape);exit()
+    # # print(idxs.T);exit()
+    # # t=tf.data.Dataset.from_tensor_slices(points)
+    # t, dataset = train_data_loader()
+    # cnt = 0
+    # for j in range(10):
+    #     i = t.get_next()
+    #     print(i)
+    #     batch = tf.map_fn(lambda x: get_octree(dataset, x), i, dtype=(tf.string, tf.string, tf.int64, tf.string))
+    #     batch += merge_octrees(batch[0])
+    #     print(batch)
+    #     print(i)
+    #     cnt += 1
+    #     print(cnt)
+    #     print("----------------------------------")
+    # print("done")
+    # exit()
+    #
+    # try:
+    #     while True:
+    #         print(t.get_next()[-2])
+    #         cnt += 1
+    # except tf.errors.OutOfRangeError:
+    #     print(cnt)
+    # exit()
     compute_graph = ComputeGraphSeg(FLAGS)
     builder_op = build_solver_given_lr if FLAGS.SOLVER.lr_type == 'plateau' else build_solver
     solver = PartNetSolver(FLAGS, compute_graph, builder_op)

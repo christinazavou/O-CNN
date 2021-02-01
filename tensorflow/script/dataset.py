@@ -1,8 +1,10 @@
 import sys
 import tensorflow as tf
-import numpy as np
-import random
-import math
+# import numpy as np
+# import random
+# import math
+
+# tf.compat.v1.enable_eager_execution()
 
 sys.path.append("..")
 from libs import bounding_sphere, points2octree, \
@@ -147,12 +149,17 @@ class PointDataset:
                 points = self.transform_points(points)
                 octree = self.points2octree(points)
                 outputs = (octree, label)
+                print(outputs)
                 if return_pts: outputs += (points,)
                 if return_fnames: outputs += (filenames,)
                 return outputs
 
             def merge_octrees(octrees, *args):
+
                 octree = octree_batch(octrees)
+                print(octrees)
+                print(*args);
+                exit()
                 return (octree,) + args
 
             dataset = tf.data.TFRecordDataset(record_names).take(take).repeat()
@@ -160,7 +167,7 @@ class PointDataset:
             itr = dataset \
                 .map(preprocess, num_parallel_calls=16) \
                 .batch(batch_size) \
-                .map(merge_octrees, num_parallel_calls=8) \
+                .map(merge_octrees, num_parallel_calls=1) \
                 .prefetch(8) \
                 .make_one_shot_iterator()
         return itr if return_iter else itr.get_next()

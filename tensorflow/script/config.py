@@ -61,11 +61,13 @@ _C.DATA.train.stddev = (0, 0, 0)  # The standard deviation of the random noise
 _C.DATA.train.interval = (1, 1, 1)  # Use interval&angle to generate random angle
 _C.DATA.train.angle = (180, 180, 180)
 
-# _C.DATA.train.rot_num = 1
+_C.DATA.train.rot_num = 12
 _C.DATA.train.sigma = 0.01
 _C.DATA.train.clip = 0.05
 
 _C.DATA.train.location = ''  # The data location
+_C.DATA.train.label_location = ''  # The data label location
+_C.DATA.train.file_list = ''  # file with data to load, model (classification) label
 _C.DATA.train.shuffle = 1000  # The shuffle size
 _C.DATA.train.take = -1  # Use at most `take` elements from this dataset
 _C.DATA.train.batch_size = 32  # Training data batch size
@@ -75,7 +77,7 @@ _C.DATA.train.mask_ratio = 0.0  # Mask out some points for faster training #feat
 _C.DATA.train.return_pts = False  # Also return points
 
 _C.DATA.test = _C.DATA.train.clone()
-# _C.DATA.test.rot_num=1
+_C.DATA.test.rot_num = 1
 _C.DATA.test.sigma = 0.0
 _C.DATA.test.clip = 0.0
 # MODEL related parameters
@@ -156,11 +158,16 @@ def parse_args(backup=True):
     if backup: _backup_config(FLAGS, args)
     _set_env_var(FLAGS)
 
-    if FLAGS.MODEL.name == 'hrnet':
-        if FLAGS.DATA.train.depth > 8 or FLAGS.DATA.test.depth > 8:
-            raise ValueError("Network depth must be lesser or equal to 8!!!\nExiting...")
-        if FLAGS.DATA.train.depth != FLAGS.DATA.test.depth:
-            raise ValueError("Train and test networks must have the same depth!!!\nExiting...")
+    if not os.path.exists(FLAGS.DATA.train.location) or not os.path.exists(FLAGS.DATA.test.location):
+        raise ValueError("Data location path does not exist!!!\nExiting...")
+    if not os.path.exists(FLAGS.DATA.train.label_location) or not os.path.exists(FLAGS.DATA.test.label_location):
+        raise ValueError("Data label location path does not exist!!!\nExiting...")
+    if FLAGS.DATA.test.file_list == "" or FLAGS.DATA.train.file_list == "":
+        raise ValueError("File list of data split is not defined!!!\nExiting...")
+    if FLAGS.DATA.train.depth > 8 or FLAGS.DATA.test.depth > 8:
+        raise ValueError("Network depth must be lesser or equal to 8!!!\nExiting...")
+    if FLAGS.DATA.train.depth != FLAGS.DATA.test.depth:
+        raise ValueError("Train and test networks must have the same depth!!!\nExiting...")
 
     if FLAGS.DATA.test.batch_size != 1:
         FLAGS.defrost()

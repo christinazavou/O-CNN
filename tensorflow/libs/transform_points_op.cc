@@ -47,9 +47,9 @@ REGISTER_OP("NormalizePoints")
 
 REGISTER_OP("CustomTransformPoints")
     .Input("points: string")
+    .Input("angle: float")
     .Attr("sigma: float=0.01")
     .Attr("clip: float=0.05")
-    .Attr("angle: float=0.0")
     .Output("points_out: string")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
       c->set_output(0, c->input(0));
@@ -233,17 +233,20 @@ class CustomTransformPointsOp : public OpKernel {
       : OpKernel(context) {
     OP_REQUIRES_OK(context, context->GetAttr("sigma", &sigma_));
     OP_REQUIRES_OK(context, context->GetAttr("clip", &clip_));
-    OP_REQUIRES_OK(context, context->GetAttr("angle", &angle_));
+//    OP_REQUIRES_OK(context, context->GetAttr("angle", &angle_));
 
   }
 
   void Compute(OpKernelContext* context) override {
     // input points
     const Tensor& data_in = context->input(0);
-
+    float angle=context->input(1).flat<float>()(0);
     // copy the data out of the input tensor
     auto points_array = data_in.flat<string>();
     vector<char> points_buf(points_array(0).begin(), points_array(0).end());
+
+
+    std::cout<<"angle: "<<angle<<std::endl;
 
     // init the points
     Points pts;
@@ -272,8 +275,8 @@ class CustomTransformPointsOp : public OpKernel {
 //    std::cout<<"stddev: "<<stddev[0]<<" "<<stddev[1]<<" "<<stddev[2]<<std::endl;
 
     pts.translate(&stddev[0]);
-//    const float rot[3]= {0.0,angle_,0.0};
-//    pts.rotate(rot);
+    const float rot[3]= {0.0,angle,0.0};
+    pts.rotate(rot);
 
     // output
     Tensor* out_data = nullptr;
@@ -286,7 +289,7 @@ class CustomTransformPointsOp : public OpKernel {
  private:
   float sigma_;
   float clip_;
-  float angle_;
+//  float angle_;
 };
 
 class NormalizePointsOp : public OpKernel {
