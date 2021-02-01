@@ -102,7 +102,7 @@ def create_overall_graphs(metrics, exp_name, best_exp_stats, prefix):
             bar_idx = bar_idx + bar_size
 
         ax.set_xticks(np.arange(0, 101, 10.0))
-        plt.title("Per " + prefix[k] + "Overall Metrics")
+        plt.title("Per " + prefix[k] + " Overall Metrics")
         ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.savefig(fname=os.path.join(OUT_DIR, 'over_all_results_per_{}.png'.format(prefix[k])), bbox_inches='tight')
 

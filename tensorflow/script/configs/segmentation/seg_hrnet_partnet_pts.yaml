@@ -2,22 +2,22 @@
 
 SOLVER:
   gpu: 0,
-  logdir: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/cluster_exp_results/Seg_2k_hrnet_no_colour_depth_5_weighted_sgd_3_0.0/
-  max_iter: 960000
-  test_iter: 200
-  test_every_iter: 9600
-  run: test
+  logdir: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/cluster_exp_results/todelete_unet/
+  max_iter: 4800
+  test_iter: 48
+  test_every_iter: 48
+  run: train
   lr_type: 'plateau'
   class_weights: "none" #./configs/class_weights.json
   #step_size: (1500, 750)
-  ckpt: '/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/cluster_exp_results/Seg_2k_hrnet_no_colour_depth_5_weighted_sgd_3_0.0/best_ckpts/best_iou.ckpt'
-  verbose: True
+  #ckpt: '/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/cluster_exp_results/Seg_2k_hrnet_no_colour_depth_5_weighted_sgd_3_0.0/best_ckpts/best_iou.ckpt'
+  #verbose: True
 
 DATA:
   train:
     dtype: points
     distort: False #True
-    depth: 5
+    depth: 7
     axis: y 
 #    angle: (5, 5, 5)
 #    interval: (1, 1, 1)
@@ -26,9 +26,11 @@ DATA:
 #    offset: 0.0
 #    uniform: True
     node_dis: False
-    shuffle: 0
+    shuffle: 100
     take: -1
-    location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/tfrecords/train_no_colour_12_rot.shuffle.all.tfrecords
+    location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/nocolor/
+    file_list: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/todelete.txt
+    label_location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/point_labels_32/
     batch_size: 2
     x_alias: data
     mask_ratio: 0.0
@@ -37,7 +39,7 @@ DATA:
   test: 
     dtype: points
     distort: False  # no data augmentation
-    depth: 5
+    depth: 7
     axis: y
 #    angle: (1, 1, 1)
 #    interval: (1, 1, 1)
@@ -45,7 +47,9 @@ DATA:
 #    jitter: 0.25
 #    offset: 0.0
     node_dis: False
-    location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/tfrecords/test/test_no_colour_no_rot.tfrecords
+    location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/nocolor/
+    file_list: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/todelete.txt
+    label_location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/point_labels_32/
     shuffle: 0 #200
     batch_size: 1
     x_alias: data
@@ -56,10 +60,10 @@ MODEL:
   name: hrnet
   channel: 3
   nout: 32
-  depth: 5
+  depth: 7
   factor: 2
   signal_abs: True
-  depth_out: 5
+  depth_out: 7
 
 LOSS:
   num_class: 32

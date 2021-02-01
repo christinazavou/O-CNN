@@ -9,6 +9,7 @@ import time
 import json
 from tqdm import tqdm
 
+
 # help(points_new)
 
 
@@ -127,9 +128,10 @@ def create_points(files, w_color, label_dir, colour_dir, sess):
                 try:
                     c_file = os.path.basename(file)
                     lines = open(os.path.join(colour_dir, c_file[:c_file.rfind("_")] + ".ply"), "r").readlines()[14:]
-                    features=np.array([line.strip().split()[-4:] for line in lines],dtype=float)
+                    features = np.array([line.strip().split()[-4:] for line in lines], dtype=float)
                 except FileNotFoundError:
-                    print("Colour file {} not found".format(os.path.join(colour_dir, c_file[:c_file.rfind("_")] + ".ply")))
+                    print("Colour file {} not found".format(
+                        os.path.join(colour_dir, c_file[:c_file.rfind("_")] + ".ply")))
                     exit()
             else:
                 features = a[:, i:i + 4]  # r,g,b,a
@@ -205,7 +207,7 @@ def write_data_to_tfrecords(file_dir, list_file, records_name, file_type, label_
                             w_color=False):
     filenames, label, index = get_data_label_index(list_file)  # label of entire model, used for classification only
     s_time = time.time()
-    write_records(file_dir, records_name, file_type, filenames, label, index, label_dir,colour_dir, 8, w_color)
+    write_records(file_dir, records_name, file_type, filenames, label, index, label_dir, colour_dir, 8, w_color)
     e_time = time.time()
     print("Time {} m".format((e_time - s_time) // 60))
     print("Time {} ms: ".format(int(round((e_time - s_time) * 1000))))
@@ -278,6 +280,7 @@ def split_data_label_indices_in_files(list_file, shuffle_data, count=-1, start_f
                 out_file.write('{} {} {}\n'.format(f, l, i))
         chunk_idx += 1
     print("Done.")
+
 
 if __name__ == '__main__':
     eval(sys.argv[1])
