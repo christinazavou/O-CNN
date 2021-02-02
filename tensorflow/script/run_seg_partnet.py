@@ -100,10 +100,8 @@ class ComputeGraphSeg:
         with tf.device('/gpu:0'):
             with tf.name_scope('device_0'):
                 batch = data_iter.get_next()
-                print(batch)
                 batch = tf.map_fn(lambda x: get_octree(data_container, x), batch,
                                   dtype=(tf.string, tf.int64, tf.string, tf.string))
-                print(len(batch))
                 octree = merge_octrees(batch[0])
                 if self.flags.SOLVER.run == 'train':
                     _, points, _ = batch[1:]

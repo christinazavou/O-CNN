@@ -4,6 +4,7 @@ import tensorflow as tf
 import numpy as np
 import json
 import math
+from tqdm import tqdm
 
 # import psutil
 
@@ -207,10 +208,11 @@ class DataLoader:
             return point_clouds
 
         def read_files():
+            print("\nReading files. This may take a while...\n")
             try:
                 with open(self.flags.file_list, "r") as f:
                     cnt = 0
-                    for line in f:
+                    for line in tqdm(f):
                         line = line.strip().split()
                         self.filenames = self.filenames.write(cnt, line[0].split(".")[0])
                         self.class_labels = self.class_labels.write(cnt, int(line[1]))
