@@ -156,7 +156,7 @@ def data_augmentation(points, normals, clip, sigma=0.0, angle=0.0):
 
     pts, nrms = tf.cond(angle > 0, lambda: rotate_point_cloud_and_normals_tf(pts, nrms, angle),
                         lambda: return_self(pts, nrms))  # rotation
-    print(pts, nrms)
+    # print(pts, nrms)
     # pts, nrms =
     if sigma > 0:  # global translation
         pts = translate_point_cloud_tf(pts, sigma, clip)
@@ -184,7 +184,7 @@ def get_octree(self, args):
 
 
 class DataLoader:
-    def __init__(self, flags):
+    def __init__(self, flags, nout):
 
         def load_points_file(filename):
             if ".ply" in filename:
@@ -221,9 +221,13 @@ class DataLoader:
                         self.normals = self.normals.write(cnt, pts[..., 3:6])
                         if pts.shape[-1] > 6:
                             self.features = self.features.write(cnt, pts[..., 6:])
-                        self.point_labels = self.point_labels.write(cnt, np.array(list(json.load(open(
+                        labels = np.array(list(json.load(open(
                             os.path.join(self.flags.label_location, line[0].split(".")[0] + "_label.json"))).values()),
-                                                                                  dtype=np.float32))
+                                          dtype=np.float32)
+                        # map labels so that learnable ones start from 0 and undetermined becomes num_classes+1 (to
+                        # be ignored in loss)
+                        labels = np.where(labels == 0, self.max_label, labels - 1)
+                        self.point_labels = self.point_labels.write(cnt, labels)
                         cnt += 1
                     self.tfrecord_num = cnt
             except OSError:
@@ -247,12 +251,13 @@ class DataLoader:
         self.tfrecord_num = 0
         self.theta = 2 * PI / self.flags.rot_num  # rotation angle in radians
         self.points2octree = Points2Octree(**flags)
+        self.max_label = nout
 
         read_files()
-        if self.features.element_shape==None:
-            self.has_features=False
+        if self.features.element_shape:
+            self.has_features = True
         else:
-            self.has_features=True
+            self.has_features = False
 
         # memory consumption
         # py = psutil.Process(os.getpid())

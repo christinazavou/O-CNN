@@ -29,9 +29,9 @@ DO_NOT_AVG = ["intsc_", "union_", "iou"]
 def get_point_info(points, mask_ratio=0, mask=-1):
     debug_checks = {}
     with tf.name_scope('points_info'):
-        pts = points_property(points, property_name='xyz', channel=4)
+        pts = points_property(points, property_name='xyz', channel=4)  # can run with channel=3 too, 4th channel is
+        # point id (to which octree in the batch it belongs to)
         label = points_property(points, property_name='label', channel=1)
-
         debug_checks['{}/pts(xyz)'.format(tf.get_variable_scope().name)] = pts
         debug_checks['{}/label'.format(tf.get_variable_scope().name)] = label
 
@@ -50,7 +50,7 @@ def get_point_info(points, mask_ratio=0, mask=-1):
     return pts, label, debug_checks
 
 
-def tf_IoU_per_shape(logits, label, class_num, mask=-1, ignore=0):
+def tf_IoU_per_shape(logits, label, class_num, mask=-1, ignore=666):
     # -1 CAN EXIST IF LABELS COME FROM OCTREE_PROPERTY('LABEL') ...
     with tf.name_scope('IoU'):
         # mask out unwanted labels (empty and undetermined)
@@ -78,8 +78,8 @@ class ComputeGraphSeg:
         weights = tf.constant(w_list)
         return weights
 
-    def create_dataset(self, flags_data):
-        return DataLoader(flags_data).getter()  # (return_iter=True)
+    def create_dataset(self, flags_data, nout):
+        return DataLoader(flags_data, nout).getter()
 
     def __call__(self, dataset='train', training=True, reuse=False, gpu_num=1):
 
@@ -89,12 +89,10 @@ class ComputeGraphSeg:
         debug_checks = {}
         tensors_dict = {}
 
-        train_mode = True if dataset == 'train' else False
-
         FLAGS = self.flags
         with tf.device('/cpu:0'):
             flags_data = FLAGS.DATA.train if dataset == 'train' else FLAGS.DATA.test
-            data_container = self.create_dataset(flags_data)
+            data_container = self.create_dataset(flags_data, FLAGS.MODEL.nout)
             data_iter = data_container()
 
         with tf.device('/gpu:0'):
@@ -105,7 +103,6 @@ class ComputeGraphSeg:
                 octree = merge_octrees(batch[0])
                 if self.flags.SOLVER.run == 'train':
                     _, points, _ = batch[1:]
-                    # print(octree);print(points);exit()
                 else:
                     _, points, filenames = batch[1:]
                     debug_checks["{}/filenames".format(tf.get_variable_scope().name)] = filenames
@@ -125,13 +122,13 @@ class ComputeGraphSeg:
 
                 metrics_dict = loss_functions_seg(logit=logit, label_gt=label, num_class=FLAGS.LOSS.num_class,
                                                   weight_decay=FLAGS.LOSS.weight_decay, var_name='ocnn',
-                                                  weights=self.weights, mask=-1, ignore=0, train_mode=train_mode)
+                                                  weights=self.weights, mask=-1, ignore=FLAGS.MODEL.nout)
                 tensors_dict.update(metrics_dict)
                 tensors_dict['total_loss'] = metrics_dict['loss'] + metrics_dict['regularizer']
 
                 if flags_data.batch_size == 1:  # TODO make it work for different batch sizes
                     num_class = FLAGS.LOSS.num_class
-                    intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=-1, ignore=0)
+                    intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=-1, ignore=FLAGS.MODEL.nout)
                     tensors_dict['iou'] = tf.constant(0.0)  # placeholder, calc its value later
                     for i in range(0, num_class):
                         tensors_dict['intsc_%d' % i] = intsc[i]
@@ -143,7 +140,7 @@ class ComputeGraphSeg:
 def result_callback(avg_results_dict, num_class):
     # calc part-IoU, update `iou`, this is in correspondence with Line 77
     ious = {}
-    for i in range(1, num_class):  # !!! Ignore the first label, undetermined
+    for i in range(0, num_class):  # !!! First label is wall, undetermined is num_class+1
         instc_i = avg_results_dict['intsc_%d' % i]
         union_i = avg_results_dict['union_%d' % i]  # max value of union is the # of determined points
         if union_i > 0.0:
@@ -234,13 +231,16 @@ class PartNetSolver(TFSolver):
     def save_ckpt(self, dc, sess, iter):
         if dc['iou'] > best_metric_dict['iou']:
             best_metric_dict['iou'] = dc['iou']
-            self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, 'best_iou.ckpt'))
+            self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, 'best_iou.ckpt'),
+                               write_meta_graph=False)
         if dc['accu'] > best_metric_dict['acc']:
             best_metric_dict['acc'] = dc['accu']
-            self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, "best_acc.ckpt"))
+            self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, "best_acc.ckpt"),
+                               write_meta_graph=False)
         if dc['total_loss'] < best_metric_dict['loss']:
             best_metric_dict['loss'] = dc['total_loss']
-            self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, "best_loss.ckpt"))
+            self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, "best_loss.ckpt"),
+                               write_meta_graph=False)
 
         with open(os.path.join(self.best_ckpt_path, "evaluation_report.txt"), 'a') as f:
             f.write('---- EPOCH %04d EVALUATION ----\n' % (iter))
@@ -384,8 +384,8 @@ class PartNetSolver(TFSolver):
                 points, labels, probabilities, filename = iter_tdc['/pts(xyz)'][:, 0:3], iter_tdc['/label'], iter_tdc[
                     '/probabilities'], str(iter_tdc['/filenames'][0])
                 filename = os.path.basename(filename)
-                filename = filename[0:filename.rfind("_")]
-                predictions = np.argmax(probabilities, axis=1).astype(np.int32)
+                # filename = filename[0:filename.rfind("_")]
+                predictions = np.argmax(probabilities, axis=1).astype(np.int32) + 1  # remap labels to initial values
                 prediction_colors = np.array([to_rgb(COLOURS[int(p)]) for p in predictions])
 
                 if self.verbose:
@@ -395,7 +395,6 @@ class PartNetSolver(TFSolver):
                         reports += '%s: %0.4f; ' % (key, value)
                     print(reports)
 
-                # current_iou = round(iter_test_result_dict['iou'] * 100)
                 current_ply_o_f = os.path.join(predicted_ply_dir, "{}.ply".format(filename))
                 save_ply(current_ply_o_f, points, prediction_colors)
 
@@ -422,33 +421,6 @@ class PartNetSolver(TFSolver):
 if __name__ == '__main__':
     t = time.time()
     FLAGS = parse_args()
-    # train_data_loader = DataLoader(FLAGS.DATA.train)
-    # # points,f=train_data_loader()
-    # # print(points.shape);exit()
-    # # print(idxs.T);exit()
-    # # t=tf.data.Dataset.from_tensor_slices(points)
-    # t, dataset = train_data_loader()
-    # cnt = 0
-    # for j in range(10):
-    #     i = t.get_next()
-    #     print(i)
-    #     batch = tf.map_fn(lambda x: get_octree(dataset, x), i, dtype=(tf.string, tf.string, tf.int64, tf.string))
-    #     batch += merge_octrees(batch[0])
-    #     print(batch)
-    #     print(i)
-    #     cnt += 1
-    #     print(cnt)
-    #     print("----------------------------------")
-    # print("done")
-    # exit()
-    #
-    # try:
-    #     while True:
-    #         print(t.get_next()[-2])
-    #         cnt += 1
-    # except tf.errors.OutOfRangeError:
-    #     print(cnt)
-    # exit()
     compute_graph = ComputeGraphSeg(FLAGS)
     builder_op = build_solver_given_lr if FLAGS.SOLVER.lr_type == 'plateau' else build_solver
     solver = PartNetSolver(FLAGS, compute_graph, builder_op)
