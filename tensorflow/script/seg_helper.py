@@ -4,7 +4,6 @@ import numpy as np
 
 np.random.seed(100)
 
-
 ANNFASS_LABELS = [
     "undetermined",
     "wall",
@@ -40,7 +39,6 @@ ANNFASS_LABELS = [
     "shutters",
     "empty",
 ]
-
 
 ANNFASS_COLORS = [
     "#000000",  # 0
@@ -81,17 +79,17 @@ ANNFASS_COLORS = [
 
 def decimal_to_rgb(decimal):
     hexadecimal_str = '{:06x}'.format(decimal)
-    return tuple(int(hexadecimal_str[i:i + 2], 16) for i in (0, 2, 4))
+    return tuple(int(hexadecimal_str[i:i + 2], 16) for i in (0, 2, 4)) + (255,)
 
 
 def hex_to_rgb(hex):
-    return tuple(int(hex[1:][i:i + 2], 16) for i in (0, 2, 4))
+    return tuple(int(hex[1:][i:i + 2], 16) for i in (0, 2, 4)) + (255,)
 
 
 def to_rgb(value):
     if isinstance(value, str) and '#' in value:
         return hex_to_rgb(value)
-    assert isinstance(value, np.int64) , " given value {} is of type {}".format(value, type(value))
+    assert isinstance(value, np.int64), " given value {} is of type {}".format(value, type(value))
     return decimal_to_rgb(value)
 
 
@@ -107,10 +105,10 @@ def save_ply(filename, points, colors):
              "property uchar red\n" \
              "property uchar green\n" \
              "property uchar blue\n" \
+             "property uchar alpha\n" \
              "end_header\n"
     with open(filename, 'w') as fid:
         fid.write(header % pts_num)
         for point, color in zip(points, colors):
             fid.write(" ".join([str(i) for i in point]) + " " +
                       " ".join([str(int(i)) for i in color]) + "\n")
-
