@@ -71,7 +71,7 @@ std::string Octree::get_binary_string() const {
   return std::string(buffer_.cbegin(), buffer_.cend());
 }
 
-void Octree::build(const OctreeInfo& octree_info, const Points& point_cloud, const vector<float>& ignore_labels) {
+void Octree::build(const OctreeInfo& octree_info, const Points& point_cloud, const float last_label) {
   // init
   clear(octree_info.depth());
   oct_info_ = octree_info;
@@ -92,7 +92,7 @@ void Octree::build(const OctreeInfo& octree_info, const Points& point_cloud, con
   calc_node_num();
 
   // average the signal for the last octree layer
-  calc_signal(point_cloud, pts_scaled, sorted_idx, unique_idx, ignore_labels);
+  calc_signal(point_cloud, pts_scaled, sorted_idx, unique_idx, last_label);
 
   // average the signal for the other octree layers
   if (oct_info_.locations(OctreeInfo::kFeature) == -1) {
@@ -310,7 +310,7 @@ void Octree::calc_node_num() {
 
 // compute the average signal for the last octree layer
 void Octree::calc_signal(const Points& point_cloud, const vector<float>& pts_scaled,
-    const vector<uintk>& sorted_idx, const vector<uintk>& unique_idx, const vector<float>& ignore_labels) {
+    const vector<uintk>& sorted_idx, const vector<uintk>& unique_idx, const float last_label) {
   int depth = oct_info_.depth();
   const float* normals = point_cloud.ptr(PointsInfo::kNormal);
   const float* features = point_cloud.ptr(PointsInfo::kFeature);
@@ -377,12 +377,6 @@ void Octree::calc_signal(const Points& point_cloud, const vector<float>& pts_sca
     avg_labels_[depth].assign(nnum, -1.0f);   // initialize as -1
     const int npt = point_cloud.info().pt_num();
     max_label_ = static_cast<int>(*std::max_element(labels, labels + npt)) + 1;
-    //std::vector<float> ignore={0.0,32.0,33.0};
-//    std::ostringstream oss;
-//    std::copy(ignore_labels.begin(),ignore_labels.end()-1,std::ostream_iterator<float>(oss," ,"));
-//    oss<<ignore_labels.back();
-//    std::cout<<"Maximum label is: "<< max_label_<<std::endl;
-//    std::cout<<"Labels to be ignored (set as label 0): "<< oss.str()<<std::endl;
 
     #pragma omp parallel for
     for (int i = 0; i < nnum; i++) {
@@ -394,23 +388,27 @@ void Octree::calc_signal(const Points& point_cloud, const vector<float>& pts_sca
       for (uintk j = unique_idx[t]; j < unique_idx[t + 1]; j++) {
         int h = sorted_idx[j];
         int l = static_cast<int>(labels[h]);
-        if (l < 0) { continue; }  // invalid labels
+        if (l < 0) { continue; }  // ignore point with label empty (-1)
         avg_label[l] += 1;
         valid_num += 1;
 //        std::cout<<l<<std::endl;
       }
       if (valid_num > 0) {
 //          for (auto i = avg_label.begin(); i != avg_label.end(); ++i)
-//              std::cout << *i << ' ';
+//              std::cout << *i << ', ';
 
           float label=static_cast<float>(std::distance(avg_label.begin(),
                                                        std::max_element(avg_label.begin(), avg_label.end())));
-//          std::cout<<"Voxel label: "<<label<<std::endl;
-          if (std::find(ignore_labels.begin(), ignore_labels.end(), label) != ignore_labels.end()){
-              avg_labels_[depth][i] = 0;
-//              std::cout<<"Ignoring label, setting to 0!!!"<<std::endl;
-         } else
-              avg_labels_[depth][i] = label;
+//          std::cout<<"\nVoxel label: "<<label<<std::endl;
+          if (last_label!=-1.0){
+              if (label==0.0){
+                  avg_labels_[depth][i] = last_label;
+//                  std::cout<<"Ignoring label, setting to "<<last_label<<"!!!"<<std::endl;
+             } else
+                  avg_labels_[depth][i] = label-1;
+          }
+          else
+              avg_labels_[depth][i]=label;
       }
     }
   }
