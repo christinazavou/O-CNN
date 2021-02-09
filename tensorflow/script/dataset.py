@@ -25,7 +25,7 @@ class ParseExample:
 class Points2Octree:
     def __init__(self, depth, full_depth=2, node_dis=False, node_feat=False,
                  split_label=False, adaptive=False, adp_depth=4, th_normal=0.1,
-                 save_pts=False, **kwargs):
+                 save_pts=False, last_label=-1, **kwargs):
         self.depth = depth
         self.full_depth = full_depth
         self.node_dis = node_dis  # NOTE: If you want feature channel 4 this needs to be True, otherwise False
@@ -35,13 +35,14 @@ class Points2Octree:
         self.adp_depth = adp_depth
         self.th_normal = th_normal
         self.save_pts = save_pts
+        self.last_label = last_label
 
     def __call__(self, points):
         octree = points2octree(in_points=points, depth=self.depth, full_depth=self.full_depth,
                                node_dis=self.node_dis, node_feature=self.node_feat,
                                split_label=self.split_label, adaptive=self.adaptive,
                                adp_depth=self.adp_depth, th_normal=self.th_normal,
-                               save_pts=self.save_pts)
+                               save_pts=self.save_pts, last_label=self.last_label)
         return octree
 
 
@@ -167,12 +168,12 @@ class PointDataset:
 
 
 class DatasetFactory:
-    def __init__(self, flags, normalize_points=NormalizeNothing,
+    def __init__(self, flags, last_label, normalize_points=NormalizeNothing,
                  point_dataset=PointDataset, transform_points=CustomTransformPoints):
         self.flags = flags
         if flags.dtype == 'points':
             self.dataset = point_dataset(ParseExample(**flags), normalize_points(),
-                                         transform_points(**flags), Points2Octree(**flags))
+                                         transform_points(**flags), Points2Octree(last_label=last_label, **flags))
         else:
             print('Error: unsupported datatype ' + flags.dtype)
 

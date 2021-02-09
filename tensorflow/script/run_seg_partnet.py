@@ -12,6 +12,8 @@ from ocnn import *
 from learning_rate import LRFactory
 from tensorflow.python.client import timeline
 
+tf.compat.v1.enable_eager_execution()
+
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Add config
 
@@ -21,6 +23,7 @@ CATEGORIES = ANNFASS_LABELS
 COLOURS = ANNFASS_COLORS
 best_metric_dict = {"acc": 0.0, "loss": 1e100, "iou": 0.0}
 DO_NOT_AVG = ["intsc_", "union_", "iou"]
+MAX_LABEL = 0
 
 
 # get the label and pts
@@ -42,13 +45,15 @@ def get_point_info(points, mask_ratio=0, mask=-1):
 
         label = tf.boolean_mask(label, label_mask)
         pts = tf.boolean_mask(pts, label_mask)
+        label = label - 1
+        label = tf.where(tf.equal(label, -1), tf.zeros_like(label) + MAX_LABEL, label)
 
         debug_checks['{}/masked_and_dropped/pts(xyz)'.format(tf.get_variable_scope().name)] = pts
         debug_checks['{}/masked_and_dropped/label'.format(tf.get_variable_scope().name)] = label
     return pts, label, debug_checks
 
 
-def tf_IoU_per_shape(logits, label, class_num, mask=-1, ignore=0):
+def tf_IoU_per_shape(logits, label, class_num, mask=-1, ignore=666):
     # -1 CAN EXIST IF LABELS COME FROM OCTREE_PROPERTY('LABEL') ...
     with tf.name_scope('IoU'):
         # mask out unwanted labels (empty and undetermined)
@@ -76,9 +81,9 @@ class ComputeGraphSeg:
         weights = tf.constant(w_list)
         return weights
 
-    def create_dataset(self, flags_data):
-        return DatasetFactory(flags_data)(return_iter=True,
-                                          return_fnames=False if self.flags.SOLVER.run == 'train' else True)
+    def create_dataset(self, flags_data, last_label):
+        return DatasetFactory(flags_data, last_label)(return_iter=True,
+                                                      return_fnames=False if self.flags.SOLVER.run == 'train' else True)
 
     def __call__(self, dataset='train', training=True, reuse=False, gpu_num=1):
 
@@ -88,12 +93,10 @@ class ComputeGraphSeg:
         debug_checks = {}
         tensors_dict = {}
 
-        train_mode = True if dataset == 'train' else False
-
         FLAGS = self.flags
         with tf.device('/cpu:0'):
             flags_data = FLAGS.DATA.train if dataset == 'train' else FLAGS.DATA.test
-            data_iter = self.create_dataset(flags_data)
+            data_iter = self.create_dataset(flags_data, FLAGS.MODEL.nout)
 
         with tf.device('/gpu:0'):
             with tf.name_scope('device_0'):
@@ -118,13 +121,13 @@ class ComputeGraphSeg:
 
                 metrics_dict = loss_functions_seg(logit=logit, label_gt=label, num_class=FLAGS.LOSS.num_class,
                                                   weight_decay=FLAGS.LOSS.weight_decay, var_name='ocnn',
-                                                  weights=self.weights, mask=-1, ignore=0, train_mode=train_mode)
+                                                  weights=self.weights, mask=-1, ignore=self.flags.MODEL.nout)
                 tensors_dict.update(metrics_dict)
                 tensors_dict['total_loss'] = metrics_dict['loss'] + metrics_dict['regularizer']
 
                 if flags_data.batch_size == 1:  # TODO make it work for different batch sizes
                     num_class = FLAGS.LOSS.num_class
-                    intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=-1, ignore=0)
+                    intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=-1, ignore=num_class)
                     tensors_dict['iou'] = tf.constant(0.0)  # placeholder, calc its value later
                     for i in range(0, num_class):
                         tensors_dict['intsc_%d' % i] = intsc[i]
@@ -136,7 +139,7 @@ class ComputeGraphSeg:
 def result_callback(avg_results_dict, num_class):
     # calc part-IoU, update `iou`, this is in correspondence with Line 77
     ious = {}
-    for i in range(1, num_class):  # !!! Ignore the first label, undetermined
+    for i in range(0, num_class):  # !!! Label undetermined is num_class+1, so it will be ignored
         instc_i = avg_results_dict['intsc_%d' % i]
         union_i = avg_results_dict['union_%d' % i]  # max value of union is the # of determined points
         if union_i > 0.0:
@@ -379,7 +382,7 @@ class PartNetSolver(TFSolver):
                 filename = os.path.basename(filename)
                 filename = filename[0:filename.rfind("_")]
                 predictions = np.argmax(probabilities, axis=1).astype(np.int32)
-                prediction_colors = np.array([to_rgb(COLOURS[int(p)]) for p in predictions])
+                prediction_colors = np.array([to_rgb(COLOURS[int(p) + 1]) for p in predictions])
 
                 if self.verbose:
                     reports = str(i) + "-" + filename + ": "
@@ -415,6 +418,7 @@ class PartNetSolver(TFSolver):
 if __name__ == '__main__':
     t = time.time()
     FLAGS = parse_args()
+    MAX_LABEL = FLAGS.MODEL.nout
     compute_graph = ComputeGraphSeg(FLAGS)
     builder_op = build_solver_given_lr if FLAGS.SOLVER.lr_type == 'plateau' else build_solver
     solver = PartNetSolver(FLAGS, compute_graph, builder_op)
