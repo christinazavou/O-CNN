@@ -12,7 +12,7 @@ from ocnn import *
 from learning_rate import LRFactory
 from tensorflow.python.client import timeline
 
-tf.compat.v1.enable_eager_execution()
+#tf.compat.v1.enable_eager_execution()
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Add config
