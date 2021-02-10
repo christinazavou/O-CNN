@@ -68,7 +68,7 @@ _C.DATA.train.clip = 0.05
 _C.DATA.train.location = ''  # The data location
 _C.DATA.train.label_location = ''  # The data label location
 _C.DATA.train.file_list = ''  # file with data to load, model (classification) label
-_C.DATA.train.shuffle = 1000  # The shuffle size
+_C.DATA.train.shuffle = True # Whether to shuffle data or not
 _C.DATA.train.take = -1  # Use at most `take` elements from this dataset
 _C.DATA.train.batch_size = 32  # Training data batch size
 _C.DATA.train.mask_ratio = 0.0  # Mask out some points for faster training #features
@@ -179,9 +179,9 @@ def parse_args(backup=True):
 
     if FLAGS.SOLVER.run == 'test':
         FLAGS.defrost()
-        if FLAGS.DATA.test.shuffle != 0:
-            warnings.warn("Running test phase with non zero shuffle. Setting shuffle to 0!!!")
-            FLAGS.DATA.test.shuffle = 0
+        if FLAGS.DATA.test.shuffle:
+            warnings.warn("Running test phase with shuffle activated. Deactivating shuffle!!!")
+            FLAGS.DATA.test.shuffle = False
         FLAGS.freeze()
     return FLAGS
 
@@ -201,7 +201,7 @@ def override_some_flags(filename):
     FLAGS.DATA.test.node_dis = True
     FLAGS.DATA.test.location = filename
     FLAGS.DATA.test.batch_size = 1
-    FLAGS.DATA.test.shuffle = 0
+    FLAGS.DATA.test.shuffle = False
     # 'return_iter': True,
     FLAGS.DATA.test.take = -1
     FLAGS.DATA.test.return_pts = True
