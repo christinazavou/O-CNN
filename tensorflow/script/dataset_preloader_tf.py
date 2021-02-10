@@ -183,7 +183,7 @@ def get_octree(self, args):
     return self.points2octree(ocnn_pts), cl_l, ocnn_pts, name
 
 
-class DataLoader:
+class DataPreLoader:
     def __init__(self, flags, nout):
 
         def load_points_file(filename):
@@ -263,6 +263,15 @@ class DataLoader:
         # py = psutil.Process(os.getpid())
         # memory_usage = py.memory_info()[0] / math.pow(1024, 3)
         # print(memory_usage);
+        idxs = np.tile(np.arange(self.tfrecord_num), self.flags.rot_num).astype(np.int32)
+        rots = np.repeat(np.arange(self.flags.rot_num), self.tfrecord_num).astype(np.float32)
+
+        self.dataset = tf.data.Dataset.from_tensor_slices((idxs, rots)).take(-1)
+        if self.flags.shuffle > 0: self.dataset = self.dataset.shuffle(self.tfrecord_num * self.flags.rot_num)
+        for i in self.dataset:
+            print(i)
+        self.itr = self.dataset.repeat().batch(self.flags.batch_size).prefetch(
+            self.flags.batch_size * 2).make_one_shot_iterator()
 
     def getter(self):
         return self
@@ -272,9 +281,4 @@ class DataLoader:
         idxs = np.tile(np.arange(self.tfrecord_num), self.flags.rot_num).astype(np.int32)
         rots = np.repeat(np.arange(self.flags.rot_num), self.tfrecord_num).astype(np.float32)
 
-        dataset = tf.data.Dataset.from_tensor_slices((idxs, rots)).take(-1)
-        if self.flags.shuffle > 0: dataset = dataset.shuffle(self.tfrecord_num * self.flags.rot_num)
-        itr = dataset.repeat().batch(self.flags.batch_size).prefetch(
-            self.flags.batch_size * 2).make_one_shot_iterator()
-
-        return itr if return_iter else itr.get_next()
+        return self.itr if return_iter else self.itr.get_next()
