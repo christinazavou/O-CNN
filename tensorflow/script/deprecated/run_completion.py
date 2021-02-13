@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from config import parse_args, FLAGS
 from tfsolver import TFSolver
-from dataset import DatasetFactory
+from deprecated.dataset import DatasetFactory
 from deprecated.network_completion import CompletionResnet
 from ocnn import l2_regularizer
 sys.path.append('../..')

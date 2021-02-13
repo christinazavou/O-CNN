@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 # import psutil
 
-sys.path.append("..")
+sys.path.append("../..")
 from libs import *
 
 PI = math.pi
@@ -171,6 +171,7 @@ def merge_octrees(octrees, *args):
 def get_octree(self, args):
     idx = args[0]
     rot = args[1]
+    print(idx,rot)
     pts = self.points.read(idx)
     nrms = self.normals.read(idx)
     # if features are a scalar they are ignored in octree creation script
@@ -276,9 +277,6 @@ class DataPreLoader:
     def getter(self):
         return self
 
-    def __call__(self, return_iter=True, *args, **kwargs):
-
-        idxs = np.tile(np.arange(self.tfrecord_num), self.flags.rot_num).astype(np.int32)
-        rots = np.repeat(np.arange(self.flags.rot_num), self.tfrecord_num).astype(np.float32)
+    def __call__(self, return_iter=False, *args, **kwargs):
 
         return self.itr if return_iter else self.itr.get_next()

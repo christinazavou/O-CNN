@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from config import parse_args
 from tfsolver import TFSolver
-from dataset import DatasetFactory
+from deprecated.dataset import DatasetFactory
 from network_factory import cls_network
 from ocnn import loss_functions
 

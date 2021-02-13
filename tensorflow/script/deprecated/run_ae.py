@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 from config import parse_args
 from tfsolver import TFSolver
-from dataset import DatasetFactory
+from deprecated.dataset import DatasetFactory
 from deprecated.network_ae import make_autoencoder
 from ocnn import l2_regularizer
 

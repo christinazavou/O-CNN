@@ -6,7 +6,7 @@ import tensorflow as tf
 
 # tf.compat.v1.enable_eager_execution()
 
-sys.path.append("..")
+sys.path.append("../..")
 from libs import bounding_sphere, points2octree, \
     custom_transform_points, transform_points, octree_batch, normalize_points
 

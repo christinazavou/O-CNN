@@ -1,7 +1,7 @@
 import tensorflow as tf
 from config import parse_args
 from tfsolver import TFSolver
-from dataset import DatasetFactory
+from deprecated.dataset import DatasetFactory
 from learning_rate import LRFactory
 from network_hrnet import HRNet
 from deprecated.mid_loss import ShapeLoss, PointLoss
