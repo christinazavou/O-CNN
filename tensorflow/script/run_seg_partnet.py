@@ -21,7 +21,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 CATEGORIES = ANNFASS_LABELS
 COLOURS = ANNFASS_COLORS
-best_metric_dict = {"acc": 0.0, "loss": 1e100, "iou": 0.0}
+best_metric_dict = {"accu": 0.0, "total_loss": 1e100, "iou": 0.0}  # TODO store last values in ckpt & restore them
 DO_NOT_AVG = ["intsc_", "union_", "iou"]
 TRAIN_DATA = DataLoader()
 TEST_DATA = DataLoader()
@@ -247,24 +247,16 @@ class PartNetSolver(TFSolver):
         return avg_results
 
     def save_ckpt(self, dc, sess, iter):
-        if dc['iou'] > best_metric_dict['iou']:
-            best_metric_dict['iou'] = dc['iou']
-            self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, 'best_iou.ckpt'),
-                               write_meta_graph=False)
-        if dc['accu'] > best_metric_dict['acc']:
-            best_metric_dict['acc'] = dc['accu']
-            self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, "best_acc.ckpt"),
-                               write_meta_graph=False)
-        if dc['total_loss'] < best_metric_dict['loss']:
-            best_metric_dict['loss'] = dc['total_loss']
-            self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, "best_loss.ckpt"),
-                               write_meta_graph=False)
-
         with open(os.path.join(self.best_ckpt_path, "evaluation_report.txt"), 'a') as f:
             f.write('---- EPOCH %04d EVALUATION ----\n' % (iter))
-            f.write('eval accuracy: %f\n' % (dc['accu']))
-            f.write('eval iou: %f\n' % (dc['iou']))
-            f.write('eval loss: %f\n' % (dc['total_loss']))
+
+            for key in best_metric_dict.keys():
+                if dc[key] > best_metric_dict[key]:
+                    best_metric_dict[key] = dc[key]
+                    self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, 'best_' + key + '.ckpt'),
+                                       write_meta_graph=False)
+
+                f.write('eval ' + key + ': %f\n' % (dc[key]))
 
     def train(self):
         global TRAIN_DATA, TEST_DATA
