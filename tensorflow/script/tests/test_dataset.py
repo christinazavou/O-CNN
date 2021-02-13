@@ -5,7 +5,7 @@ import tensorflow as tf
 import numpy as np
 
 from config import parse_args
-from dataset import DatasetFactory
+from deprecated.dataset import DatasetFactory
 from libs import octree_property, points_property
 
 

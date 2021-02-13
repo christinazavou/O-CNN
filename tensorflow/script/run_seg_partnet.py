@@ -1,12 +1,14 @@
 import time
-from config import parse_args, FLAGS, parse_class_weights
+from config import parse_args, parse_class_weights
 from seg_helper import *
 from tfsolver import TFSolver, DELIMITER
 from network_factory import seg_network
-from dataset_preloader_tf import *
+from dataset_iterator import *
+from dataset_preloader import *
+from data_augmentation import *
 from libs import points_property, octree_property, octree_decode_key
 import numpy as np
-from tqdm import tqdm
+from tqdm import trange
 import os
 from ocnn import *
 from learning_rate import LRFactory
@@ -17,12 +19,20 @@ from tensorflow.python.client import timeline
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Add config
 
-# FLAGS.LOSS.point_wise = True
-# FLAGS.LOSS.point_wise = False
 CATEGORIES = ANNFASS_LABELS
 COLOURS = ANNFASS_COLORS
 best_metric_dict = {"acc": 0.0, "loss": 1e100, "iou": 0.0}
 DO_NOT_AVG = ["intsc_", "union_", "iou"]
+TRAIN_DATA = DataLoader()
+TEST_DATA = DataLoader()
+
+
+def read_datasets(flags):
+    global TRAIN_DATA, TEST_DATA
+    if flags.SOLVER.run != 'test':
+        TRAIN_DATA = TRAIN_DATA(flags.DATA.train, flags.MODEL.nout, flags.MODEL.channel, True)
+    if flags.SOLVER.run != "timeline":
+        TEST_DATA = TEST_DATA(flags.DATA.test, flags.MODEL.nout, flags.MODEL.channel, True)
 
 
 # get the label and pts
@@ -51,7 +61,7 @@ def get_point_info(points, mask_ratio=0, mask=-1):
 
 
 def tf_IoU_per_shape(logits, label, class_num, mask=-1, ignore=666):
-    # -1 CAN EXIST IF LABELS COME FROM OCTREE_PROPERTY('LABEL') ...
+    # -1 CAN EXIST IF LABELS COME FROM OCTREE_PROPERTY('LABEL')
     with tf.name_scope('IoU'):
         # mask out unwanted labels (empty and undetermined)
         label_mask = tf.logical_and(tf.not_equal(label, mask), tf.not_equal(label, ignore))
@@ -73,16 +83,18 @@ class ComputeGraphSeg:
         self.flags = flags
         self.weights = ComputeGraphSeg.set_weights(parse_class_weights(flags))
 
+        self.points = tf.placeholder(dtype=tf.float32, name="batch_points")
+        self.normals = tf.placeholder(dtype=tf.float32, name="point_nrms")
+        self.features = tf.placeholder(dtype=tf.float32, name="point_fts")
+        self.labels = tf.placeholder(dtype=tf.float32, name="point_labels")
+        self.rot = tf.placeholder(dtype=tf.float32, shape=[None], name="point_rotation")
+
     @staticmethod
     def set_weights(w_list):
         weights = tf.constant(w_list)
         return weights
 
-    def create_dataset(self, flags_data, nout):
-        return DataLoader(flags_data, nout).getter()
-
     def __call__(self, dataset='train', training=True, reuse=False, gpu_num=1):
-
         if gpu_num != 1:
             raise Exception('Since I made a dict there is no implementation for multi gpu support')
 
@@ -92,20 +104,10 @@ class ComputeGraphSeg:
         FLAGS = self.flags
         with tf.device('/cpu:0'):
             flags_data = FLAGS.DATA.train if dataset == 'train' else FLAGS.DATA.test
-            data_container = self.create_dataset(flags_data, FLAGS.MODEL.nout)
-            data_iter = data_container()
-
+            data_aug = DataAugmentor(flags_data)
         with tf.device('/gpu:0'):
             with tf.name_scope('device_0'):
-                batch = data_iter.get_next()
-                batch = tf.map_fn(lambda x: get_octree(data_container, x), batch,
-                                  dtype=(tf.string, tf.int64, tf.string, tf.string))
-                octree = merge_octrees(batch[0])
-                if self.flags.SOLVER.run == 'train':
-                    _, points, _ = batch[1:]
-                else:
-                    _, points, filenames = batch[1:]
-                    debug_checks["{}/filenames".format(tf.get_variable_scope().name)] = filenames
+                octree, points = data_aug(self.points, self.normals, self.features, self.labels, self.rot)
 
                 print("mask ratio for {} is {}".format(dataset, flags_data.mask_ratio))
                 pts, label, dc = get_point_info(points, flags_data.mask_ratio)
@@ -156,6 +158,7 @@ def get_probabilities(logits):
 # define the solver
 class PartNetSolver(TFSolver):
     def __init__(self, flags, compute_graph, build_solver):
+        self.flags = flags
         super(PartNetSolver, self).__init__(flags.SOLVER, compute_graph, build_solver)
         self.num_class = flags.LOSS.num_class  # used to calculate the IoU
 
@@ -207,12 +210,27 @@ class PartNetSolver(TFSolver):
             with tf.device('/cpu:0'):
                 self.test_tensors_dict = average_tensors(self.test_tensors_dict)
 
-    def run_k_test_iterations(self, sess):
-        print("Evaluation (val split)")
+    def run_k_test_iterations(self, sess, test_iter):
+        print("Running validation...")
+        global TEST_DATA
         avg_results_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
-        for i in range(self.flags.test_iter):
+        batch = test_iter()
+        for _ in range(self.flags.test_iter):
+            idxs, rots = sess.run(batch)
+            pts, nrms, fts, labels, filenames = TEST_DATA.points[idxs], \
+                                                TEST_DATA.normals[idxs], \
+                                                TEST_DATA.features[idxs] if TEST_DATA.has_features else 0.0, \
+                                                TEST_DATA.point_labels[idxs], \
+                                                TEST_DATA.filenames[idxs]
+
             # iter_results_dict, iter_debug_checks = sess.run([self.test_tensors_dict, self.test_debug_checks])
-            iter_results_dict = sess.run(self.test_tensors_dict)
+            iter_results_dict = sess.run(self.test_tensors_dict,
+                                         feed_dict={self.graph.points: pts,
+                                                    self.graph.normals: nrms,
+                                                    self.graph.features: fts,
+                                                    self.graph.labels: labels,
+                                                    self.graph.rot: rots
+                                                    })
 
             for key, value in iter_results_dict.items():
                 avg_results_dict[key] += value
@@ -249,6 +267,10 @@ class PartNetSolver(TFSolver):
             f.write('eval loss: %f\n' % (dc['total_loss']))
 
     def train(self):
+        global TRAIN_DATA, TEST_DATA
+        train_iter = DataIterator(TRAIN_DATA.flags, TRAIN_DATA.tfrecord_num)
+        test_iter = DataIterator(TEST_DATA.flags, TEST_DATA.tfrecord_num)
+
         # build the computation graph
         self.build_train_graph()
 
@@ -272,6 +294,7 @@ class PartNetSolver(TFSolver):
 
             print('Initialize ...')
             self.initialize(sess)
+
             if ckpt:
                 self.restore(sess, ckpt)
 
@@ -286,17 +309,30 @@ class PartNetSolver(TFSolver):
                 self.flags.freeze()
 
             self.lr_metric = LRFactory(self.flags)
+            batch = train_iter()
 
-            for i in tqdm(range(start_iter, self.flags.max_iter + 1), ncols=80):
+            for i in trange(start_iter, self.flags.max_iter + 1, ncols=80, desc="Train"):
+                idxs, rots = sess.run(batch)
+                pts, nrms, fts, labels, filenames = TRAIN_DATA.points[idxs], \
+                                                    TRAIN_DATA.normals[idxs], \
+                                                    TRAIN_DATA.features[idxs] if TRAIN_DATA.has_features else 0.0, \
+                                                    TRAIN_DATA.point_labels[idxs], \
+                                                    TRAIN_DATA.filenames[idxs]
                 # training
                 summary_train, _, curr_loss, curr_lr = sess.run(
-                    [self.summ_train, self.train_op, self.total_loss, self.lr])
+                    [self.summ_train, self.train_op, self.total_loss, self.lr],
+                    feed_dict={self.graph.points: pts,
+                               self.graph.normals: nrms,
+                               self.graph.features: fts,
+                               self.graph.labels: labels,
+                               self.graph.rot: rots
+                               })
                 summary_writer.add_summary(summary_train, i)
 
                 # testing
                 if i % self.flags.test_every_iter == 0:
                     # run testing average
-                    avg_test_dict = self.run_k_test_iterations(sess)
+                    avg_test_dict = self.run_k_test_iterations(sess, test_iter)
 
                     # save best acc,loss and iou network snapshots
                     self.save_ckpt(avg_test_dict, sess, i / self.flags.test_every_iter)
@@ -316,6 +352,8 @@ class PartNetSolver(TFSolver):
             print('Training done!')
 
     def timeline(self):
+        global TRAIN_DATA
+        train_iter = DataIterator(TRAIN_DATA.flags, TRAIN_DATA.tfrecord_num)
         # build the computation graph
         self.build_train_graph()
 
@@ -329,25 +367,37 @@ class PartNetSolver(TFSolver):
             summary_writer = tf.summary.FileWriter(self.flags.logdir, sess.graph)
             print('Initialize ...')
             self.initialize(sess)
-
+            batch = train_iter()
             print('Start profiling ...')
-            for i in tqdm(range(0, timeline_skip + timeline_iter), ncols=80):
-                if i < timeline_skip:
-                    summary_alw, _ = sess.run([self.summ_train, self.train_op])
-                else:
-                    summary, _ = sess.run([self.summ_train, self.train_op],
-                                          options=options, run_metadata=run_metadata)
-                    if i == timeline_skip + timeline_iter - 1:
-                        # summary_writer.add_run_metadata(run_metadata, 'step_%d'%i, i)
-                        # write timeline to a json file
-                        fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-                        chrome_trace = fetched_timeline.generate_chrome_trace_format()
-                        with open(os.path.join(self.flags.logdir, 'timeline.json'), 'w') as f:
-                            f.write(chrome_trace)
+            for i in trange(0, timeline_skip + timeline_iter, ncols=80, desc="Timeline"):
+                idxs, rots = sess.run(batch)
+                pts, nrms, fts, labels, filenames = TRAIN_DATA.points[idxs], \
+                                                    TRAIN_DATA.normals[idxs], \
+                                                    TRAIN_DATA.features[idxs] if TRAIN_DATA.has_features else 0.0, \
+                                                    TRAIN_DATA.point_labels[idxs], \
+                                                    TRAIN_DATA.filenames[idxs]
+
+                summary, _ = sess.run([self.summ_train, self.train_op],
+                                      options=options, run_metadata=run_metadata,
+                                      feed_dict={self.graph.points: pts,
+                                                 self.graph.normals: nrms,
+                                                 self.graph.features: fts,
+                                                 self.graph.labels: labels,
+                                                 self.graph.rot: rots
+                                                 })
+                if i == timeline_skip + timeline_iter - 1:
+                    # summary_writer.add_run_metadata(run_metadata, 'step_%d'%i, i)
+                    # write timeline to a json file
+                    fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+                    chrome_trace = fetched_timeline.generate_chrome_trace_format()
+                    with open(os.path.join(self.flags.logdir, 'timeline.json'), 'w') as f:
+                        f.write(chrome_trace)
                 summary_writer.add_summary(summary, i)
             print('Profiling done!')
 
     def test(self):
+        global TEST_DATA
+        test_iter = DataIterator(TEST_DATA.flags, TEST_DATA.tfrecord_num)
         # build graph
         self.build_test_graph()
 
@@ -376,15 +426,28 @@ class PartNetSolver(TFSolver):
             if not os.path.exists(probabilities_dir):
                 os.makedirs(probabilities_dir)
 
+            filenames = TEST_DATA.filenames
+            batch = test_iter()
             print('Start testing ...')
             for i in range(0, self.flags.test_iter):
-                iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks])
+                idxs, rots = sess.run(batch)
+                pts, nrms, fts, labels = TEST_DATA.points[idxs], \
+                                         TEST_DATA.normals[idxs], \
+                                         TEST_DATA.features[idxs] if TEST_DATA.has_features else 0.0, \
+                                         TEST_DATA.point_labels[idxs]
+                iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks],
+                                                           feed_dict={self.graph.points: pts,
+                                                                      self.graph.normals: nrms,
+                                                                      self.graph.features: fts,
+                                                                      self.graph.labels: labels,
+                                                                      self.graph.rot: rots
+                                                                      })
                 iter_test_result_dict = self.result_callback(iter_test_result_dict)
 
-                points, labels, probabilities, filename = iter_tdc['/pts(xyz)'][:, 0:3], iter_tdc['/label'], iter_tdc[
-                    '/probabilities'], str(iter_tdc['/filenames'][0])
+                points, labels, probabilities = iter_tdc['/pts(xyz)'][:, 0:3], iter_tdc['/label'], iter_tdc[
+                    '/probabilities']
+                filename = filenames[i]
                 filename = os.path.basename(filename)
-                # filename = filename[0:filename.rfind("_")]
                 predictions = np.argmax(probabilities, axis=1).astype(np.int32) + 1  # remap labels to initial values
                 prediction_colors = np.array([to_rgb(COLOURS[int(p)]) for p in predictions])
 
@@ -421,6 +484,7 @@ class PartNetSolver(TFSolver):
 if __name__ == '__main__':
     t = time.time()
     FLAGS = parse_args()
+    read_datasets(FLAGS)
     compute_graph = ComputeGraphSeg(FLAGS)
     builder_op = build_solver_given_lr if FLAGS.SOLVER.lr_type == 'plateau' else build_solver
     solver = PartNetSolver(FLAGS, compute_graph, builder_op)
