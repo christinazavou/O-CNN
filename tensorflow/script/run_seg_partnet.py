@@ -210,20 +210,18 @@ class PartNetSolver(TFSolver):
             with tf.device('/cpu:0'):
                 self.test_tensors_dict = average_tensors(self.test_tensors_dict)
 
-    def run_k_test_iterations(self, sess, test_iter):
+    def run_k_test_iterations(self, sess, test_batch):
         print("Running validation...")
         global TEST_DATA
         avg_results_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
-        batch = test_iter()
         for _ in range(self.flags.test_iter):
-            idxs, rots = sess.run(batch)
+            idxs, rots = sess.run(test_batch)
             pts, nrms, fts, labels, filenames = TEST_DATA.points[idxs], \
                                                 TEST_DATA.normals[idxs], \
                                                 TEST_DATA.features[idxs] if TEST_DATA.has_features else 0.0, \
                                                 TEST_DATA.point_labels[idxs], \
                                                 TEST_DATA.filenames[idxs]
 
-            # iter_results_dict, iter_debug_checks = sess.run([self.test_tensors_dict, self.test_debug_checks])
             iter_results_dict = sess.run(self.test_tensors_dict,
                                          feed_dict={self.graph.points: pts,
                                                     self.graph.normals: nrms,
@@ -272,6 +270,7 @@ class PartNetSolver(TFSolver):
 
         ckpt_path = os.path.join(self.flags.logdir, 'model')
         self.best_ckpt_path = os.path.join(self.flags.logdir, 'best_ckpts')
+        os.makedirs(self.best_ckpt_path,exist_ok=True)
         if self.flags.ckpt:  # restore from the provided checkpoint
             ckpt = self.flags.ckpt
         else:  # restore from the breaking pointer
@@ -302,6 +301,7 @@ class PartNetSolver(TFSolver):
 
             self.lr_metric = LRFactory(self.flags)
             batch = train_iter()
+            test_batch=test_iter()
 
             for i in trange(start_iter, self.flags.max_iter + 1, ncols=80, desc="Train"):
                 idxs, rots = sess.run(batch)
@@ -324,7 +324,7 @@ class PartNetSolver(TFSolver):
                 # testing
                 if i % self.flags.test_every_iter == 0:
                     # run testing average
-                    avg_test_dict = self.run_k_test_iterations(sess, test_iter)
+                    avg_test_dict = self.run_k_test_iterations(sess, test_batch)
 
                     # save best acc,loss and iou network snapshots
                     self.save_ckpt(avg_test_dict, sess, i / self.flags.test_every_iter)
