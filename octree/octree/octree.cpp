@@ -71,7 +71,7 @@ std::string Octree::get_binary_string() const {
   return std::string(buffer_.cbegin(), buffer_.cend());
 }
 
-void Octree::build(const OctreeInfo& octree_info, const Points& point_cloud) {
+void Octree::build(const OctreeInfo& octree_info, const Points& point_cloud,const bool majority) {
   // init
   clear(octree_info.depth());
   oct_info_ = octree_info;
@@ -90,9 +90,15 @@ void Octree::build(const OctreeInfo& octree_info, const Points& point_cloud) {
 
   // set nnum_[], nnum_cum_[], nnum_nempty_[] and ptr_dis_[]
   calc_node_num();
-
-  // average the signal for the last octree layer
-  calc_signal(point_cloud, pts_scaled, sorted_idx, unique_idx);
+//   std::cout<<"majority in octree build: "<<majority<<std::endl;
+  if(majority){
+      //calculate average signal of points with most frequent label * only!!! *
+      calc_majority_signal(point_cloud, pts_scaled, sorted_idx, unique_idx);
+  }
+  else{
+    // average the signal for the last octree layer
+    calc_signal(point_cloud, pts_scaled, sorted_idx, unique_idx);
+  }
 
   // average the signal for the other octree layers
   if (oct_info_.locations(OctreeInfo::kFeature) == -1) {
@@ -427,6 +433,171 @@ void Octree::calc_signal(const Points& point_cloud, const vector<float>& pts_sca
         int h = sorted_idx[j];
         for (int c = 0; c < 3; ++c) {
           avg_pt[c] += pts_scaled[3 * h + c];
+        }
+      }
+
+      float dis[4] = {0.0f, 0.0f, 0.0f, 0.0f };
+      float factor = unique_idx[t + 1] - unique_idx[t] + ESP; // points number
+      for (int c = 0; c < 3; ++c) {
+        avg_pt[c] /= factor;
+
+        float fract_part = 0.0f, int_part = 0.0f;
+        fract_part = std::modf(avg_pt[c], &int_part);
+
+        dis[c] = fract_part - 0.5f;
+        if (normals != nullptr) {
+          dis[3] += dis[c] * avg_normals_[depth][c * nnum + i];
+        } else {
+          dis[3] = 1.0f;
+        }
+
+        avg_pts_[depth][c * nnum + i] = avg_pt[c];
+      }
+
+      if (normals != nullptr) {
+        displacement[i] = dis[3] * mul;            // !!! note the *mul* !!!
+      } else {
+        for (int c = 0; c < 3; ++c) {
+          displacement[c * nnum + i] = dis[c];
+        }
+        displacement[3 * nnum + i] = dis[3] * mul; // !!! note the *mul* !!!
+      }
+    }
+  }
+}
+
+// compute the average signal of most frequent label's points for the last octree layer
+void Octree::calc_majority_signal(const Points& point_cloud, const vector<float>& pts_scaled,
+    const vector<uintk>& sorted_idx, const vector<uintk>& unique_idx) {
+//    std::cout<<"in majority signal calculation"<<std::endl;
+  int depth = oct_info_.depth();
+  const float* normals = point_cloud.ptr(PointsInfo::kNormal);
+  const float* features = point_cloud.ptr(PointsInfo::kFeature);
+  const float* labels = point_cloud.ptr(PointsInfo::kLabel);
+  const int nnum = oct_info_.node_num(depth);
+  const vector<int>& children = children_[depth];
+
+  //find most frequent label
+  if (labels != nullptr) {
+    // the channel of label is fixed as 1
+    avg_labels_[depth].assign(nnum, -1.0f);   // initialize as -1
+    const int npt = point_cloud.info().pt_num();
+    max_label_ = static_cast<int>(*std::max_element(labels, labels + npt)) + 1;
+
+    #pragma omp parallel for
+    for (int i = 0; i < nnum; i++) {
+      int t = children[i];
+      if (node_type(t) == kLeaf) continue;
+
+      int valid_num = 0;
+      vector<int> avg_label(max_label_, 0);
+      for (uintk j = unique_idx[t]; j < unique_idx[t + 1]; j++) {
+        int h = sorted_idx[j];
+        int l = static_cast<int>(labels[h]);
+        if (l < 0) { continue; }  // ignore label empty
+//        std::cout<<l<<std::endl;
+        avg_label[l] += 1;
+        valid_num += 1;
+      }
+      if (valid_num > 0) {
+//          for (auto i = avg_label.begin(); i != avg_label.end(); ++i)
+//              std::cout << *i << ' ';
+
+          float label=static_cast<float>(std::distance(avg_label.begin(),
+                                                       std::max_element(avg_label.begin(), avg_label.end())));
+//          std::cout<<"Voxel label: "<<label<<std::endl;
+          avg_labels_[depth][i] = label;
+      }
+    }
+  }
+
+  //compute avg features (& normals) of points with most frequent label
+  if (normals != nullptr) {
+    const int channel = point_cloud.info().channel(PointsInfo::kNormal);
+    avg_normals_[depth].assign(channel * nnum, 0.0f);
+
+    #pragma omp parallel for
+    for (int i = 0; i < nnum; i++) {
+      int t = children[i];
+      if (node_type(t) == kLeaf) continue;
+
+      vector<float> avg_normal(channel, 0.0f);
+//      std::cout<<"voxel label: "<<avg_labels_[depth][i]<<std::endl;
+      for (uintk j = unique_idx[t]; j < unique_idx[t + 1]; j++) {
+        int h = sorted_idx[j];
+        int l = static_cast<int>(labels[h]);
+//        std::cout<<"l: "<<l<<std::endl;
+        if (l ==avg_labels_[depth][i]){ //point with most freq. label
+            for (int c = 0; c < channel; ++c) {
+              avg_normal[c] += normals[channel * h + c];
+            }
+        }
+      }
+
+      float factor = norm2(avg_normal);
+      if (factor < 1.0e-6f) {
+        int h = sorted_idx[unique_idx[t]];
+        for (int c = 0; c < channel; ++c) {
+          avg_normal[c] = normals[channel * h + c];
+        }
+        factor = norm2(avg_normal) + ESP;
+      }
+//      std::cout<<"factor: "<<factor<<std::endl;
+      for (int c = 0; c < channel; ++c) {
+        avg_normals_[depth][c * nnum + i] = avg_normal[c] / factor;
+//        std::cout<<"avg_normal "<<c<<": "<<avg_normals_[depth][c*nnum+i]<<std::endl;
+      }
+    }
+  }
+
+  if (features != nullptr) {
+    const int channel = point_cloud.info().channel(PointsInfo::kFeature);
+    avg_features_[depth].assign(channel * nnum, 0.0f);
+
+    #pragma omp parallel for
+    for (int i = 0; i < nnum; i++) {
+      int t = children[i];
+      if (node_type(t) == kLeaf) continue;
+
+      vector<float> avg_feature(channel, 0.0f);
+      for (uintk j = unique_idx[t]; j < unique_idx[t + 1]; j++) {
+        int h = sorted_idx[j];
+        int l = static_cast<int>(labels[h]);
+        if (l ==avg_labels_[depth][i]){ //point with most freq. label
+            for (int c = 0; c < channel; ++c) {
+              avg_feature[c] += features[channel * h + c];
+            }
+        }
+      }
+
+      float factor = unique_idx[t + 1] - unique_idx[t] + ESP;
+      for (int c = 0; c < channel; ++c) {
+        avg_features_[depth][c * nnum + i] = avg_feature[c] / factor;
+      }
+    }
+  }
+
+  if (oct_info_.has_displace() || oct_info_.save_pts()) {
+    const int channel = 3;
+    const float mul = 1.1547f; // = 2.0f / sqrt(3.0f)
+    avg_pts_[depth].assign(nnum * channel, 0.0f);
+    int channel_dis = normals == nullptr ? 4 : 1;
+    vector<float>& displacement = displacement_[depth];
+    displacement.assign(channel_dis * nnum, 0.0f);
+
+    #pragma omp parallel for
+    for (int i = 0; i < nnum; i++) {
+      int t = children[i];
+      if (node_type(t) == kLeaf) continue;
+
+      float avg_pt[3] = { 0.0f, 0.0f, 0.0f };
+      for (uintk j = unique_idx[t]; j < unique_idx[t + 1]; j++) {
+        int h = sorted_idx[j];
+        int l = static_cast<int>(labels[h]);
+        if (l ==avg_labels_[depth][i]){ //point with most freq. label
+            for (int c = 0; c < 3; ++c) {
+              avg_pt[c] += pts_scaled[3 * h + c];
+            }
         }
       }
 

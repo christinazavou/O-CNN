@@ -11,7 +11,7 @@ PI = math.pi
 class Points2Octree:
     def __init__(self, depth, full_depth=2, node_dis=False, node_feat=False,
                  split_label=False, adaptive=False, adp_depth=4, th_normal=0.1,
-                 save_pts=False, **kwargs):
+                 save_pts=False, use_majority=False, **kwargs):
         self.depth = depth
         self.full_depth = full_depth
         self.node_dis = node_dis  # NOTE: If you want feature channel 4 this needs to be True, otherwise False
@@ -21,13 +21,14 @@ class Points2Octree:
         self.adp_depth = adp_depth
         self.th_normal = th_normal
         self.save_pts = save_pts
+        self.use_majority = use_majority  # avg. over all points or only those with most frequent label
 
     def __call__(self, points, *args):
         octree = points2octree(in_points=points, depth=self.depth, full_depth=self.full_depth,
                                node_dis=self.node_dis, node_feature=self.node_feat,
                                split_label=self.split_label, adaptive=self.adaptive,
                                adp_depth=self.adp_depth, th_normal=self.th_normal,
-                               save_pts=self.save_pts)
+                               save_pts=self.save_pts, use_majority=self.use_majority)
         return octree
 
 
@@ -123,12 +124,13 @@ class DataAugmentor:
         pts_labels: args[3]
         rotation: args[-1]
         """
-        aug_pts, aug_nrms = data_augmentation(args[0], args[1], self.flags.sigma, self.flags.clip, self.theta * args[-1])
+        aug_pts, aug_nrms = data_augmentation(args[0], args[1], self.flags.sigma, self.flags.clip,
+                                              self.theta * args[-1])
         ocnn_pts = points_new(aug_pts, aug_nrms, args[2], args[3])
         return self.points2octree(ocnn_pts), ocnn_pts
 
     def __init__(self, flags):
-        self.flags=flags
+        self.flags = flags
         self.theta = 2 * PI / self.flags.rot_num  # rotation angle in radians
         self.points2octree = Points2Octree(**flags)
 

@@ -68,6 +68,8 @@ _C.DATA.train.clip = 0.05
 _C.DATA.train.location = ''  # The data location
 _C.DATA.train.label_location = ''  # The data label location
 _C.DATA.train.file_list = ''  # file with data to load, model (classification) label
+_C.DATA.train.use_majority= False # whether to compute octant features only on points with most frequent label or all
+# of them
 _C.DATA.train.shuffle = True # Whether to shuffle data or not
 _C.DATA.train.take = -1  # Use at most `take` elements from this dataset
 _C.DATA.train.batch_size = 32  # Training data batch size

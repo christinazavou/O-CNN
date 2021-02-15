@@ -24,6 +24,7 @@ REGISTER_OP("PointsToOctree")
     .Attr("extrapolate: bool=False")
     .Attr("save_pts: bool=False")
     .Attr("key2xyz: bool=False")
+    .Attr("use_majority: bool=False")
     .Output("out_octree: string")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
       c->set_output(0, c->input(0));
@@ -36,8 +37,6 @@ class PointsToOctreeOp : public OpKernel {
  public:
   explicit PointsToOctreeOp(OpKernelConstruction* context) :
     OpKernel(context) {
-//        std::cout<<"gerajgieojh"<<std::endl;
-
     OP_REQUIRES_OK(context, context->GetAttr("depth", &depth_));
     OP_REQUIRES_OK(context, context->GetAttr("full_depth", &full_depth_));
     OP_REQUIRES_OK(context, context->GetAttr("node_dis", &node_dis_));
@@ -50,6 +49,7 @@ class PointsToOctreeOp : public OpKernel {
     OP_REQUIRES_OK(context, context->GetAttr("extrapolate", &extrapolate_));
     OP_REQUIRES_OK(context, context->GetAttr("save_pts", &save_pts_));
     OP_REQUIRES_OK(context, context->GetAttr("key2xyz", &key2xyz_));
+    OP_REQUIRES_OK(context, context->GetAttr("use_majority", &use_majority_));
  }
 
   void Compute(OpKernelContext* context) override {
@@ -74,7 +74,7 @@ class PointsToOctreeOp : public OpKernel {
 
     // build the octree
     Octree octree_;
-    octree_.build(octree_info_, point_cloud_);
+    octree_.build(octree_info_, point_cloud_,use_majority_);
     const vector<char>& octree_buf = octree_.buffer();
 //    vector<float> V;
 //    vector<int> F;
@@ -102,6 +102,7 @@ class PointsToOctreeOp : public OpKernel {
   bool extrapolate_;
   bool save_pts_;
   bool key2xyz_;
+  bool use_majority_;
 };
 
 
