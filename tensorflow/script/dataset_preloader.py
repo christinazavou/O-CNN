@@ -6,6 +6,11 @@ import psutil
 from tqdm import tqdm
 
 
+def normalise_colour(pts_colour):
+    pts_colour = np.true_divide(pts_colour, 255.0)
+    return pts_colour
+
+
 class DataLoader:
     def __init__(self):
         self.points = []
@@ -74,6 +79,9 @@ class DataLoader:
                 raise ValueError(
                     "Number of features in input files and MODEL.channel parameter don't agree ({} vs {})".format(
                         self.features.shape[-1] + 3, channels))
+            if np.any(self.features > 1):
+                print("Normalising point colours...")
+                self.features = normalise_colour(self.features)
             self.has_features = True
         else:
             self.has_features = False
