@@ -45,13 +45,13 @@ class PointsNewOp : public OpKernel {
         vec.assign(ptr, ptr + num);
       }
     };
-//std::cout<<"gairosgjepoijhgoeprgkj"<<std::endl;
+
     vector<float> pts, normals, features, labels;
     get_data(pts, 0);
     get_data(normals, 1);
     get_data(features, 2);
     get_data(labels, 3);
-//    std::cout<<"feat: "<<features[0]<<" "<<features.size()<<std::endl;
+
     // create the point cloud
     Points point_cloud;
     bool succ=false;
@@ -59,7 +59,6 @@ class PointsNewOp : public OpKernel {
         succ = point_cloud.set_points(pts, normals, features, labels);
     else{
         succ = point_cloud.set_points(pts, normals,{}, labels);
-//        std::cout<<succ<<std::endl;
     }
 
     CHECK(succ) << "Error occurs when setting points";
