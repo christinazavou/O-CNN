@@ -21,7 +21,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 CATEGORIES = ANNFASS_LABELS
 COLOURS = ANNFASS_COLORS
-best_metric_dict = {"accu": 0.0, "total_loss": 1e100, "iou": 0.0}  # TODO store last values in ckpt & restore them
+best_metric_dict = {"accu": 0.0, "total_loss": 10e100, "iou": 0.0}  # TODO store last values in ckpt & restore them
 DO_NOT_AVG = ["intsc_", "union_", "iou"]
 TRAIN_DATA = DataLoader()
 TEST_DATA = DataLoader()
@@ -87,7 +87,7 @@ class ComputeGraphSeg:
         self.normals = tf.placeholder(dtype=tf.float32, name="point_nrms")
         self.features = tf.placeholder(dtype=tf.float32, name="point_fts")
         self.labels = tf.placeholder(dtype=tf.float32, name="point_labels")
-        self.rot = tf.placeholder(dtype=tf.float32, shape=[None], name="point_rotation")
+        self.rot = tf.placeholder(dtype=tf.float32, name="point_rotation")
 
     @staticmethod
     def set_weights(w_list):
@@ -218,7 +218,7 @@ class PartNetSolver(TFSolver):
             idxs, rots = sess.run(test_batch)
             pts, nrms, fts, labels, filenames = TEST_DATA.points[idxs], \
                                                 TEST_DATA.normals[idxs], \
-                                                TEST_DATA.features[idxs] if TEST_DATA.has_features else 0.0, \
+                                                TEST_DATA.features[idxs], \
                                                 TEST_DATA.point_labels[idxs], \
                                                 TEST_DATA.filenames[idxs]
 
@@ -249,10 +249,16 @@ class PartNetSolver(TFSolver):
             f.write('---- EPOCH %04d EVALUATION ----\n' % (iter))
 
             for key in best_metric_dict.keys():
-                if dc[key] > best_metric_dict[key]:
-                    best_metric_dict[key] = dc[key]
-                    self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, 'best_' + key + '.ckpt'),
-                                       write_meta_graph=False)
+                if not "loss" in key:
+                    if dc[key] > best_metric_dict[key]:
+                        best_metric_dict[key] = dc[key]
+                        self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, 'best_' + key + '.ckpt'),
+                                           write_meta_graph=False)
+                else:
+                    if dc[key] < best_metric_dict[key]:
+                        best_metric_dict[key] = dc[key]
+                        self.tf_saver.save(sess, save_path=os.path.join(self.best_ckpt_path, 'best_' + key + '.ckpt'),
+                                           write_meta_graph=False)
 
                 f.write('eval ' + key + ': %f\n' % (dc[key]))
 
@@ -270,7 +276,7 @@ class PartNetSolver(TFSolver):
 
         ckpt_path = os.path.join(self.flags.logdir, 'model')
         self.best_ckpt_path = os.path.join(self.flags.logdir, 'best_ckpts')
-        os.makedirs(self.best_ckpt_path,exist_ok=True)
+        os.makedirs(self.best_ckpt_path, exist_ok=True)
         if self.flags.ckpt:  # restore from the provided checkpoint
             ckpt = self.flags.ckpt
         else:  # restore from the breaking pointer
@@ -301,13 +307,13 @@ class PartNetSolver(TFSolver):
 
             self.lr_metric = LRFactory(self.flags)
             batch = train_iter()
-            test_batch=test_iter()
+            test_batch = test_iter()
 
             for i in trange(start_iter, self.flags.max_iter + 1, ncols=80, desc="Train"):
                 idxs, rots = sess.run(batch)
                 pts, nrms, fts, labels, filenames = TRAIN_DATA.points[idxs], \
                                                     TRAIN_DATA.normals[idxs], \
-                                                    TRAIN_DATA.features[idxs] if TRAIN_DATA.has_features else 0.0, \
+                                                    TRAIN_DATA.features[idxs], \
                                                     TRAIN_DATA.point_labels[idxs], \
                                                     TRAIN_DATA.filenames[idxs]
                 # training
@@ -365,7 +371,7 @@ class PartNetSolver(TFSolver):
                 idxs, rots = sess.run(batch)
                 pts, nrms, fts, labels, filenames = TRAIN_DATA.points[idxs], \
                                                     TRAIN_DATA.normals[idxs], \
-                                                    TRAIN_DATA.features[idxs] if TRAIN_DATA.has_features else 0.0, \
+                                                    TRAIN_DATA.features[idxs], \
                                                     TRAIN_DATA.point_labels[idxs], \
                                                     TRAIN_DATA.filenames[idxs]
 
@@ -394,7 +400,10 @@ class PartNetSolver(TFSolver):
         self.build_test_graph()
 
         # checkpoint
-        assert (self.flags.ckpt)  # the self.flags.ckpt should be provided
+        assert self.flags.ckpt, "Checkpoint was not provided!!!"  # the self.flags.ckpt should be provided
+        assert self.flags.test_iter == len(
+            TEST_DATA.filenames), "Test iterations does not match number of files provided ({} vs {})".format(
+            self.flags.test_iter, len(TEST_DATA.filenames))
         tf_saver = tf.train.Saver(max_to_keep=10)
         logdir = os.path.join(self.flags.logdir, os.path.basename(self.flags.ckpt).split(".")[0])
 
@@ -418,14 +427,13 @@ class PartNetSolver(TFSolver):
             if not os.path.exists(probabilities_dir):
                 os.makedirs(probabilities_dir)
 
-            filenames = TEST_DATA.filenames
             batch = test_iter()
             print('Start testing ...')
             for i in range(0, self.flags.test_iter):
                 idxs, rots = sess.run(batch)
                 pts, nrms, fts, labels = TEST_DATA.points[idxs], \
                                          TEST_DATA.normals[idxs], \
-                                         TEST_DATA.features[idxs] if TEST_DATA.has_features else 0.0, \
+                                         TEST_DATA.features[idxs],\
                                          TEST_DATA.point_labels[idxs]
                 iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks],
                                                            feed_dict={self.graph.points: pts,
@@ -436,10 +444,8 @@ class PartNetSolver(TFSolver):
                                                                       })
                 iter_test_result_dict = self.result_callback(iter_test_result_dict)
 
-                points, labels, probabilities = iter_tdc['/pts(xyz)'][:, 0:3], iter_tdc['/label'], iter_tdc[
-                    '/probabilities']
-                filename = filenames[i]
-                filename = os.path.basename(filename)
+                probabilities = iter_tdc['/probabilities']
+                filename = os.path.basename(TEST_DATA.filenames[i])
                 predictions = np.argmax(probabilities, axis=1).astype(np.int32) + 1  # remap labels to initial values
                 prediction_colors = np.array([to_rgb(COLOURS[int(p)]) for p in predictions])
 
@@ -449,9 +455,12 @@ class PartNetSolver(TFSolver):
                         test_metrics_dict[key] += value
                         reports += '%s: %0.4f; ' % (key, value)
                     print(reports)
+                else:
+                    for key, value in iter_test_result_dict.items():
+                        test_metrics_dict[key] += value
 
                 current_ply_o_f = os.path.join(predicted_ply_dir, "{}.ply".format(filename))
-                save_ply(current_ply_o_f, points, prediction_colors)
+                save_ply(current_ply_o_f, pts[0], prediction_colors)
 
                 np.save(file=os.path.join(probabilities_dir, filename), arr=np.array(probabilities))
                 self.summ2txt([value for key, value in iter_test_result_dict.items()], str(i) + "-" + filename)
@@ -462,13 +471,17 @@ class PartNetSolver(TFSolver):
         test_metrics_dict = self.result_callback(test_metrics_dict)
 
         # print the results
-        print('Testing done!\n')
-        reports = 'ALL: %04d; ' % self.flags.test_iter
         avg_test_sorted = []
-        for key in iter_test_result_dict.keys():
-            avg_test_sorted.append(test_metrics_dict[key])
-            reports += '%s: %0.4f; ' % (key, test_metrics_dict[key])
-        print(reports)
+        print('Testing done!\n')
+        if self.verbose:
+            reports = 'ALL: %04d; ' % self.flags.test_iter
+            for key in iter_test_result_dict.keys():
+                avg_test_sorted.append(test_metrics_dict[key])
+                reports += '%s: %0.4f; ' % (key, test_metrics_dict[key])
+            print(reports)
+        else:
+            for key in iter_test_result_dict.keys():
+                avg_test_sorted.append(test_metrics_dict[key])
         self.summ2txt(avg_test_sorted, 'ALL')
 
 
