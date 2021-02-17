@@ -82,10 +82,8 @@ class DataLoader:
             if np.any(self.features > 1):
                 print("Normalising point colours...")
                 self.features = normalise_colour(self.features)
-            self.has_features = True
         else:
-            self.has_features = False
-            del self.features
+            self.features=np.zeros((len(self.filenames),1))
 
         self.points = np.asarray(self.points).astype(dtype=np.float32)
         self.normals = np.asarray(self.normals).astype(dtype=np.float32)
