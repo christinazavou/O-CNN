@@ -43,7 +43,7 @@ class DataLoader:
 
             return point_clouds
 
-        def read_files(flags, nout):
+        def read_files(flags, nout, channels):
             print("\nReading files. This may take a while...\n")
             try:
                 with open(flags.file_list, "r") as f:
@@ -55,8 +55,12 @@ class DataLoader:
                         self.normals.append(pts[..., 3:6])
 
                         # check for available point features
-                        if pts.shape[-1] > 6:
-                            self.features.append(pts[..., 6:])
+                        if channels > 3:
+                            if pts.shape[-1] <= 6:  # x,y,z,nx,ny,nz,fts
+                                print("Point features are not available. Exiting...")
+                                sys.exit()
+                            else:
+                                self.features.append(pts[..., 6:])
 
                         labels = np.array(list(json.load(open(
                             os.path.join(flags.label_location, line[0].split(".")[0] + "_label.json"))).values()),
@@ -70,7 +74,7 @@ class DataLoader:
                 print("Could not open data file list. Exiting...")
                 sys.exit()
 
-        read_files(flags, nout)
+        read_files(flags, nout, channels)
 
         self.flags = flags
         if channels > 3:  # extra features besides normals
@@ -83,7 +87,7 @@ class DataLoader:
                 print("Normalising point colours...")
                 self.features = normalise_colour(self.features)
         else:
-            self.features=np.zeros((len(self.filenames),1))
+            self.features = np.zeros((len(self.filenames), 1))
 
         self.points = np.asarray(self.points).astype(dtype=np.float32)
         self.normals = np.asarray(self.normals).astype(dtype=np.float32)
