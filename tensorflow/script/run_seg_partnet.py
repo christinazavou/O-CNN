@@ -489,6 +489,7 @@ class PartNetSolver(TFSolver):
 if __name__ == '__main__':
     t = time.time()
     FLAGS = parse_args()
+    print("\nReading data files. This may take a while...\n")
     read_datasets(FLAGS)
     compute_graph = ComputeGraphSeg(FLAGS)
     builder_op = build_solver_given_lr if FLAGS.SOLVER.lr_type == 'plateau' else build_solver

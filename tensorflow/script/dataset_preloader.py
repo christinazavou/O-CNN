@@ -33,6 +33,7 @@ class DataLoader:
         self.filenames = []
         self.point_labels = []
         self.tfrecord_num = 0
+        self.CHUNK_SIZE = 50
 
     def __call__(self, flags, nout, channels, mem_check=False):
 
@@ -57,55 +58,69 @@ class DataLoader:
 
             return point_clouds
 
-        def read_files(flags, nout, channels):
-            print("\nReading files. This may take a while...\n")
+        def read_files(filenames, nout, channels):
+            points = []
+            normals = []
+            features = []
+            point_labels = []
             try:
-                with open(flags.file_list, "r") as f:
-                    for line in tqdm(f):
-                        line = line.strip().split()
-                        self.filenames.append(line[0].split(".")[0])
-                        pts = load_points_file(os.path.join(flags.location, line[0]))
-                        self.points.append(pts[..., 0:3])
-                        self.normals.append(pts[..., 3:6])
+                for fname in tqdm(filenames):
+                    pts = load_points_file(os.path.join(self.flags.location, fname))
+                    points.append(pts[..., 0:3])
+                    normals.append(pts[..., 3:6])
+                    # check for available point features
+                    if channels > 3:
+                        if pts.shape[-1] <= 6:  # x,y,z,nx,ny,nz,fts
+                            print("Point features are not available. Exiting...")
+                            sys.exit()
+                        else:
+                            features.append(pts[..., 6:])
 
-                        # check for available point features
-                        if channels > 3:
-                            if pts.shape[-1] <= 6:  # x,y,z,nx,ny,nz,fts
-                                print("Point features are not available. Exiting...")
-                                sys.exit()
-                            else:
-                                self.features.append(pts[..., 6:])
-
-                        labels = np.array(list(json.load(open(
-                            os.path.join(flags.label_location, line[0].split(".")[0] + "_label.json"))).values()),
-                                          dtype=np.float32)
-                        # map labels so that learnable ones start from 0 and undetermined becomes num_classes+1 (to
-                        # be ignored in loss)
-                        labels = np.where(labels == 0, nout, labels - 1)
-                        self.point_labels.append(labels)
-                    self.tfrecord_num = len(self.points)
+                    labels = np.array(list(json.load(open(
+                        os.path.join(self.flags.label_location, fname.split(".")[0] + "_label.json"))).values()),
+                                      dtype=np.float32)
+                    # map labels so that learnable ones start from 0 and undetermined becomes num_classes+1 (to
+                    # be ignored in loss)
+                    labels = np.where(labels == 0, nout, labels - 1)
+                    point_labels.append(labels)
             except OSError:
                 print("Could not open data file list. Exiting...")
                 sys.exit()
-
-        read_files(flags, nout, channels)
+            return np.asarray(points), np.asarray(normals), np.asarray(features), np.asarray(point_labels)
 
         self.flags = flags
+        self.filenames = open(self.flags.file_list, "r").readlines()
+        self.filenames = [line.strip().split()[0] for line in self.filenames]
+        self.tfrecord_num = len(self.filenames)
+
+        # split file reads to chunks for less memory usage
+        reps = ceil(self.tfrecord_num / self.CHUNK_SIZE)
+        print("Spliting data into {} chunks.".format(reps))
+        # read first chunk
+        print("Reading chunk: 1/{}".format(reps))
+        self.points, self.normals, self.features, self.point_labels = read_files(
+            self.filenames[:min(self.tfrecord_num, self.CHUNK_SIZE)], nout, channels)
+
         if channels > 3:  # extra features besides normals
-            self.features = np.asarray(self.features).astype(dtype=np.float32)
             if self.features.shape[-1] != channels - 3:
                 raise ValueError(
                     "Number of features in input files and MODEL.channel parameter don't agree ({} vs {})".format(
                         self.features.shape[-1] + 3, channels))
-            if np.any(self.features > 1):
-                print("Normalising point colours...")
-                self.features = normalise_colour(self.features)
         else:
             self.features = np.zeros((len(self.filenames), 1))
 
-        self.points = np.asarray(self.points).astype(dtype=np.float32)
-        self.normals = np.asarray(self.normals).astype(dtype=np.float32)
-        self.point_labels = np.asarray(self.point_labels)
+        for c in range(1, reps):
+            print("Reading chunk: {}/{}".format(c + 1, reps))
+            p, n, f, l = read_files(
+                self.filenames[c * self.CHUNK_SIZE:min((c + 1) * self.CHUNK_SIZE, self.tfrecord_num)], nout, channels)
+            self.points = np.append(self.points, p, axis=0)
+            self.normals = np.append(self.normals, n, axis=0)
+            self.point_labels = np.append(self.point_labels, l, axis=0)
+            if f.size:
+                self.features = np.append(self.features, f, axis=0)
+        del p, n, f, l
+
+        self.filenames = [line.strip(".") for line in self.filenames]
         self.filenames = np.asarray(self.filenames).astype(dtype="str")
 
         if channels > 3 and self.flags.hsv:

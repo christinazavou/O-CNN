@@ -16,45 +16,33 @@ SOLVER:
 DATA:
   train:
     dtype: points
-    distort: False #True
     depth: 7
-    axis: y 
-#    angle: (5, 5, 5)
-#    interval: (1, 1, 1)
-#    scale: 0.25
-#    jitter: 0.125
-#    offset: 0.0
-#    uniform: True
+    axis: y
     node_dis: False
     shuffle: True
     take: -1
     location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/nocolor/
     file_list: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/majority_test.txt #train_split.txt
     label_location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/point_labels_32/
-    batch_size: 1
-    x_alias: data
+    batch_size: 2
     mask_ratio: 0.0
     return_pts: True
     use_majority: False
+    hsv: True
 
   test: 
     dtype: points
-    distort: False  # no data augmentation
     depth: 7
     axis: y
-#    angle: (1, 1, 1)
-#    interval: (1, 1, 1)
-#    scale: 0.25
-#    jitter: 0.25
-#    offset: 0.0
     node_dis: False
     location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/nocolor/
     file_list: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/test_split.txt #val_split.txt
     label_location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/point_labels_32/
     shuffle: False
     batch_size: 1
-    x_alias: data
     return_pts: True
+    use_majority: False
+    hsv: True
 
 
 MODEL:
