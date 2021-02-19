@@ -4,11 +4,25 @@ import numpy as np
 import json
 import psutil
 from tqdm import tqdm
+from math import ceil
+from colorsys import rgb_to_hsv
 
 
 def normalise_colour(pts_colour):
     pts_colour = np.true_divide(pts_colour, 255.0)
     return pts_colour
+
+
+def rgb2hsv(rgb):
+    return rgb_to_hsv(rgb[0], rgb[1], rgb[2])
+
+
+def colour_convertor(fts):
+    fts = np.delete(fts, 3, 2)  # drop alpha channel since it is not used in HSV
+    if np.any(fts > 1):  # rgb_to_hsv expects colour values from 0 to 1
+        fts = normalise_colour(fts)
+    fts = np.apply_along_axis(rgb2hsv, 2, fts)
+    return fts
 
 
 class DataLoader:
@@ -93,6 +107,9 @@ class DataLoader:
         self.normals = np.asarray(self.normals).astype(dtype=np.float32)
         self.point_labels = np.asarray(self.point_labels)
         self.filenames = np.asarray(self.filenames).astype(dtype="str")
+
+        if channels > 3 and self.flags.hsv:
+            self.features = colour_convertor(self.features)
 
         if mem_check:
             # check memory consumption
