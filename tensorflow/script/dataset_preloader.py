@@ -68,8 +68,9 @@ class DataLoader:
                     pts = load_points_file(os.path.join(self.flags.location, fname))
                     points.append(pts[..., 0:3])
                     normals.append(pts[..., 3:6])
-                    # check for available point features
-                    if channels > 3:
+                    # check for available point features:q
+
+                    if channels > 4:
                         if pts.shape[-1] <= 6:  # x,y,z,nx,ny,nz,fts
                             print("Point features are not available. Exiting...")
                             sys.exit()
@@ -102,10 +103,14 @@ class DataLoader:
             self.filenames[:min(self.tfrecord_num, self.CHUNK_SIZE)], nout, channels)
 
         if channels > 3:  # extra features besides normals
-            if self.features.shape[-1] != channels - 3:
+            if self.features.shape[-1] != channels - 3 - (1 if self.flags.node_dis else 0):
                 raise ValueError(
                     "Number of features in input files and MODEL.channel parameter don't agree ({} vs {})".format(
-                        self.features.shape[-1] + 3, channels))
+                        self.features.shape[-1] + 3 + (1 if self.flags.node_dis else 0), channels))
+        elif self.flags.node_dis and channels != 4:
+            raise ValueError(
+                "Indicated number of channels is incorrect. Node_dis was enabled but not considered in number of "
+                "channels ({} vs 4)".format(channels))
         else:
             self.features = np.zeros((len(self.filenames), 1))
 
@@ -118,12 +123,11 @@ class DataLoader:
             self.point_labels = np.append(self.point_labels, l, axis=0)
             if f.size:
                 self.features = np.append(self.features, f, axis=0)
-        del p, n, f, l
 
         self.filenames = [line.strip(".") for line in self.filenames]
         self.filenames = np.asarray(self.filenames).astype(dtype="str")
 
-        if channels > 3 and self.flags.hsv:
+        if channels > 4 and self.flags.hsv:
             self.features = colour_convertor(self.features)
 
         if mem_check:
