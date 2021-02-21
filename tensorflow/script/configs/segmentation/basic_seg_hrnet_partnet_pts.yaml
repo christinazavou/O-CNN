@@ -23,7 +23,7 @@ train:
      file_list: "/mnt/nfs/work1/kalo/maverkiou/maria/splits/train_split.txt"
      label_location: "/mnt/nfs/work1/kalo/maverkiou/maria/point_labels_32"
 
-   test:
+test:
      dtype: points
      distort: False  # no data augmentation
      depth: 7
@@ -44,7 +44,7 @@ MODEL:
    depth: 7
    depth_out: 7
  
- LOSS:
+LOSS:
    num_class: 31
    momentum: 0.9
    weight_decay: 0.0005
