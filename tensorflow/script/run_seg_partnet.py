@@ -6,7 +6,7 @@ from network_factory import seg_network
 from dataset_iterator import *
 from dataset_preloader import *
 from data_augmentation import *
-from libs import points_property, octree_property, octree_decode_key
+from libs import points_property, octree_property
 import numpy as np
 from tqdm import trange
 import os
@@ -32,7 +32,8 @@ def read_datasets(flags):
     if flags.SOLVER.run != 'test':
         TRAIN_DATA = TRAIN_DATA(flags.DATA.train, flags.MODEL.nout, flags.MODEL.channel, True)
     if flags.SOLVER.run != "timeline":
-        TEST_DATA = TEST_DATA(flags.DATA.test, flags.MODEL.nout, flags.MODEL.channel, True)
+        TEST_DATA = TEST_DATA(flags.DATA.test, flags.MODEL.nout, flags.MODEL.channel, True,
+                              True if flags.SOLVER.run == "test" else False)
 
 
 # get the label and pts
@@ -216,11 +217,10 @@ class PartNetSolver(TFSolver):
         avg_results_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
         for _ in range(self.flags.test_iter):
             idxs, rots = sess.run(test_batch)
-            pts, nrms, fts, labels, filenames = TEST_DATA.points[idxs], \
-                                                TEST_DATA.normals[idxs], \
-                                                TEST_DATA.features[idxs], \
-                                                TEST_DATA.point_labels[idxs], \
-                                                TEST_DATA.filenames[idxs]
+            pts, nrms, fts, labels = TEST_DATA.points[idxs], \
+                                     TEST_DATA.normals[idxs], \
+                                     TEST_DATA.features[idxs], \
+                                     TEST_DATA.point_labels[idxs]
 
             iter_results_dict = sess.run(self.test_tensors_dict,
                                          feed_dict={self.graph.points: pts,
@@ -311,11 +311,10 @@ class PartNetSolver(TFSolver):
 
             for i in trange(start_iter, self.flags.max_iter + 1, ncols=80, desc="Train"):
                 idxs, rots = sess.run(batch)
-                pts, nrms, fts, labels, filenames = TRAIN_DATA.points[idxs], \
-                                                    TRAIN_DATA.normals[idxs], \
-                                                    TRAIN_DATA.features[idxs], \
-                                                    TRAIN_DATA.point_labels[idxs], \
-                                                    TRAIN_DATA.filenames[idxs]
+                pts, nrms, fts, labels = TRAIN_DATA.points[idxs], \
+                                         TRAIN_DATA.normals[idxs], \
+                                         TRAIN_DATA.features[idxs], \
+                                         TRAIN_DATA.point_labels[idxs]
                 # training
                 summary_train, _, curr_loss, curr_lr = sess.run(
                     [self.summ_train, self.train_op, self.total_loss, self.lr],
@@ -369,11 +368,10 @@ class PartNetSolver(TFSolver):
             print('Start profiling ...')
             for i in trange(0, timeline_skip + timeline_iter, ncols=80, desc="Timeline"):
                 idxs, rots = sess.run(batch)
-                pts, nrms, fts, labels, filenames = TRAIN_DATA.points[idxs], \
-                                                    TRAIN_DATA.normals[idxs], \
-                                                    TRAIN_DATA.features[idxs], \
-                                                    TRAIN_DATA.point_labels[idxs], \
-                                                    TRAIN_DATA.filenames[idxs]
+                pts, nrms, fts, labels = TRAIN_DATA.points[idxs], \
+                                         TRAIN_DATA.normals[idxs], \
+                                         TRAIN_DATA.features[idxs], \
+                                         TRAIN_DATA.point_labels[idxs]
 
                 summary, _ = sess.run([self.summ_train, self.train_op],
                                       options=options, run_metadata=run_metadata,
@@ -433,8 +431,9 @@ class PartNetSolver(TFSolver):
                 idxs, rots = sess.run(batch)
                 pts, nrms, fts, labels = TEST_DATA.points[idxs], \
                                          TEST_DATA.normals[idxs], \
-                                         TEST_DATA.features[idxs],\
+                                         TEST_DATA.features[idxs], \
                                          TEST_DATA.point_labels[idxs]
+
                 iter_test_result_dict, iter_tdc = sess.run([self.test_tensors_dict, self.test_debug_checks],
                                                            feed_dict={self.graph.points: pts,
                                                                       self.graph.normals: nrms,

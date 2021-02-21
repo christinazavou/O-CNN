@@ -35,7 +35,7 @@ class DataLoader:
         self.tfrecord_num = 0
         self.CHUNK_SIZE = 50
 
-    def __call__(self, flags, nout, channels, mem_check=False):
+    def __call__(self, flags, nout, channels, mem_check=False, test_phase=False):
 
         def load_points_file(filename):
             if ".ply" in filename:
@@ -119,9 +119,11 @@ class DataLoader:
             self.point_labels = np.append(self.point_labels, l, axis=0)
             if f.size:
                 self.features = np.append(self.features, f, axis=0)
-
-        self.filenames = [line.strip(".") for line in self.filenames]
-        self.filenames = np.asarray(self.filenames).astype(dtype="str")
+        if test_phase:
+            self.filenames = [line.strip(".") for line in self.filenames]
+            self.filenames = np.asarray(self.filenames).astype(dtype="str")
+        else:
+            del self.filenames
 
         if channels > 4 and self.flags.hsv:
             self.features = colour_convertor(self.features)
