@@ -14,19 +14,21 @@ from ocnn import *
 from learning_rate import LRFactory
 from tensorflow.python.client import timeline
 
+import psutil
+from memory_profiler import profile
+
 # tf.compat.v1.enable_eager_execution()
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # Add config
 
-CATEGORIES = ANNFASS_LABELS
-COLOURS = ANNFASS_COLORS
 best_metric_dict = {"accu": 0.0, "total_loss": 10e100, "iou": 0.0}  # TODO store last values in ckpt & restore them
 DO_NOT_AVG = ["intsc_", "union_", "iou"]
 TRAIN_DATA = DataLoader()
 TEST_DATA = DataLoader()
 
 
+# @profile
 def read_datasets(flags):
     global TRAIN_DATA, TEST_DATA
     if flags.SOLVER.run != 'test':
@@ -211,6 +213,7 @@ class PartNetSolver(TFSolver):
             with tf.device('/cpu:0'):
                 self.test_tensors_dict = average_tensors(self.test_tensors_dict)
 
+    # @profile
     def run_k_test_iterations(self, sess, test_batch):
         print("Running validation...")
         global TEST_DATA
@@ -262,6 +265,7 @@ class PartNetSolver(TFSolver):
 
                 f.write('eval ' + key + ': %f\n' % (dc[key]))
 
+    # @profile
     def train(self):
         global TRAIN_DATA, TEST_DATA
         train_iter = DataIterator(TRAIN_DATA.flags, TRAIN_DATA.tfrecord_num)
@@ -294,7 +298,9 @@ class PartNetSolver(TFSolver):
 
             if ckpt:
                 self.restore(sess, ckpt)
-
+            py = psutil.Process(os.getpid())
+            memory_usage = py.memory_info()[0] / 1024 ** 3
+            print("init memory: ", memory_usage)
             print('Start training ...')
             # option 1: use feed dict to pass the calculated learning rate
             # option 2: use model.compile and pass the optimizer and the callbacks
@@ -324,6 +330,10 @@ class PartNetSolver(TFSolver):
                                self.graph.labels: labels,
                                self.graph.rot: rots
                                })
+                py = psutil.Process(os.getpid())
+                memory_usage = py.memory_info()[0] / 1024 ** 3
+                print("iter memory: ", memory_usage)
+
                 summary_writer.add_summary(summary_train, i)
 
                 # testing
@@ -392,6 +402,8 @@ class PartNetSolver(TFSolver):
             print('Profiling done!')
 
     def test(self):
+        # CATEGORIES = ANNFASS_LABELS
+        COLOURS = ANNFASS_COLORS
         global TEST_DATA
         test_iter = DataIterator(TEST_DATA.flags, TEST_DATA.tfrecord_num)
         # build graph
