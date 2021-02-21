@@ -9,6 +9,8 @@ parser.add_argument("--octree", type=str, required=False,
                     default='../../octree')
 parser.add_argument("--cuda", type=str, required=False,
                     default='/usr/local/cuda-10.1')
+#/cm/shared/apps/cuda101/10.1.168/ 
+#cuda path for gypsum
 parser.add_argument('--key64', type=str, required=False,
                     default='false')
 parser.add_argument('--cc', type=str, required=False,
