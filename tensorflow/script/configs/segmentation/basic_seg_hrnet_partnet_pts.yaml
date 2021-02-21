@@ -8,37 +8,45 @@ SOLVER:
   run: train
   lr_type: 'plateau'
 
-DATA:
-  train:
-    dtype: points
-    distort: False
-    axis: y
-    shuffle: 1000
-    take: -1
-    batch_size: 2
-    x_alias: data
-    mask_ratio: 0.0
-    return_pts: True
+train:
+     dtype: points
+     depth: 7
+     distort: False
+     axis: y
+     shuffle: True
+     take: -1
+     batch_size: 2
+     mask_ratio: 0.0
+     return_pts: True
+     use_majority: False
+     location: "/mnt/nfs/work1/kalo/maverkiou/maria/withcolor"
+     file_list: "/mnt/nfs/work1/kalo/maverkiou/maria/splits/train_split.txt"
+     label_location: "/mnt/nfs/work1/kalo/maverkiou/maria/point_labels_32"
 
-  test: 
-    dtype: points
-    distort: False  # no data augmentation
-    depth: 7
-    axis: y
-    shuffle: 200
-    batch_size: 1
-    x_alias: data
-    return_pts: True
+   test:
+     dtype: points
+     distort: False  # no data augmentation
+     depth: 7
+     axis: y
+     shuffle: True
+     batch_size: 1
+     return_pts: True
+     location: "/mnt/nfs/work1/kalo/maverkiou/maria/withcolor"
+     file_list: "/mnt/nfs/work1/kalo/maverkiou/maria/splits/val_split.txt"
+     label_location: "/mnt/nfs/work1/kalo/maverkiou/maria/point_labels_32"
 
 
 MODEL:
-  name: hrnet
-  nout: 32
-  factor: 2
-  signal_abs: True
+   name: hrnet
+   nout: 31
+   factor: 2
+   signal_abs: True
+   depth: 7
+   depth_out: 7
+ 
+ LOSS:
+   num_class: 31
+   momentum: 0.9
+   weight_decay: 0.0005
+   point_wise: True
 
-LOSS:
-  num_class: 32
-  momentum: 0.9
-  weight_decay: 0.0005
-  point_wise: True
