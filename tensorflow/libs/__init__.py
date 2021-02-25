@@ -52,6 +52,7 @@ octree_search_key   = _tf_ocnn_module.octree_search_key
 octree_set_property = _tf_ocnn_module.octree_set_property
 octree_gather       = _tf_ocnn_module.octree_gather
 octree_gatherbk     = _tf_ocnn_module.octree_gatherbk
+check_octree	    = _tf_ocnn_module.check_octree
 _octree_max_pool    = _tf_ocnn_module.octree_max_pool
 _octree_mask_pool   = _tf_ocnn_module.octree_mask_pool
 _octree_max_unpool  = _tf_ocnn_module.octree_max_unpool
@@ -77,6 +78,7 @@ ops.NotDifferentiable('OctreeProperty')
 ops.NotDifferentiable('OctreeNew')
 ops.NotDifferentiable('OctreeUpdate')
 ops.NotDifferentiable('OctreeGrow')
+ops.NotDifferentiable('CheckOctree')
 ops.NotDifferentiable('OctreeSamples')
 ops.NotDifferentiable('OctreeBilinear')
 ops.NotDifferentiable('OctreeKeyToXyz')
@@ -216,11 +218,11 @@ def octree_conv_fast(data, octree, depth, channel, kernel_size=[3], stride=1):
 
 def octree_conv_memory(data, octree, depth, channel, kernel_size=[3], stride=1):
   assert(type(kernel_size) is list and len(kernel_size) < 4)
-  for i in range(len(kernel_size), 3):
+  for i in range(len(kernel_size), 3):# create 3x3x3 kernel_size
     kernel_size.append(kernel_size[-1])
 
   with tf.variable_scope('octree_conv'):
-    dim = int(data.shape[1]) * kernel_size[0] * kernel_size[1] * kernel_size[2]
+    dim = int(data.shape[1]) * kernel_size[0] * kernel_size[1] * kernel_size[2] # octant channels/features * kernel_size (3^3)
     kernel = tf.get_variable('weights', shape=[channel, dim], dtype=tf.float32,
                              initializer=tf.contrib.layers.xavier_initializer())
     conv = _octree_conv(data, kernel, octree, depth, channel, kernel_size, stride)
