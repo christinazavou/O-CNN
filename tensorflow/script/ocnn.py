@@ -47,7 +47,8 @@ def conv2d(inputs, nout, kernel_size, stride, padding='SAME', data_format='chann
 
 
 def octree_conv1x1(inputs, nout, use_bias=False):
-    outputs = tf.layers.conv2d(inputs, nout, kernel_size=1, strides=1,
+    # nout indicates the output size after the convolution => computes how many filters will be applied to input
+    outputs = tf.layers.conv2d(inputs, filters=nout, kernel_size=1, strides=1,
                                data_format='channels_first', use_bias=use_bias,
                                kernel_initializer=tf.contrib.layers.xavier_initializer())
     return outputs
@@ -67,7 +68,7 @@ def octree_conv1x1(inputs, nout, use_bias=False):
     return outputs
 
 
-def octree_conv1x1_bn(inputs, nout, training):
+def octree_conv1x1_bn(inputs, nout, training) -> object:
     conv = octree_conv1x1(inputs, nout, use_bias=False)
     return batch_norm(conv, training)
 
@@ -186,13 +187,16 @@ def octree_resblock(data, octree, depth, num_out, stride, training, bottleneck=4
         depth = depth - 1
 
     with tf.variable_scope("1x1x1_a"):
-        block1 = octree_conv1x1_bn_relu(data, channelb, training=training)
+        # apply convolution to concentrate info in channelb features
+        block1 = octree_conv1x1_bn_relu(data, channelb, training=training)  # [1,channelb,H] feature vector
 
     with tf.variable_scope("3x3x3"):
-        block2 = octree_conv_bn_relu(block1, octree, depth, channelb, training)
+        # apply 3x3x3 convolution 
+        block2 = octree_conv_bn_relu(block1, octree, depth, channelb, training)  # [1,channelb,H]
 
     with tf.variable_scope("1x1x1_b"):
-        block3 = octree_conv1x1_bn(block2, num_out, training=training)
+        # apply convolution to reach wanted output size 
+        block3 = octree_conv1x1_bn(block2, num_out, training=training) # [1,num_out,H]
 
     block4 = data
     if num_in != num_out:

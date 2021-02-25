@@ -120,7 +120,7 @@ class DataLoader:
             if f.size:
                 self.features = np.append(self.features, f, axis=0)
         if test_phase:
-            self.filenames = [line.strip(".") for line in self.filenames]
+            self.filenames = [line.split(".")[0] for line in self.filenames]
             self.filenames = np.asarray(self.filenames).astype(dtype="str")
         else:
             del self.filenames

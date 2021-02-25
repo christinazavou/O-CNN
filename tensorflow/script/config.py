@@ -168,7 +168,8 @@ def parse_args(backup=True):
     if FLAGS.DATA.test.file_list == "" or FLAGS.DATA.train.file_list == "":
         raise ValueError("File list of data split is not defined!!!\nExiting...")
     if FLAGS.DATA.train.depth > 8 or FLAGS.DATA.test.depth > 8:
-        raise ValueError("Network depth must be lesser or equal to 8!!!\nExiting...")
+        raise ValueError("Network depth must be lesser or equal to 8!!!\nDeeper octrees are not supported "
+                         "yet.\nExiting...")
     if FLAGS.DATA.train.depth != FLAGS.DATA.test.depth:
         raise ValueError("Train and test networks must have the same depth!!!\nExiting...")
 
