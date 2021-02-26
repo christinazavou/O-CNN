@@ -3,7 +3,7 @@ import sys
 import shutil
 import argparse
 from yacs.config import CfgNode as CN
-import json
+import numpy as np
 import warnings
 
 _C = CN()
@@ -33,7 +33,6 @@ _C.SOLVER.threshold_mode = 'rel'  # ####################
 _C.SOLVER.cooldown = 0  # ####################
 _C.SOLVER.min_lr = 0.0  # 1e-10  # ####################
 _C.SOLVER.eps = 1e-8  # ####################
-_C.SOLVER.class_weights = "none"
 
 # DATA related parameters
 _C.DATA = CN()
@@ -68,10 +67,10 @@ _C.DATA.train.clip = 0.05
 _C.DATA.train.location = ''  # The data location
 _C.DATA.train.label_location = ''  # The data label location
 _C.DATA.train.file_list = ''  # file with data to load, model (classification) label
-_C.DATA.train.use_majority= False # whether to compute octant features only on points with most frequent label or all
-_C.DATA.train.hsv=False
+_C.DATA.train.use_majority = False  # whether to compute octant features only on points with most frequent label or all
+_C.DATA.train.hsv = False
 # of them
-_C.DATA.train.shuffle = True # Whether to shuffle data or not
+_C.DATA.train.shuffle = True  # Whether to shuffle data or not
 _C.DATA.train.take = -1  # Use at most `take` elements from this dataset
 _C.DATA.train.batch_size = 32  # Training data batch size
 _C.DATA.train.mask_ratio = 0.0  # Mask out some points for faster training #features
@@ -109,6 +108,7 @@ _C.LOSS.seg_num = 100  # The clustering number in MID training
 _C.LOSS.weights = (1.0, 1.0)  # The weight factors for different losses
 _C.LOSS.label_smoothing = 0.0  # The factor of label smoothing
 _C.LOSS.point_wise = True  # whether to compute loss on points or octants
+_C.LOSS.class_weights = "none"
 
 # backup the commands
 _C.SYS = CN()
@@ -123,6 +123,7 @@ def _update_config(FLAGS, args):
         FLAGS.merge_from_file(args.config)
     if args.opts:
         FLAGS.merge_from_list(args.opts)
+    FLAGS.DATA.test.depth = FLAGS.MODEL.depth = FLAGS.DATA.train.depth
     FLAGS.SYS.cmds = ' '.join(sys.argv)
     FLAGS.freeze()
 
@@ -191,13 +192,11 @@ def parse_args(backup=True):
 
 
 def parse_class_weights(flags):
-    if flags.SOLVER.class_weights == "none":
+    if flags.LOSS.class_weights == "none":
         return [1. for _ in range(flags.MODEL.nout)]
-    data = json.load(open(flags.SOLVER.class_weights))
-    data = {int(key): float(value) for key, value in data.items()}
-    data = {key: value for key, value in sorted(data.items(), key=lambda item: item[0])}
-    assert len(data) == flags.MODEL.nout, "Number of weights does not match number of outputs"
-    return list(data.values())
+    data = np.loadtxt(flags.LOSS.class_weights)
+    assert data.shape[-1] == flags.MODEL.nout
+    return list(data)
 
 
 def override_some_flags(filename):
@@ -206,7 +205,6 @@ def override_some_flags(filename):
     FLAGS.DATA.test.location = filename
     FLAGS.DATA.test.batch_size = 1
     FLAGS.DATA.test.shuffle = False
-    # 'return_iter': True,
     FLAGS.DATA.test.take = -1
     FLAGS.DATA.test.return_pts = True
     FLAGS.DATA.test.dtype = 'points'

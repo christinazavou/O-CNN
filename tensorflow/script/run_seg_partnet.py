@@ -111,7 +111,7 @@ class ComputeGraphSeg:
         with tf.device('/gpu:0'):
             with tf.name_scope('device_0'):
                 octree, points = data_aug(self.points, self.normals, self.features, self.labels, self.rot)
-
+                debug_checks["octree"] = octree
                 print("mask ratio for {} is {}".format(dataset, flags_data.mask_ratio))
                 pts, label, dc = get_point_info(points, flags_data.mask_ratio)
                 debug_checks.update(dc)
@@ -330,6 +330,7 @@ class PartNetSolver(TFSolver):
                                self.graph.labels: labels,
                                self.graph.rot: rots
                                })
+
                 py = psutil.Process(os.getpid())
                 memory_usage = py.memory_info()[0] / 1024 ** 3
                 print("iter memory: ", memory_usage)
