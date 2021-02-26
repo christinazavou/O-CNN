@@ -86,7 +86,8 @@ _C.DATA.test.clip = 0.0
 _C.MODEL = CN()
 _C.MODEL.name = ''  # The name of the model
 _C.MODEL.depth = 5  # The input octree depth
-_C.MODEL.depth_out = 5  # The output feature depth
+_C.MODEL.with_d0 = True  # Whether to use features of octree's last depth
+_C.MODEL.stages = 3  # stages of HRNet, no. depths to consider
 _C.MODEL.channel = 3  # The input feature channel
 _C.MODEL.factor = 1  # The factor used to widen the network
 _C.MODEL.nout = 40  # The output feature channel
@@ -171,8 +172,12 @@ def parse_args(backup=True):
     if FLAGS.DATA.train.depth > 8 or FLAGS.DATA.test.depth > 8:
         raise ValueError("Network depth must be lesser or equal to 8!!!\nDeeper octrees are not supported "
                          "yet.\nExiting...")
-    if FLAGS.DATA.train.depth != FLAGS.DATA.test.depth:
-        raise ValueError("Train and test networks must have the same depth!!!\nExiting...")
+    if FLAGS.DATA.train.depth - FLAGS.MODEL.stages < 1:
+        stages = ", ".join(
+            [str(d) for d in range(FLAGS.DATA.train.depth, FLAGS.DATA.train.depth - FLAGS.MODEL.stages, -1)])
+        raise ValueError("Depth of HRNet at any stage must be > 1. Based on configs depths will be: (" + stages + ")")
+    if FLAGS.MODEL.stages < 1 and FLAGS.MODEL.name == "hrnet":
+        raise ValueError("Number of steps for the HRNet model should be at least 1.")
 
     if FLAGS.DATA.test.batch_size != 1:
         FLAGS.defrost()
