@@ -4,7 +4,7 @@ import shutil
 import argparse
 from yacs.config import CfgNode as CN
 import numpy as np
-import warnings
+from warnings import warn
 
 _C = CN()
 
@@ -177,7 +177,7 @@ def parse_args(backup=True):
     if FLAGS.DATA.test.batch_size != 1:
         FLAGS.defrost()
         # in test phase we want to report metrics per model, and in train phase we want to include iou for test tensors
-        warnings.warn(
+        warn(
             "Running with test.batch_size != 1. Setting batch size to 1!!!")
         FLAGS.DATA.test.batch_size = 1
         FLAGS.freeze()
@@ -185,7 +185,7 @@ def parse_args(backup=True):
     if FLAGS.SOLVER.run == 'test':
         FLAGS.defrost()
         if FLAGS.DATA.test.shuffle:
-            warnings.warn("Running test phase with shuffle activated. Deactivating shuffle!!!")
+            warn("Running test phase with shuffle activated. Deactivating shuffle!!!")
             FLAGS.DATA.test.shuffle = False
         FLAGS.freeze()
     return FLAGS

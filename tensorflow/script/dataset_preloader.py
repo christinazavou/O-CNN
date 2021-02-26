@@ -6,6 +6,7 @@ import psutil
 from tqdm import tqdm
 from math import ceil
 from colorsys import rgb_to_hsv
+from warnings import warn
 
 
 def normalise_colour(pts_colour):
@@ -91,8 +92,20 @@ class DataLoader:
 
         self.flags = flags
         self.filenames = open(self.flags.file_list, "r").readlines()
-        self.filenames = [line.strip().split()[0] for line in self.filenames]
         self.tfrecord_num = len(self.filenames)
+
+        if self.flags.take != -1:
+            if self.flags.take >= self.tfrecord_num:
+                warn("Flag take is larger or equal to the number of records ({} vs {}). Ignoring flag take".format(
+                    self.flags.take, self.tfrecord_num))
+            else:
+                warn(
+                    "Flag take is not -1. Ignoring {} last records from file".format(
+                        self.flags.take))
+                del self.filenames[(self.tfrecord_num - self.flags.take):]
+                self.tfrecord_num -= self.flags.take
+
+        self.filenames = [line.strip().split()[0] for line in self.filenames]
 
         # split file reads to chunks for less memory usage
         reps = ceil(self.tfrecord_num / self.CHUNK_SIZE)
