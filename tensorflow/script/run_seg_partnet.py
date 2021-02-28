@@ -215,10 +215,10 @@ class PartNetSolver(TFSolver):
 
     # @profile
     def run_k_test_iterations(self, sess, test_batch):
-        print("Running validation...")
+        # print("Running validation...")
         global TEST_DATA
         avg_results_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
-        for _ in range(self.flags.test_iter):
+        for _ in trange(self.flags.test_iter, leave=False, desc="Validation", file=sys.stdout):
             idxs, rots = sess.run(test_batch)
             pts, nrms, fts, labels = TEST_DATA.points[idxs], \
                                      TEST_DATA.normals[idxs], \
@@ -245,6 +245,7 @@ class PartNetSolver(TFSolver):
         curr_lr = sess.run(self.lr, feed_dict={self.lr: self.lr_metric(avg_results_dict['total_loss'])})
         sess.run(self.lr.assign(curr_lr))
         avg_results['lr'] = curr_lr
+
         return avg_results
 
     def save_ckpt(self, dc, sess, iter):
@@ -315,7 +316,8 @@ class PartNetSolver(TFSolver):
             batch = train_iter()
             test_batch = test_iter()
 
-            for i in trange(start_iter, self.flags.max_iter + 1, ncols=80, desc="Train"):
+            for i in range(start_iter, self.flags.max_iter + 1):
+                if i % 10 == 0: print("Training phase: {}/{}".format(i, self.flags.max_iter))
                 idxs, rots = sess.run(batch)
                 pts, nrms, fts, labels = TRAIN_DATA.points[idxs], \
                                          TRAIN_DATA.normals[idxs], \

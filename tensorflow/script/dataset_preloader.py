@@ -34,7 +34,7 @@ class DataLoader:
         self.filenames = []
         self.point_labels = []
         self.tfrecord_num = 0
-        self.CHUNK_SIZE = 50
+        self.CHUNK_SIZE = 100
 
     def __call__(self, flags, nout, channels, mem_check=False, test_phase=False):
 
@@ -64,8 +64,9 @@ class DataLoader:
             normals = []
             features = []
             point_labels = []
+
             try:
-                for fname in tqdm(filenames):
+                for fname in tqdm(filenames,leave=False,file=sys.stdout):
                     pts = load_points_file(os.path.join(self.flags.location, fname))
                     points.append(pts[..., 0:3])
                     normals.append(pts[..., 3:6])
@@ -85,9 +86,11 @@ class DataLoader:
                     # be ignored in loss)
                     labels = np.where(labels == 0, nout, labels - 1)
                     point_labels.append(labels)
+
             except OSError:
                 print("Could not open data file list. Exiting...")
                 sys.exit()
+
             return np.asarray(points), np.asarray(normals), np.asarray(features), np.asarray(point_labels)
 
         self.flags = flags
