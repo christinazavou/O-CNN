@@ -33,9 +33,9 @@ def branches(data, octree, depth, channel, block_num, training, threshold):
     for i in range(len(data)):
         with tf.variable_scope('branch_%d' % (depth - i)):
             depth_i, channel_i = depth - i, branch_channels(channel, i)
-            if channel_i > threshold: channel_i = threshold # !!! clip the channel to threshold
+            if channel_i > threshold: channel_i = threshold  # !!! clip the channel to threshold
             data[i], dc = branch(data[i], octree, depth_i, channel_i, block_num, training)
-    return data
+    return data, dc
 
 
 def trans_func(data_in, octree, d0, d1, training, upsample, threshold):
@@ -63,18 +63,22 @@ def trans_func(data_in, octree, d0, d1, training, upsample, threshold):
 
 
 def transitions(data, octree, depth, training, threshold, upsample='neareast'):
+    debug_checks = {}
     num = len(data)
     features = [[0] * num for _ in range(num + 1)]
     for i in range(num):
         for j in range(num + 1):
             d0, d1 = depth - i, depth - j
             features[j][i] = trans_func(data[i], octree, d0, d1, training, upsample, threshold)
+            debug_checks["{}/features_{}_{}".format(tf.get_variable_scope().name, j, i)] = features[j][i]
 
     outputs = [None] * (num + 1)
     for j in range(num + 1):
         with tf.variable_scope('fuse_%d' % (depth - j)):
             outputs[j] = tf.nn.relu(tf.add_n(features[j]))
-    return outputs
+            debug_checks["{}/outputs_{}".format(tf.get_variable_scope().name, j)] = outputs[j]
+
+    return outputs, debug_checks
 
 
 def front_layer_channeld(channel, d, d1):
@@ -210,8 +214,8 @@ class HRNet:
             data = octree_property(octree, property_name='feature', dtype=tf.float32,
                                    depth=depth, channel=flags.channel)
             data = tf.reshape(data, [1, flags.channel, -1, 1])  # [1,channels,no. octants,1]
-            debug_checks['{}/data(feature)'.format(tf.get_variable_scope().name)] = data
             if flags.signal_abs: data = tf.abs(data)
+            debug_checks['{}/data(feature)'.format(tf.get_variable_scope().name)] = data
 
         # front
         convs = [None]
@@ -222,11 +226,14 @@ class HRNet:
         stage_num = flags.stages
         for stage in range(1, stage_num + 1):
             with tf.variable_scope('stage_%d' % stage):
-                convs = branches(convs, octree, d1, channel, flags.resblock_num, training, self.flags.feature_threshold)
+                convs, dc = branches(convs, octree, d1, channel, flags.resblock_num, training,
+                                     self.flags.feature_threshold)
+                debug_checks.update(dc)
                 if stage == stage_num: break
                 # move to shallower depth
-                convs = transitions(convs, octree, depth=d1, training=training, upsample=flags.upsample,
-                                    threshold=self.flags.feature_threshold)
+                convs, dc = transitions(convs, octree, depth=d1, training=training, upsample=flags.upsample,
+                                        threshold=self.flags.feature_threshold)
+                debug_checks.update(dc)
         return convs, debug_checks
 
     def front_layer(self, data, octree, d0, d1, channel, training):
