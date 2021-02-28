@@ -88,6 +88,7 @@ _C.MODEL.name = ''  # The name of the model
 _C.MODEL.depth = 5  # The input octree depth
 _C.MODEL.with_d0 = True  # Whether to use features of octree's last depth
 _C.MODEL.stages = 3  # stages of HRNet, no. depths to consider
+_C.MODEL.feature_threshold = 2**100 # HRNet maximum feature map size (reduce memory & time)
 _C.MODEL.channel = 3  # The input feature channel
 _C.MODEL.factor = 1  # The factor used to widen the network
 _C.MODEL.nout = 40  # The output feature channel

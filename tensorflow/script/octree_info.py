@@ -21,16 +21,17 @@ class OctreeInfo:
         pass
 
 
-FLAGS = parse_args()
-oct_info = OctreeInfo(FLAGS.DATA.train, FLAGS.MODEL.nout, FLAGS.MODEL.channel)
-sess = tf.Session()
-batch = oct_info.batch()
-for _ in range(oct_info.data.tfrecord_num):
-    idx, rot = sess.run(batch)
-    print(idx,rot)
-    octree, _ = oct_info.data_aug(tf.cast(oct_info.data.points[idx], dtype=tf.float32),
-                                  tf.cast(oct_info.data.normals[idx], dtype=tf.float32),
-                                  tf.cast(oct_info.data.features[idx], dtype=tf.float32),
-                                  oct_info.data.point_labels[idx], rot)
-    sess.run(check_octree(octree))
-    exit()
+if __name__ == "__main__":
+    FLAGS = parse_args()
+    oct_info = OctreeInfo(FLAGS.DATA.train, FLAGS.MODEL.nout, FLAGS.MODEL.channel)
+    sess = tf.Session()
+    batch = oct_info.batch()
+    for _ in range(oct_info.data.tfrecord_num):
+        idx, rot = sess.run(batch)
+        print(idx, rot)
+        octree, _ = oct_info.data_aug(tf.cast(oct_info.data.points[idx], dtype=tf.float32),
+                                      tf.cast(oct_info.data.normals[idx], dtype=tf.float32),
+                                      tf.cast(oct_info.data.features[idx], dtype=tf.float32),
+                                      oct_info.data.point_labels[idx], rot)
+        sess.run(check_octree(octree))
+        exit()

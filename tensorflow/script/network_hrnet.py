@@ -28,20 +28,20 @@ def branch_channels(channel, i):
     return (2 ** i) * channel
 
 
-def branches(data, octree, depth, channel, block_num, training):
+def branches(data, octree, depth, channel, block_num, training, threshold):
     for i in range(len(data)):
         with tf.variable_scope('branch_%d' % (depth - i)):
             depth_i, channel_i = depth - i, branch_channels(channel, i)
-            # if channel_i > 256: channel_i = 256
+            if channel_i > threshold: channel_i = threshold # !!! clip the channel to threshold
             data[i], dc = branch(data[i], octree, depth_i, channel_i, block_num, training)
     return data
 
 
-def trans_func(data_in, octree, d0, d1, training, upsample):
+def trans_func(data_in, octree, d0, d1, training, upsample, threshold):
     data = data_in
     channel0 = int(data.shape[1])
     channel1 = channel0 * (2 ** (d0 - d1))
-    # if channel1 > 256: channel1 = 256  ## !!! clip the channel to 256
+    if channel1 > threshold: channel1 = threshold  # !!! clip the channel to threshold
     # no relu for the last feature map
     with tf.variable_scope('trans_%d_%d' % (d0, d1)):
         if d0 > d1:  # downsample, transitioning to smaller depth
@@ -61,13 +61,13 @@ def trans_func(data_in, octree, d0, d1, training, upsample):
     return data
 
 
-def transitions(data, octree, depth, training, upsample='neareast'):
+def transitions(data, octree, depth, training, threshold, upsample='neareast'):
     num = len(data)
     features = [[0] * num for _ in range(num + 1)]
     for i in range(num):
         for j in range(num + 1):
             d0, d1 = depth - i, depth - j
-            features[j][i] = trans_func(data[i], octree, d0, d1, training, upsample)
+            features[j][i] = trans_func(data[i], octree, d0, d1, training, upsample, threshold)
 
     outputs = [None] * (num + 1)
     for j in range(num + 1):
@@ -221,10 +221,11 @@ class HRNet:
         stage_num = flags.stages
         for stage in range(1, stage_num + 1):
             with tf.variable_scope('stage_%d' % stage):
-                convs = branches(convs, octree, d1, channel, flags.resblock_num, training)
+                convs = branches(convs, octree, d1, channel, flags.resblock_num, training, self.flags.feature_threshold)
                 if stage == stage_num: break
                 # move to shallower depth
-                convs = transitions(convs, octree, depth=d1, training=training, upsample=flags.upsample)
+                convs = transitions(convs, octree, depth=d1, training=training, upsample=flags.upsample,
+                                    threshold=self.flags.feature_threshold)
         return convs, debug_checks
 
     def front_layer(self, data, octree, d0, d1, channel, training):
