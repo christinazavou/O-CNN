@@ -14,11 +14,12 @@ class OctreeUpsample:
 
 
 def branch(data, octree, depth, channel, block_num, training):
-    debug_checks = {}  # TODO remove if statement
+    debug_checks = {}
     # if depth > 5: block_num = block_num // 2  # !!! whether should we add this !!!
     for i in range(block_num):
         with tf.variable_scope('resblock_d%d_%d' % (depth, i)):
-            bottleneck = 4 if channel < 256 else 8  # TODO change bottleneck size dynamically
+            bottleneck = channel // 32.0
+            # bottleneck = 4 if channel < 256 else 8
             data = octree_resblock(data, octree, depth, channel, 1, training, bottleneck)
             debug_checks['{}/data'.format(tf.get_variable_scope().name)] = data
     return data, debug_checks
