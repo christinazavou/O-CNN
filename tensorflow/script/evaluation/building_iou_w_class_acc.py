@@ -2,7 +2,8 @@ import os
 import json
 import sys
 from tqdm import tqdm
-from evaluation.mesh_utils import read_obj, read_ply, calculate_face_area, compute_face_centers, nearest_neighbour_of_face_centers
+from evaluation.mesh_utils import read_obj, read_ply, calculate_face_area, compute_face_centers, \
+    nearest_neighbour_of_face_centers
 from iou_calculations import *
 
 # BuildNet directories
@@ -257,7 +258,7 @@ if __name__ == "__main__":
 
     top_k = 200
     best_iou_model = np.zeros((top_k,))
-    best_iou_model[:] = 0.000000001
+    best_iou_model[:] = 1e-9
     best_model_points_pred, best_model_triangles_pred, best_model_comp_pred, best_model_fn = [[] for _ in range(top_k)], \
                                                                                              [[] for _ in range(top_k)], \
                                                                                              [[] for _ in range(top_k)], \
@@ -306,7 +307,8 @@ if __name__ == "__main__":
 
         # Save best and worst model
         label_iou = mesh_buildings_iou_from_comp[model_fn]["label_iou"]
-        s_iou = np.sum([v for v in label_iou.values()]) / float(len(label_iou))
+        s_iou = np.sum([v for v in label_iou.values()]) / float(len(label_iou)) + 1  # handle cases where iou=0
+
         if s_iou > best_iou_model[-1]:
             best_iou_model[top_k - 1] = s_iou
             best_model_points_pred[top_k - 1] = point_pred_labels
@@ -319,6 +321,7 @@ if __name__ == "__main__":
             best_model_triangles_pred = [best_model_triangles_pred[idx] for idx in sort_idx]
             best_model_comp_pred = [best_model_comp_pred[idx] for idx in sort_idx]
             best_model_fn = [best_model_fn[idx] for idx in sort_idx]
+    best_iou_model -= 1  # restore to original values
 
     # Calculate avg point part and shape IOU
     point_shape_iou = get_shape_iou(buildings_iou=point_buildings_iou)
@@ -344,7 +347,7 @@ if __name__ == "__main__":
     # Save best
     buf = ''
     for i in range(top_k):
-        print(best_iou_model[i]); print(best_model_fn[i])
+        # print(best_iou_model[i]); print(best_model_fn[i])
         buf += "Best model iou: " + str(best_iou_model[i]) + ", " + best_model_fn[i] + '\n'
         save_pred_in_json(best_model_points_pred[i], os.path.join(BEST_POINTS_DIR, best_model_fn[i] + "_label.json"))
         save_pred_in_json(best_model_triangles_pred[i],
