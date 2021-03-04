@@ -150,7 +150,10 @@ def result_callback(avg_results_dict, num_class):
         union_i = avg_results_dict['union_%d' % i]  # max value of union is the # of determined points
         if union_i > 0.0:
             ious[i] = instc_i / union_i
-    avg_results_dict['iou'] = sum(ious.values()) / len(ious)
+    try:
+        avg_results_dict['iou'] = sum(ious.values()) / len(ious)
+    except ZeroDivisionError:
+        avg_results_dict['iou'] = 0.0
     return avg_results_dict
 
 
