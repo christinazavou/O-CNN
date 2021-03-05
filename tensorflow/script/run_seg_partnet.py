@@ -484,19 +484,32 @@ class PartNetSolver(TFSolver):
             test_metrics_dict[key] /= self.flags.test_iter
         test_metrics_dict = self.result_callback(test_metrics_dict)
 
-        # print the results
-        avg_test_sorted = []
         print('Testing done!\n')
+        avg_test_sorted = []
+        part_iou = []
+        reports = 'ALL: %04d; ' % self.flags.test_iter
+        ious = "PART IoUs: "
+        intsc = 0.0
+        # write/print results
+        for key in iter_test_result_dict.keys():
+            avg_test_sorted.append(test_metrics_dict[key])
+            reports += '%s: %0.4f; ' % (key, test_metrics_dict[key])
+            if "intsc" in key:
+                ious += "%s: " % (key.split("_")[-1])
+                intsc = test_metrics_dict[key]
+            elif "union" in key:
+                p_iou = intsc / test_metrics_dict[key]
+                ious += "%0.4f; " % (p_iou)
+                intsc = 0.0
+                part_iou.append(p_iou)
+                part_iou.append("-")
+            else:
+                part_iou.append("-")
         if self.verbose:
-            reports = 'ALL: %04d; ' % self.flags.test_iter
-            for key in iter_test_result_dict.keys():
-                avg_test_sorted.append(test_metrics_dict[key])
-                reports += '%s: %0.4f; ' % (key, test_metrics_dict[key])
             print(reports)
-        else:
-            for key in iter_test_result_dict.keys():
-                avg_test_sorted.append(test_metrics_dict[key])
+            print(ious)
         self.summ2txt(avg_test_sorted, 'ALL')
+        self.summ2txt(part_iou, "Part_IoUs")
 
 
 # run the experiments
