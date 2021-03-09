@@ -43,8 +43,7 @@ class NormalizePoints:
 
 
 class TransformPoints:
-    def __init__(self, depth, clip, sigma=0.0, mu=0.0, **kwargs):
-        self.depth = depth
+    def __init__(self, clip, sigma=0.0, mu=0.0, **kwargs):
         self.sigma = sigma
         self.clip = clip
         self.mu = mu
@@ -60,8 +59,7 @@ class TransformPoints:
 
         radius, center = tf.constant(1.0), tf.constant([0.0, 0.0, 0.0])
         points = custom_transform_points(points, angle=angle, jitter=shift,
-                                         radius=radius, center=center,
-                                         depth=self.depth)
+                                         radius=radius, center=center)
         # The range of points is [-1, 1]
         return points  # TODO: return the transformations
 

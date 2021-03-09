@@ -47,11 +47,10 @@ REGISTER_OP("NormalizePoints")
 
 REGISTER_OP("CustomTransformPoints")
     .Input("points: string")
-    .Input("angle: float")
     .Input("jitter: float")
     .Input("radius: float")
     .Input("center: float")
-    .Attr("depth: int=6")
+    .Input("angle: float")
     .Output("points_out: string")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
       c->set_output(0, c->input(0));
@@ -214,7 +213,6 @@ class CustomTransformPointsOp : public OpKernel {
  public:
     explicit CustomTransformPointsOp(OpKernelConstruction* context)
         : OpKernel(context) {
-      OP_REQUIRES_OK(context, context->GetAttr("depth", &depth_));
     }
 
     void Compute(OpKernelContext* context) override {
@@ -225,13 +223,12 @@ class CustomTransformPointsOp : public OpKernel {
         }
       };
       const Tensor& data_in = context->input(0);
-      float angle[3] = {0};
-      extract_param(angle, context->input(1));
       float jitter[3] = {0};
-      extract_param(jitter, context->input(2));
-      float radius = context->input(3).flat<float>()(0);
+      extract_param(jitter, context->input(1));
+      float radius = context->input(2).flat<float>()(0);
       float center[3] = {0};
-      extract_param(center, context->input(4));
+      extract_param(center, context->input(3));
+      float theta=context->input(4).flat<float>()(0);
 
       // copy the data out of the input tensor
       auto points_array = data_in.flat<string>();
@@ -253,10 +250,10 @@ class CustomTransformPointsOp : public OpKernel {
       }
       const float kEPS = 1.0e-10f;
       // data augmentation: rotate the point cloud around y axis
-      if (fabs(angle[0]) > kEPS || fabs(angle[1]) > kEPS || fabs(angle[2]) > kEPS) {
-        angle[0] = angle[2] = 0;
-        pts.rotate(angle);
-      }
+      float angle[3]={0.0f};
+      angle[1]=theta;
+      pts.rotate(angle);
+
 
       // jitter
       float max_jitter = -1.0;
@@ -278,9 +275,6 @@ class CustomTransformPointsOp : public OpKernel {
       string& out_str = out_data->flat<string>()(0);
       out_str.assign(points_buf.begin(), points_buf.end());
     }
-
-   private:
-    int depth_;
   };
 
 class NormalizePointsOp : public OpKernel {
