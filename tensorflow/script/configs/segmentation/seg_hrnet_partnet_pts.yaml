@@ -1,58 +1,68 @@
-# Parameters for the airplane
 
 SOLVER:
   gpu: 0,
-  logdir: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/cluster_exp_results/Seg_2k_100k_hrnet_no_colour_depth_7_weighted_sgd_3_0.5/
-  max_iter: 1200 #1920000
-  test_iter: 200
-  test_every_iter: 12 #19200
-  run: test
-  lr_type: 'plateau'
-  class_weights: ./configs/class_weights.json
-  #step_size: (1500, 750)
-  ckpt: '/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/cluster_exp_results/Seg_2k_100k_hrnet_no_colour_depth_7_weighted_sgd_3_0.5/best_ckpts/epoch48.ckpt'
-  verbose: True
+  logdir: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/partnet_exp/custom_code_buildnet_step/
+  max_iter: 18000 #1920000, 60 epochs
+  test_iter: 50 #37
+  test_every_iter: 300 #19200
+  run: train
+  gamma: 0.1
+  learning_rate: 0.1
+#  lr_type: 'plateau'
+  lr_type: 'step'
+  step_size: (9000,4500)
+  class_weights: 'none' #./configs/class_weights.json
+#  ckpt: '/media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/partnet_exp/custom_code/model/iter_003000.ckpt'
+#  verbose: True
 
 DATA:
   train:
     dtype: points
-    depth: 7
+    depth: 6
     axis: y
     node_dis: False
     shuffle: True
     take: -1
-    location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/nocolor/
-    file_list: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/majority_test.txt #train_split.txt
+#    location: /media/maria/BigData1/Maria/caffe_ocnn_seg_tf/dataset/ply/
+#    file_list: /media/maria/BigData1/Maria/caffe_ocnn_seg_tf/dataset/dataset/Bed_train_level3.txt
+    location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/withcolor/
+    file_list: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/train_split_50_first.txt
     label_location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/point_labels_32/
-    batch_size: 2
-    mask_ratio: 0.0
+    batch_size: 2 #32
+    mask_ratio: 0.5
+#    sigma: 0.0
+#    clip: 0.0
+    rot_num: 12
     return_pts: True
     use_majority: False
-    hsv: True
+    hsv: False
 
   test: 
     dtype: points
-    depth: 7
+    depth: 6
     axis: y
     node_dis: False
-    location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/nocolor/
-    file_list: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/test_split.txt #val_split.txt
+#    location: /media/maria/BigData1/Maria/caffe_ocnn_seg_tf/dataset/ply/
+#    file_list: /media/maria/BigData1/Maria/caffe_ocnn_seg_tf/dataset/dataset/Bed_test_level3.txt
+    location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/withcolor/
+    file_list: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/val_split_50_first.txt
     label_location: /media/maria/BigData1/Maria/buildnet_data_2k/100K_inverted_normals/point_labels_32/
     shuffle: False
     batch_size: 1
+    sigma: 0.0
     return_pts: True
     use_majority: False
-    hsv: True
+    hsv: False
 
 
 MODEL:
   name: hrnet
   channel: 3
   nout: 31
-  depth: 7
+  depth: 6
   factor: 2
   signal_abs: True
-  depth_out: 7
+  depth_out: 6
 
 LOSS:
   num_class: 31
