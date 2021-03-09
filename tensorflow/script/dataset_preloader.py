@@ -7,6 +7,9 @@ from tqdm import tqdm
 from math import ceil
 from colorsys import rgb_to_hsv
 
+_THRESHOLD_TOL_32 = 2.0 * np.finfo(np.float32).eps
+_THRESHOLD_TOL_64 = 2.0 * np.finfo(np.float64).eps
+
 
 def normalise_colour(pts_colour):
     pts_colour = np.true_divide(pts_colour, 255.0)
@@ -23,6 +26,18 @@ def colour_convertor(fts):
         fts = normalise_colour(fts)
     fts = np.apply_along_axis(rgb2hsv, 2, fts)
     return fts
+
+def bounding_sphere_normalisation(points):
+    # find largest distance of a point from the spheres center (0,0,0)
+    print(points.shape)
+    radius = np.max(np.sqrt(np.sum(points ** 2, axis=1)))
+    radius = np.maximum(radius, _THRESHOLD_TOL_32 if radius.dtype == np.float32 else _THRESHOLD_TOL_64)
+    print(radius)
+    return points / radius
+
+def centralise(points):
+    centroid = np.mean(points, axis=0)
+    return points - centroid
 
 
 class DataLoader:
@@ -48,17 +63,16 @@ class DataLoader:
                 while not "end_header" in p[0]:
                     p.pop(0)
                 p.pop(0)
-                point_clouds = np.array([[float(i) for i in j.strip().split()] for j in p])
+                point_clouds = np.array([[i for i in j.strip().split()] for j in p], dtype=np.float32)
             else:  # txt
                 try:
-                    point_clouds = np.loadtxt(filename).astype(np.float32)
+                    point_clouds = np.loadtxt(filename, dtype=np.float32)
                 except ValueError:
                     print("Could not load file: ", filename)
                     sys.exit()
-
             return point_clouds
 
-        def read_files(filenames, nout, channels):
+        def read_files_buildnet(filenames, nout, channels):
             points = []
             normals = []
             features = []
@@ -87,7 +101,24 @@ class DataLoader:
             except OSError:
                 print("Could not open data file list. Exiting...")
                 sys.exit()
-            return np.asarray(points), np.asarray(normals), np.asarray(features), np.asarray(point_labels)
+            return np.asarray(points, dtype=np.float32), np.asarray(normals, dtype=np.float32), \
+                   np.asarray(features, dtype=np.float32), np.asarray(point_labels, dtype=np.float32)
+
+        def read_files_partnet(filenames):
+            points = []
+            normals = []
+            point_labels = []
+            try:
+                for fname in tqdm(filenames):
+                    pts = load_points_file(os.path.join(self.flags.location, fname))
+                    points.append(pts[..., 0:3])
+                    normals.append(pts[..., 3:6])
+                    point_labels.append(pts[..., -1])
+            except OSError:
+                print("Could not open data file list. Exiting...")
+                sys.exit()
+            return np.asarray(points, dtype=np.float32), np.asarray(normals, dtype=np.float32), \
+                   np.asarray([], dtype=np.float32), np.asarray(point_labels, dtype=np.float32)
 
         self.flags = flags
         self.filenames = open(self.flags.file_list, "r").readlines()
@@ -99,7 +130,7 @@ class DataLoader:
         print("Spliting data into {} chunks.".format(reps))
         # read first chunk
         print("Reading chunk: 1/{}".format(reps))
-        self.points, self.normals, self.features, self.point_labels = read_files(
+        self.points, self.normals, self.features, self.point_labels = read_files_buildnet(
             self.filenames[:min(self.tfrecord_num, self.CHUNK_SIZE)], nout, channels)
 
         if channels > 4:  # extra features besides normals
@@ -112,8 +143,9 @@ class DataLoader:
 
         for c in range(1, reps):
             print("Reading chunk: {}/{}".format(c + 1, reps))
-            p, n, f, l = read_files(
-                self.filenames[c * self.CHUNK_SIZE:min((c + 1) * self.CHUNK_SIZE, self.tfrecord_num)], nout, channels)
+            p, n, f, l = read_files_buildnet(
+                self.filenames[
+                c * self.CHUNK_SIZE:min((c + 1) * self.CHUNK_SIZE, self.tfrecord_num)] , nout, channels)
             self.points = np.append(self.points, p, axis=0)
             self.normals = np.append(self.normals, n, axis=0)
             self.point_labels = np.append(self.point_labels, l, axis=0)

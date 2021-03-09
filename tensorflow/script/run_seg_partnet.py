@@ -183,12 +183,12 @@ class PartNetSolver(TFSolver):
         self.test_tensors_dict, self.test_debug_checks = self.graph(**test_params)
 
         self.total_loss = self.train_tensors_dict['total_loss']
-        with tf.name_scope('lr'):
-            self.lr = tf.Variable(initial_value=self.flags.learning_rate, name='learning_rate', trainable=False)
-        solver_param = [self.total_loss, self.lr]
+        # with tf.name_scope('lr'):
+        #     self.lr = tf.Variable(initial_value=self.flags.learning_rate, name='learning_rate', trainable=False)
+        solver_param = [self.total_loss, LRFactory(self.flags)]  # self.lr] #TODO make it work for all lr_types
         if gpu_num > 1:
             solver_param.append(gpu_num)
-        self.train_op = self.build_solver(*solver_param)
+        self.train_op, lr = self.build_solver(*solver_param)
 
         if gpu_num > 1:  # average the tensors from different gpus for summaries
             with tf.device('/cpu:0'):
@@ -197,7 +197,8 @@ class PartNetSolver(TFSolver):
 
         tensor_dict_for_test_summary = {}
         tensor_dict_for_test_summary.update(self.test_tensors_dict)
-        tensor_dict_for_test_summary.update({'lr': self.lr})
+        # tensor_dict_for_test_summary.update({'lr': self.lr})
+        self.train_tensors_dict['lr'] = lr
         self.summaries_dict(self.train_tensors_dict, tensor_dict_for_test_summary)
 
     def summaries_dict(self, train_tensor_dict, test_tensor_dict):
@@ -245,9 +246,9 @@ class PartNetSolver(TFSolver):
         # calculate iou
         avg_results = self.result_callback(avg_results_dict)
 
-        curr_lr = sess.run(self.lr, feed_dict={self.lr: self.lr_metric(avg_results_dict['total_loss'])})
-        sess.run(self.lr.assign(curr_lr))
-        avg_results['lr'] = curr_lr
+        # curr_lr = sess.run(self.lr, feed_dict={self.lr: self.lr_metric(avg_results_dict['total_loss'])})
+        # sess.run(self.lr.assign(curr_lr))
+        # avg_results['lr'] = curr_lr
         return avg_results
 
     def save_ckpt(self, dc, sess, iter):
@@ -310,11 +311,11 @@ class PartNetSolver(TFSolver):
             if ckpt:
                 self.flags.defrost()
                 print(self.flags.learning_rate)
-                self.flags.learning_rate = float(sess.run(self.lr))
+                # self.flags.learning_rate = float(sess.run(self.lr))
                 print(self.flags.learning_rate)
                 self.flags.freeze()
 
-            self.lr_metric = LRFactory(self.flags)
+            # self.lr_metric = LRFactory(self.flags)
             batch = train_iter()
             test_batch = test_iter()
 
@@ -325,17 +326,26 @@ class PartNetSolver(TFSolver):
                                          TRAIN_DATA.features[idxs], \
                                          TRAIN_DATA.point_labels[idxs]
                 # training
-                summary_train, _, curr_loss, curr_lr = sess.run(
-                    [self.summ_train, self.train_op, self.total_loss, self.lr],
-                    feed_dict={self.graph.points: pts,
-                               self.graph.normals: nrms,
-                               self.graph.features: fts,
-                               self.graph.labels: labels,
-                               self.graph.rot: rots
-                               })
-                py = psutil.Process(os.getpid())
-                memory_usage = py.memory_info()[0] / 1024 ** 3
-                print("iter memory: ", memory_usage)
+                # summary_train, _, curr_loss, curr_lr = sess.run(
+                #     [self.summ_train, self.train_op, self.total_loss, self.lr],
+                #     feed_dict={self.graph.points: pts,
+                #                self.graph.normals: nrms,
+                #                self.graph.features: fts,
+                #                self.graph.labels: labels,
+                #                self.graph.rot: rots
+                #                })
+
+                # print("orig", pts)
+                summary_train, _, curr_loss = sess.run([self.summ_train, self.train_op, self.total_loss],
+                                                       feed_dict={self.graph.points: pts,
+                                                                  self.graph.normals: nrms,
+                                                                  self.graph.features: fts,
+                                                                  self.graph.labels: labels,
+                                                                  self.graph.rot: rots
+                                                                  })
+                # py = psutil.Process(os.getpid())
+                # memory_usage = py.memory_info()[0] / 1024 ** 3
+                # print("iter memory: ", memory_usage)
 
                 summary_writer.add_summary(summary_train, i)
 

@@ -32,6 +32,40 @@ class Points2Octree:
         return octree
 
 
+class NormalizePoints:
+    def __init__(self):
+        pass  # normalize with bounding_sphere
+
+    def __call__(self, points):
+        radius, center = bounding_sphere(points)
+        points = normalize_points(points, radius, center)
+        return points
+
+
+class TransformPoints:
+    def __init__(self, depth, clip, sigma=0.0, mu=0.0, **kwargs):
+        self.depth = depth
+        self.sigma = sigma
+        self.clip = clip
+        self.mu = mu
+
+    def __call__(self, points, angle, diagonal):
+
+        if self.sigma > 0.0:
+            shift = tf.clip_by_value(tf.random.normal([3], mean=self.mu, stddev=self.sigma * diagonal),
+                                     clip_value_min=-self.clip,
+                                     clip_value_max=self.clip)
+        else:# no data augmentation
+            return points
+
+        radius, center = tf.constant(1.0), tf.constant([0.0, 0.0, 0.0])
+        points = custom_transform_points(points, angle=angle, jitter=shift,
+                                         radius=radius, center=center,
+                                         depth=self.depth)
+        # The range of points is [-1, 1]
+        return points  # TODO: return the transformations
+
+
 def rotate_point_cloud_and_normals_tf(points, normals, angle=0.0):
     """
         Rotate the point cloud along up direction with certain angle.
@@ -124,15 +158,27 @@ class DataAugmentor:
         pts_labels: args[3]
         rotation: args[-1]
         """
-        aug_pts, aug_nrms = data_augmentation(args[0], args[1], self.flags.sigma, self.flags.clip,
-                                              self.theta * args[-1])
-        ocnn_pts = points_new(aug_pts, aug_nrms, args[2], args[3])
+        # aug_pts, aug_nrms = data_augmentation(args[0], args[1], self.flags.sigma, self.flags.clip,
+        #                                       self.theta * args[-1])
+        # ocnn_pts = points_new(aug_pts, aug_nrms, args[2], args[3])
+
+        # compute bbox diagonal
+        max_val = tf.reduce_max(args[0], reduction_indices=[0])
+        min_val = tf.reduce_min(args[0], reduction_indices=[0])
+        diagonal = tf.norm(max_val - min_val)
+
+        ocnn_pts = points_new(args[0], args[1], args[2], args[3])
+        ocnn_pts = self.normalise(ocnn_pts)
+        ocnn_pts = self.transformer(ocnn_pts, self.theta * args[-1], diagonal)
+
         return self.points2octree(ocnn_pts), ocnn_pts
 
     def __init__(self, flags):
         self.flags = flags
         self.theta = 2 * PI / self.flags.rot_num  # rotation angle in radians
         self.points2octree = Points2Octree(**flags)
+        self.normalise = NormalizePoints()
+        self.transformer = TransformPoints(**flags)
 
     def __call__(self, *args):
         batch = tf.map_fn(lambda x: self.get_octree(x), args,
