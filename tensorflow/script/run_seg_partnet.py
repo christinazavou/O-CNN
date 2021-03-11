@@ -133,7 +133,8 @@ class ComputeGraphSeg:
 
                 if flags_data.batch_size == 1:  # TODO make it work for different batch sizes
                     num_class = FLAGS.LOSS.num_class
-                    intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=-1, ignore=FLAGS.MODEL.nout)
+                    intsc, union = tf_IoU_per_shape(logit, label, num_class, mask=-1,
+                                                     ignore=FLAGS.MODEL.nout)
                     tensors_dict['iou'] = tf.constant(0.0)  # placeholder, calc its value later
                     for i in range(0, num_class):
                         tensors_dict['intsc_%d' % i] = intsc[i]
@@ -380,6 +381,7 @@ class PartNetSolver(TFSolver):
         # session
         config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allow_growth = True
+        config.gpu_options.visible_device_list = '0'
         options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
         run_metadata = tf.RunMetadata()
         timeline_skip, timeline_iter = 100, 2

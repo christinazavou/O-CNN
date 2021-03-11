@@ -143,7 +143,7 @@ def _backup_config(FLAGS, args):
 
 def _set_env_var(FLAGS):
     gpus = ','.join([str(a) for a in FLAGS.SOLVER.gpu])
-    os.environ['CUDA_VISIBLE_DEVICES'] = gpus
+    # os.environ['CUDA_VISIBLE_DEVICES'] = gpus
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     # export TF_CPP_MIN_LOG_LEVEL=3
 
