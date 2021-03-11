@@ -166,7 +166,7 @@ class DataAugmentor:
         diagonal = tf.norm(max_val - min_val)
 
         ocnn_pts = points_new(args[0], args[1], args[2], args[3])
-        ocnn_pts = self.normalise(ocnn_pts)
+        # ocnn_pts = self.normalise(ocnn_pts)
         ocnn_pts = self.transformer(ocnn_pts, self.theta * args[-1], diagonal)
 
         return self.points2octree(ocnn_pts), ocnn_pts
