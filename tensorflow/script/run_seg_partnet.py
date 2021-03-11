@@ -295,6 +295,7 @@ class PartNetSolver(TFSolver):
         # session
         config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allow_growth = True
+        config.gpu_options.visible_device_list = '0'
         with tf.Session(config=config) as sess:
             summary_writer = tf.summary.FileWriter(self.flags.logdir, sess.graph)
 
@@ -436,6 +437,7 @@ class PartNetSolver(TFSolver):
         test_metrics_dict = {key: np.zeros(value.get_shape()) for key, value in self.test_tensors_dict.items()}
         config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allow_growth = True
+        config.gpu_options.visible_device_list = '0'
         with tf.Session(config=config) as sess:
             self.summ2txt_line(self.flags.ckpt)
             self.summ2txt_line(DELIMITER.join(['iteration'] + [key for key in self.test_tensors_dict.keys()]))
